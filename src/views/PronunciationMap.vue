@@ -50,6 +50,50 @@ const nodesByLayer = computed(() => {
   return map
 })
 
+/** 层级配色：颜色本身就承担"这是第几层"的信息 */
+const LAYER_COLORS: Record<MapLayer, { fill: string; stroke: string }> = {
+  initial: { fill: '#ecf5ff', stroke: '#409eff' },
+  final: { fill: '#f0f9eb', stroke: '#67c23a' },
+  tone: { fill: '#fdf6ec', stroke: '#e6a23c' },
+  syllable: { fill: '#fef0f0', stroke: '#f56c6c' },
+  character: { fill: '#f4f4f5', stroke: '#909399' },
+}
+
+/** 布局参数：全部抽成命名常量，因为它们要在多处复用 */
+const NODE_R = 44
+const NODE_CY = 65
+const NODE_GAP = 140
+const NODE_X0 = 80
+
+/** 层级流向图：坐标由公式算出，不再手写 */
+const layerFlow = computed(() =>
+  LAYER_ORDER.map((layer, i) => ({
+    layer,
+    label: LAYER_LABELS[layer],
+    cx: NODE_X0 + i * NODE_GAP,
+    color: LAYER_COLORS[layer],
+  }))
+)
+
+/** 相邻层级之间的连线：5 个节点 → 4 条线 */
+const flowEdges = computed(() => {
+  const nodes = layerFlow.value
+  const edges: Array<{ key: string; x1: number; x2: number }> = []
+
+  for (let i = 0; i < nodes.length - 1; i++) {
+    const from = nodes[i]
+    const to = nodes[i + 1]
+    if (!from || !to) continue   // ← 类型守卫：过了这行，TS 就确定它俩一定存在
+    edges.push({
+      key: `${from.layer}->${to.layer}`,
+      x1: from.cx + NODE_R,
+      x2: to.cx - NODE_R,
+    })
+  }
+
+  return edges
+})
+
 const similarNodes = computed(() => {
   if (!selectedNode.value) return []
   return selectedNode.value.meta.similar
@@ -101,6 +145,36 @@ async function playDemo(char: string) {
         </template>
       </div>
       <p class="flow-hint">声母与韵母组合成音节，叠加声调后对应汉字；「妈」单元覆盖完整闭环。</p>
+      <svg class="demo-svg" viewBox="0 0 720 130">
+        <line
+          v-for="n in flowEdges"
+          :key="`line-${n.key}`"
+          :x1="n.x1"
+          :y1="NODE_CY"
+          :x2="n.x2"
+          :y2="NODE_CY"
+          stroke="#c0c4cc"
+          stroke-width="2"
+        />
+
+        <template v-for="n in layerFlow" :key="n.layer">
+          <circle
+            :cx="n.cx"
+            :cy="NODE_CY"
+            :r="NODE_R"
+            :fill="n.color.fill"
+            :stroke="n.color.stroke"
+            stroke-width="2"
+          />
+          <text
+            :x="n.cx"
+            :y="NODE_CY + 5"
+            text-anchor="middle"
+            font-size="14px"
+            fill="#303133"
+          >{{ n.label }}</text>
+        </template>
+      </svg>
     </section>
 
     <!-- MAP-02 分类筛选 -->
@@ -225,6 +299,7 @@ async function playDemo(char: string) {
 .detail-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
 .tts-note { font-size: 12px; color: #909399; }
 .similar-block { margin-top: 20px; }
+.demo-svg { width: 100%; height: auto; display: block; margin-top: 16px; }
 .similar-block h4 { margin: 0 0 10px; font-size: 14px; }
 .similar-list { display: flex; flex-direction: column; gap: 8px; }
 .similar-card p { font-size: 13px; color: #606266; margin: 6px 0; }
