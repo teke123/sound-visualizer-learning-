@@ -59,35 +59,60 @@ const LAYER_COLORS: Record<MapLayer, { fill: string; stroke: string }> = {
   character: { fill: '#f4f4f5', stroke: '#909399' },
 }
 
+/** 布局表：每层自己的位置（不再是等距横排） */
+const LAYER_POS: Record<MapLayer, { cx: number; cy: number }> = {
+  initial: { cx: 80, cy: 60 },     // 声母
+  final: { cx: 80, cy: 170 },      // 韵母
+  syllable: { cx: 340, cy: 115 },  // 音节 ← 正好在声母/韵母的正中间
+  tone: { cx: 340, cy: 250 },      // 声调
+  character: { cx: 600, cy: 115 }, // 汉字
+}
+
+/** 关系配对：这才是"节点关系"本身 */
+const FLOW_LINKS: Array<[MapLayer, MapLayer]> = [
+  ['initial', 'syllable'],   // 声母 → 音节
+  ['final', 'syllable'],     // 韵母 → 音节
+  ['syllable', 'character'], // 音节 → 汉字
+  ['tone', 'character'],     // 声调 → 汉字
+]
+
 /** 布局参数：全部抽成命名常量，因为它们要在多处复用 */
 const NODE_R = 44
-const NODE_CY = 65
-const NODE_GAP = 140
-const NODE_X0 = 80
 
 /** 层级流向图：坐标由公式算出，不再手写 */
 const layerFlow = computed(() =>
-  LAYER_ORDER.map((layer, i) => ({
+  LAYER_ORDER.map(layer => ({
     layer,
     label: LAYER_LABELS[layer],
-    cx: NODE_X0 + i * NODE_GAP,
+    cx: LAYER_POS[layer].cx,
+    cy: LAYER_POS[layer].cy,
     color: LAYER_COLORS[layer],
   }))
 )
 
-/** 相邻层级之间的连线：5 个节点 → 4 条线 */
+/** 关系连线：按 FLOW_LINKS 配对，端点沿方向缩进半径 */
 const flowEdges = computed(() => {
-  const nodes = layerFlow.value
-  const edges: Array<{ key: string; x1: number; x2: number }> = []
+  const edges: Array<{ key: string; x1: number; y1: number; x2: number; y2: number }> = []
 
-  for (let i = 0; i < nodes.length - 1; i++) {
-    const from = nodes[i]
-    const to = nodes[i + 1]
-    if (!from || !to) continue   // ← 类型守卫：过了这行，TS 就确定它俩一定存在
+  for (const [fromLayer, toLayer] of FLOW_LINKS) {
+    const from = layerFlow.value.find(n => n.layer === fromLayer)
+    const to = layerFlow.value.find(n => n.layer === toLayer)
+    if (!from || !to) continue          // 类型守卫，和上次同一个套路
+
+    const dx = to.cx - from.cx
+    const dy = to.cy - from.cy
+    const d = Math.hypot(dx, dy)
+    if (d === 0) continue               // 两点重合时不画线（防除零）
+
+    const ux = dx / d                      // 单位方向的 x 分量
+    const uy = dy / d                      // 单位方向的 y 分量
+
     edges.push({
-      key: `${from.layer}->${to.layer}`,
-      x1: from.cx + NODE_R,
-      x2: to.cx - NODE_R,
+      key: `${fromLayer}->${toLayer}`,
+      x1: from.cx + ux * NODE_R,
+      y1: from.cy + uy * NODE_R,
+      x2: to.cx - ux * NODE_R,
+      y2: to.cy - uy * NODE_R,
     })
   }
 
@@ -145,14 +170,14 @@ async function playDemo(char: string) {
         </template>
       </div>
       <p class="flow-hint">声母与韵母组合成音节，叠加声调后对应汉字；「妈」单元覆盖完整闭环。</p>
-      <svg class="demo-svg" viewBox="0 0 720 130">
+      <svg class="demo-svg" viewBox="0 0 680 310">
         <line
           v-for="n in flowEdges"
           :key="`line-${n.key}`"
           :x1="n.x1"
-          :y1="NODE_CY"
+          :y1="n.y1"
           :x2="n.x2"
-          :y2="NODE_CY"
+          :y2="n.y2"
           stroke="#c0c4cc"
           stroke-width="2"
         />
@@ -160,7 +185,7 @@ async function playDemo(char: string) {
         <template v-for="n in layerFlow" :key="n.layer">
           <circle
             :cx="n.cx"
-            :cy="NODE_CY"
+            :cy="n.cy"
             :r="NODE_R"
             :fill="n.color.fill"
             :stroke="n.color.stroke"
@@ -168,7 +193,7 @@ async function playDemo(char: string) {
           />
           <text
             :x="n.cx"
-            :y="NODE_CY + 5"
+            :y="n.cy + 5"
             text-anchor="middle"
             font-size="14px"
             fill="#303133"
