@@ -5,6 +5,7 @@ import { ElMessage } from 'element-plus'
 import { useUnitsStore } from '@/stores/units'
 import { useUserStore } from '@/stores/user'
 import { favoritesApi } from '@/api'
+import { STATIC_UNITS } from '@/data/staticUnits'
 
 const router = useRouter()
 const unitsStore = useUnitsStore()
@@ -24,7 +25,7 @@ onMounted(async () => {
 })
 
 const units = computed(() => {
-  let list = unitsStore.coreUnits
+  let list = STATIC_UNITS
   if (category.value !== 'all') list = list.filter(u => u.category === category.value)
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase()
@@ -63,7 +64,7 @@ function toggleCompare(id: string, e: Event) {
 }
 
 const comparePair = computed(() =>
-  compareIds.value.map(id => unitsStore.coreUnits.find(u => u.id === id)).filter(Boolean)
+  compareIds.value.map(id => STATIC_UNITS.find(u => u.id === id)).filter(Boolean)
 )
 </script>
 
@@ -72,7 +73,7 @@ const comparePair = computed(() =>
     <div class="header">
       <div>
         <h2>发音库</h2>
-        <p>首批 {{ unitsStore.coreUnits.length }} 个已发布单元 · 未完成内容不公开展示</p>
+        <p>首批 {{ STATIC_UNITS.length }} 个已发布单元 · 未完成内容不公开展示</p>
       </div>
       <el-input v-model="searchQuery" placeholder="搜索拼音或汉字..." prefix-icon="Search" clearable style="max-width:280px" />
     </div>
