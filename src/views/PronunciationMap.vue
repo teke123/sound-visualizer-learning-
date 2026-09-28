@@ -79,45 +79,38 @@ const FLOW_LINKS: Array<[MapLayer, MapLayer]> = [
 /** 布局参数：全部抽成命名常量，因为它们要在多处复用 */
 const NODE_R = 44
 
-/** 层级流向图：坐标由公式算出，不再手写 */
-const layerFlow = computed(() =>
-  LAYER_ORDER.map(layer => ({
-    layer,
-    label: LAYER_LABELS[layer],
-    cx: LAYER_POS[layer].cx,
-    cy: LAYER_POS[layer].cy,
-    color: LAYER_COLORS[layer],
-  }))
-)
+// layerFlow：直接是数组，不是 computed
+const layerFlow = LAYER_ORDER.map(layer => ({
+  layer,
+  label: LAYER_LABELS[layer],
+  cx: LAYER_POS[layer].cx,
+  cy: LAYER_POS[layer].cy,
+  color: LAYER_COLORS[layer],
+}))
 
-/** 关系连线：按 FLOW_LINKS 配对，端点沿方向缩进半径 */
-const flowEdges = computed(() => {
-  const edges: Array<{ key: string; x1: number; y1: number; x2: number; y2: number }> = []
+// flowEdges：直接算出来，循环提到顶层
+const flowEdges: Array<{ key: string; x1: number; y1: number; x2: number; y2: number }> = []
+for (const [fromLayer, toLayer] of FLOW_LINKS) {
+  const from = layerFlow.find(n => n.layer === fromLayer)
+  const to = layerFlow.find(n => n.layer === toLayer)
+  if (!from || !to) continue
 
-  for (const [fromLayer, toLayer] of FLOW_LINKS) {
-    const from = layerFlow.value.find(n => n.layer === fromLayer)
-    const to = layerFlow.value.find(n => n.layer === toLayer)
-    if (!from || !to) continue          // 类型守卫，和上次同一个套路
+  const dx = to.cx - from.cx
+  const dy = to.cy - from.cy
+  const d = Math.hypot(dx, dy)
+  if (d === 0) continue
 
-    const dx = to.cx - from.cx
-    const dy = to.cy - from.cy
-    const d = Math.hypot(dx, dy)
-    if (d === 0) continue               // 两点重合时不画线（防除零）
+  const ux = dx / d
+  const uy = dy / d
 
-    const ux = dx / d                      // 单位方向的 x 分量
-    const uy = dy / d                      // 单位方向的 y 分量
-
-    edges.push({
-      key: `${fromLayer}->${toLayer}`,
-      x1: from.cx + ux * NODE_R,
-      y1: from.cy + uy * NODE_R,
-      x2: to.cx - ux * NODE_R,
-      y2: to.cy - uy * NODE_R,
-    })
-  }
-
-  return edges
-})
+  flowEdges.push({
+    key: `${fromLayer}->${toLayer}`,
+    x1: from.cx + ux * NODE_R,
+    y1: from.cy + uy * NODE_R,
+    x2: to.cx - ux * NODE_R,
+    y2: to.cy - uy * NODE_R,
+  })
+}
 
 const similarNodes = computed(() => {
   if (!selectedNode.value) return []
@@ -153,24 +146,28 @@ async function playDemo(char: string) {
       <p>看清声母、韵母、声调、音节与汉字之间的关系；点击节点查看详情并进入学习。</p>
     </header>
 
-    <!-- MAP-01 总览：声母→韵母→声调→音节→汉字 -->
+    <!-- MAP-01 总览：层级筛选 + 汇聚关系图 -->
     <section class="overview card">
       <h4>发音层级关系</h4>
       <div class="flow-chain">
-        <template v-for="(layer, idx) in LAYER_ORDER" :key="layer">
-          <button
-            class="flow-node"
-            :class="{ active: activeLayer === layer }"
-            @click="activeLayer = activeLayer === layer ? 'all' : layer"
-          >
-            <span class="flow-label">{{ LAYER_LABELS[layer] }}</span>
-            <span class="flow-count">{{ nodesByLayer.get(layer)?.length || 0 }} 项</span>
-          </button>
-          <span v-if="idx < LAYER_ORDER.length - 1" class="flow-arrow">→</span>
-        </template>
+        <button
+          v-for="layer in LAYER_ORDER"
+          :key="layer"
+          class="flow-node"
+          :class="{ active: activeLayer === layer }"
+          @click="activeLayer = activeLayer === layer ? 'all' : layer"
+        >
+          <span class="flow-label">{{ LAYER_LABELS[layer] }}</span>
+          <span class="flow-count">{{ nodesByLayer.get(layer)?.length || 0 }} 项</span>
+        </button>
       </div>
       <p class="flow-hint">声母与韵母组合成音节，叠加声调后对应汉字；「妈」单元覆盖完整闭环。</p>
-      <svg class="demo-svg" viewBox="0 0 680 310">
+      <svg
+        class="demo-svg"
+        viewBox="0 0 680 310"
+        role="img"
+        aria-label="发音层级关系图：声母与韵母汇聚成音节，音节与声调汇聚成汉字"
+      >
         <line
           v-for="n in flowEdges"
           :key="`line-${n.key}`"
@@ -309,7 +306,6 @@ async function playDemo(char: string) {
 .flow-node.active { border-color: #409eff; background: #ecf5ff; }
 .flow-label { display: block; font-weight: 600; font-size: 14px; }
 .flow-count { font-size: 12px; color: #909399; }
-.flow-arrow { color: #c0c4cc; font-size: 18px; }
 .flow-hint { margin: 12px 0 0; font-size: 13px; color: #909399; }
 .filter-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .node-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; margin-bottom: 16px; }

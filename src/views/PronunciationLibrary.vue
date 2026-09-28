@@ -2,13 +2,11 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { useUnitsStore } from '@/stores/units'
 import { useUserStore } from '@/stores/user'
 import { favoritesApi } from '@/api'
 import { STATIC_UNITS } from '@/data/staticUnits'
 
 const router = useRouter()
-const unitsStore = useUnitsStore()
 const userStore = useUserStore()
 
 const searchQuery = ref('')
@@ -17,7 +15,6 @@ const favorites = ref<string[]>([])
 const compareIds = ref<string[]>([])
 
 onMounted(async () => {
-  await unitsStore.fetchPublished()
   try {
     const res = await favoritesApi.list(userStore.userId)
     favorites.value = res.data
