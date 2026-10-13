@@ -11,8 +11,8 @@
 from fastapi import APIRouter, Header
 from fastapi.responses import JSONResponse
 
-import database
-from database import CmsStateError
+from backend import database
+from backend.database import CmsStateError
 
 router = APIRouter(prefix="/api/admin", tags=["CMS管理接口"])
 
@@ -107,9 +107,7 @@ def set_detection(
     payload: dict,
     operator: str = Header(default="admin", alias="X-Operator"),
 ):
-    """检测开关：verified=true 表示该关可开放检测（须对照 A/B 的「可稳定评分清单」）。
-    前端口径（与 check_levels_api.mjs 一致）：
-    published+verified=可练可测；published=只学不测；未发布=未开放。"""
+    """更新单元的 verified 检测开关。"""
     verified = bool((payload or {}).get("verified", False))
     return _run(database.set_detection, unit_id, operator, verified)
 

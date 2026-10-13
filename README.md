@@ -1,5 +1,9 @@
 # 看得见的声音 - 智能发音学习平台
 
+音频后端的当前模块、接口状态和流程见 [音频模块架构](docs/AUDIO_ARCHITECTURE.md)。
+`/api/audio/analyze` 已删除；quality、features、score 为返回 HTTP 501 的占位接口。
+ASR 已统一到主应用，前端录音结果链路待重新接入。
+
 ## 项目简介
 
 基于多模态可视化技术的智能发音学习系统，通过3D口腔动画、声调曲线对比、AI发音评估等功能，帮助用户快速掌握标准普通话发音。
@@ -34,6 +38,9 @@ npm run dev
 前端将在 http://localhost:5173 启动
 
 ### 3. 安装后端依赖
+
+使用 Python 3.10 或 3.11。运行服务、测试、样本生成和文档转换的 Python 依赖统一在 `backend/requirements.txt`。
+
 ```bash
 cd backend
 pip install -r requirements.txt

@@ -11,3 +11,12 @@ soundfile==0.12.1
 pydantic==2.5.2
 websockets==12.0
 aiofiles==23.2.1
+# 拼音诊断与音频解码
+pypinyin>=0.50
+imageio-ffmpeg>=0.4
+
+# 测试与评估工具
+pytest>=8,<10
+httpx>=0.25,<0.28
+edge-tts>=7.0
+python-docx>=1.1,<2

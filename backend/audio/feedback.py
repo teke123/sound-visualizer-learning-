@@ -1,13 +1,4 @@
-"""
-看得见的声音 - 四步反馈规则引擎
-
-依据需求文档 RES-05 与申报书创新点二：
-"检测到的现象 → 可能相关环节 → 可感知提示 → 安全短练习"
-从"给分数"升级为"给解决方案"。
-
-规则为可配置模板：每个反馈项包含
-  phenomenon（现象） / link（可能相关环节） / hint（可感知提示） / practice（安全短练习）
-"""
+"""根据声学与发音诊断生成现象、相关环节、提示和练习四步反馈。"""
 from __future__ import annotations
 
 from typing import Optional
@@ -31,7 +22,7 @@ def _item(
         "hint": hint,
         "practice": practice,
         "severity": severity,
-        # 兼容旧字段，避免前端展示逻辑崩溃
+
         "message": phenomenon,
         "detail": link,
         "improvement": f"{hint}；然后：{practice}",

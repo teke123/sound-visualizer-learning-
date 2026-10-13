@@ -17,7 +17,7 @@ DB_PATH = "pronunciation.db"
 
 
 # ===========================================================================
-# CMS 四状态机（第 6 周 C：从 week4 迁移，对齐仓库 published 语义）
+# CMS 内容审核状态与允许的流转操作
 # 草稿/驳回 -> 提交审核 -> 待审核 -> 通过(发布) / 驳回；已发布 -> 下架(回草稿)
 # ===========================================================================
 UNIT_STATUS_TRANSITIONS = {
@@ -366,7 +366,7 @@ CORE_UNITS = [
 # 核心单元 id 集合（受保护，不可删除）
 CORE_UNITS_IDS = {u["id"] for u in CORE_UNITS}
 
-# 附录 A 12 单元：练习步骤、误区、相关单元（UNIT-05/06/09）
+# 发音单元的练习步骤、常见误区和关联单元
 APPENDIX_A_ENRICHMENT: dict[str, dict] = {
     "a": {
         "steps": [
@@ -529,7 +529,7 @@ def _seed_units(conn: sqlite3.Connection) -> None:
 
 
 def _enrich_appendix_a_units(conn: sqlite3.Connection) -> None:
-    """为已存在的附录 A 单元补全 steps/mistakes/related（仅当为空时）"""
+    """为内容为空的发音单元补全练习步骤、常见误区和关联单元"""
     now = _now()
     for uid, enrich in APPENDIX_A_ENRICHMENT.items():
         row = conn.execute(
@@ -670,7 +670,7 @@ def create_learning_record(
         ).fetchone()
         progress = _row_to_progress(row) if row else _default_progress(user_id)
 
-        # 3. 更新进度（逻辑迁移自前端 addLearningRecord）
+        # 3. 根据学习记录更新单元进度
         progress["totalPractice"] += 1
         progress["lastPracticeAt"] = created_at
 
@@ -987,7 +987,7 @@ def delete_unit(unit_id: str, operator: str = "admin") -> bool:
 
 
 # ---------------------------------------------------------------------------
-# CMS 审核流转（第 6 周 C：四状态机 + 下架 + 检测开关）
+# CMS 审核流转、下架与检测开关
 # 返回流转后的单元字典；单元不存在返回 None；非法流转抛 CmsStateError
 # ---------------------------------------------------------------------------
 def _fetch_unit(conn: sqlite3.Connection, unit_id: str) -> sqlite3.Row | None:
@@ -1089,8 +1089,7 @@ def unpublish_unit(unit_id: str, operator: str = "admin") -> dict | None:
 
 
 def set_detection(unit_id: str, operator: str = "admin", verified: bool = False) -> dict | None:
-    """检测开关（CON-04）：verified 决定「可练可测 / 只学不测」。
-    由 A/B 提供的「可稳定评分清单」决定能否开启；任何状态都可切换。"""
+    """设置发音单元的检测开关，并记录操作日志。"""
     conn = _connect()
     try:
         row = _fetch_unit(conn, unit_id)

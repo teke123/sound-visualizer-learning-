@@ -1,31 +1,18 @@
 # -*- coding: utf-8 -*-
-"""1.0 现有模型闭环:Wav2Vec2(通用 ASR)懒加载 + analyze_with_deep_learning。
-
-说明: 本文件是 B(李嘉怡)对 backend/audio_analyzer.py 中"深度学习/ASR"部分
-的自足实现(分工 PDF 3.2:B 基于现有 audio_analyzer.py 的 Wav2Vec2 与
-analyze_with_deep_learning 做 1.0 ASR 支撑,必要时拆出 dl_analyzer.py)。
-为避免覆盖 A 正在接管的声学特征部分(librosa F0/F1/F2),B 侧 ASR 代码独立成
-本文件,合入时由组长走查决定与原 audio_analyzer.py 的合并方式。
-
-模型选型(1.0 不新训专属模型,分工 PDF 第 4 周 B 任务):
-  主模型 jonatasgrosman/wav2vec2-large-xlsr-53-chinese-zh-cn
-  理由: 开源、zh-cn 大字集 CTC 字级模型、CPU 可推理、配合 pypinyin 反查
-  即可做声母/韵母/声调闭环;备选 1B 版/Whisper 在 CPU 上过慢,funasr 依赖过重。
-本模块即"1.0 通用模型基线",2.0 CON-08 专属模型对比时同任务复用(model_id 可切换)。
-"""
+"""Wav2Vec2 模型加载、音频预处理与推理。"""
 from __future__ import annotations
 
 import itertools
 import os
-import re
 import threading
 import time
 from pathlib import Path
 
 import numpy as np
-import soundfile as sf
 import torch
 from scipy.signal import resample_poly
+
+from .audio.decoding import decode_audio
 
 # 国内网络优先走 hf-mirror;已设环境变量 HF_ENDPOINT 时不被覆盖
 os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
@@ -40,33 +27,10 @@ SILENCE_RMS = 1e-3       # 全段 RMS 低于此值判静音(漏读);按实测静
 torch.set_num_threads(min(8, os.cpu_count() or 4))
 
 
-def _decode_via_ffmpeg(path: str) -> tuple[np.ndarray, int]:
-    """soundfile 读不了的格式(m4a/mp3 等)用 ffmpeg 转码成 16k 单声道 wav 再读。"""
-    import subprocess
-    import tempfile
-    import imageio_ffmpeg
-    tmp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
-    tmp.close()
-    try:
-        r = subprocess.run([imageio_ffmpeg.get_ffmpeg_exe(), "-y", "-i", str(path),
-                            "-ar", "16000", "-ac", "1", "-f", "wav", tmp.name],
-                           capture_output=True)
-        if r.returncode != 0:
-            err = r.stderr.decode("utf-8", errors="replace")[-200:]
-            raise RuntimeError(f"ffmpeg 解码失败: {err}")
-        return sf.read(tmp.name, dtype="float32", always_2d=True)
-    finally:
-        if os.path.exists(tmp.name):
-            os.unlink(tmp.name)
-
-
 def load_audio(path: str) -> tuple[np.ndarray, dict]:
     """读音频 → 重采样 16k/单声道 → 掐静音 → 归一化。返回 (float32 波形, 统计)。"""
-    try:
-        data, sr = sf.read(path, dtype="float32", always_2d=True)
-    except Exception:  # 手机录的 m4a 等格式(可能伪装 .wav 后缀)
-        data, sr = _decode_via_ffmpeg(path)
-    data = data.mean(axis=1) if data.ndim == 2 else data[:, 0]
+    decoded = decode_audio(path)
+    data, sr = decoded.samples, decoded.sample_rate
     rms = float(np.sqrt(np.mean(data ** 2) + 1e-12))
     if sr != SAMPLE_RATE:
         data = resample_poly(data, SAMPLE_RATE, sr).astype(np.float32)
@@ -111,7 +75,7 @@ def softmax(scores: dict[str, float]) -> dict[str, float]:
 
 
 class AudioAnalyzer:
-    """Wav2Vec2 懒加载单例(线程安全)。"""
+    """管理 Wav2Vec2 模型、加载锁与推理统计。"""
 
     def __init__(self):
         self._lock = threading.Lock()
@@ -130,7 +94,7 @@ class AudioAnalyzer:
 
     # ------------------------------------------------------------------ 加载
     def load(self, model_id: str = DEFAULT_MODEL_ID, force: bool = False) -> dict:
-        """加载模型。本地目录 → HF 缓存(离线) → HF 在线,三级降级保证稳定加载。"""
+        """依次从本地目录、缓存和远程仓库加载模型。"""
         with self._lock:
             if not force and self.model is not None and self.model_id == model_id:
                 return {"ok": True, "model_id": self.model_id, "device": self.device,
@@ -253,10 +217,7 @@ class AudioAnalyzer:
         return [t for t, _ in sorted(seen.items(), key=lambda kv: kv[1], reverse=True)[:max_tokens]]
 
     def analyze_with_deep_learning(self, audio_path: str) -> dict:
-        """1.0 通用 ASR 闭环入口:音频 → 识别文本 + 开集候选 + 置信度。
-
-        该函数是"通用模型基线"的对外口径,2.0 CON-08 专属模型对比时同任务同输入。
-        """
+        """识别音频，返回文本、候选字、候选概率和处理耗时。"""
         self.ensure_loaded()
         logits, stats = self._forward(audio_path)
         if logits is None:

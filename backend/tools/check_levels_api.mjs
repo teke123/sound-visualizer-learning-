@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * 关卡数据链路可复跑检查（第 4 周 D 交付）
+ * 验证关卡接口、发布状态和开放检测统计
  * ---------------------------------------------------------------------------
  * 检查三件事：
- *   1) C 的 /api/units 是否可用，且「未审核不公开」是否成立（草稿不出现在 published 列表里）
+ *   1) /api/units 是否可用，且「未审核不公开」是否成立（草稿不出现在 published 列表里）
  *   2) L01–L30 是否已按冻结表入库（可为 draft）
  *   3) 前端 stores/levels.ts 的合并口径复算：30 关 = 可练可测 + 只学不测 + 未开放
  *
@@ -12,7 +12,7 @@
  *   node backend/tools/check_levels_api.mjs            # 默认 http://localhost:8000/api
  *   node backend/tools/check_levels_api.mjs http://localhost:8000/api
  *
- * 退出码：0 全通过；1 有检查项失败（可直接接进 H 的回归脚本）。
+ * 退出码：0 表示全部通过；1 表示存在失败检查项。
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -59,7 +59,7 @@ const leakedDrafts = draftCodes.filter((c) => {
 });
 check(leakedDrafts.length === 0, '未审核（draft）关卡不出现在已发布列表', `${draftCodes.length} 关仍为草稿/未录入`);
 
-// 2) 冻结表关卡是否已入库（draft 也算，正式内容由 C 补）
+// 2) 检查关卡配置在 CMS 中的对应记录
 const inCms = levels.filter((l) => allById.has(l.code) || l.cmsIds.some((id) => allById.has(id)));
 console.log(`     冻结表 ${levels.length} 关中，已能在 CMS/历史单元里找到落点：${inCms.length} 关`);
 

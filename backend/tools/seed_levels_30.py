@@ -1,49 +1,15 @@
 #!/usr/bin/env python3
-"""
-30 关 L01–L30 冻结表 → SQLite 联调播种脚本（第 4 周 D）
+"""从关卡配置读取 L01–L30，并写入 SQLite 发音单元草稿。
 
-用途
-----
-第 4 周（9/21–9/27）卡点 CON-02 冻结了 30 关的 ID / 顺序 / 每关目标音；C 负责「按 30 关字段建库，
-GET /api/units 返回关卡」，D 负责「LearningView 关卡页骨架 + 接 /api/units」。为了让前端能在 C 的
-CMS 正式录入内容之前先跑通链路，本脚本按冻结表把 30 关以 **draft（未审核、未发布）** 状态写入
-现有 pronunciation_units 表。
+已存在的关卡 ID 会跳过。目标音写入 pinyin，分组写入 category，
+关卡顺序写入 order_no，教学内容通过 CMS 编辑和审核。
 
-口径与边界（重要）
-------------------
-* 只写 draft：`status='draft'`、`verified=0`。按排期「未审核不公开」，大众端（GET /api/units?status=published）
-  看不到这些关，因此不会出现假页面 / 假分；发布由 C 走 CMS 审核后决定。
-* 不改后端代码、不改表结构，全部复用 C 已实现的 database.create_unit 字段。
-* 只做字段映射：目标音 → pinyin 列（C 增加独立 target 列后应迁移，见下方 FIELD MAPPING）。
-* 幂等：已存在同 id 的关卡会跳过；`--rollback` 只删除 id 形如 L01–L30 且被本脚本收录的关卡。
-
-FIELD MAPPING（给 C 的接口说明）
---------------------------------
-    冻结表字段           当前写入的列         C 建 30 关正式表时的建议列
-    code (L01)          id                  id
-    order               order_no            order_no
-    target（目标音）     pinyin              target          ← 需要新增
-    char（例字）         character           character
-    group（分组）        category（中文）     group           ← 需要新增
-    —                   description         demo_audio       ← 示范（需要新增）
-    —                   steps=[]            practice         ← 练习（需要新增）
-    —                   verified=0          detection_open   ← 检测开关（需要新增）
-    —                   status='draft'      review_status    ← 审核状态（需要新增）
-    —                   —                   version          ← 版本（需要新增）
-
-用法
-----
-    # 预览（不写库）
+用法：
     python backend/tools/seed_levels_30.py --dry-run
-
-    # 写入 30 关草稿（默认自动选择数据库文件）
-    python backend/tools/seed_levels_30.py
-
-    # 指定数据库
-    python backend/tools/seed_levels_30.py --db pronunciation.db
-
-    # 回滚（删除本脚本写入的 30 关草稿）
+    python backend/tools/seed_levels_30.py --db backend/pronunciation.db
     python backend/tools/seed_levels_30.py --rollback
+
+--dry-run 预览关卡；--rollback 删除配置中的 L01–L30 关卡记录。
 """
 from __future__ import annotations
 
@@ -61,7 +27,7 @@ PROJECT_DIR = BACKEND_DIR.parent
 FREEZE_JSON = PROJECT_DIR / "src" / "data" / "levels.freeze.json"
 
 sys.path.insert(0, str(BACKEND_DIR))
-import database  # noqa: E402  （复用 C 的数据访问层，不重复实现）
+import database  # noqa: E402
 
 LEVEL_ID_RE = re.compile(r"^L\d{2}$")
 
@@ -88,9 +54,9 @@ def validate(levels: list[dict]) -> None:
     if groups.get("final") != 6 or groups.get("initial") != 23 or groups.get("syllable") != 1:
         raise SystemExit(f"[错误] 分组数量不符：应为 6 单韵母 + 23 声母 + 1 拼读，实际 {groups}")
     if codes != [f"L{i:02d}" for i in range(1, 31)]:
-        raise SystemExit("[错误] 关卡 ID 必须连续为 L01–L30（CON-02 冻结口径）")
+        raise SystemExit("[错误] 关卡 ID 必须连续为 L01–L30")
     if orders != list(range(1, 31)):
-        raise SystemExit("[错误] 关卡顺序必须为 1–30（CON-02 冻结口径）")
+        raise SystemExit("[错误] 关卡顺序必须为 1–30")
     print(f"[校验] 冻结表通过：{len(levels)} 关 = 6 单韵母 + 23 声母 + 1 拼读")
 
 
@@ -98,35 +64,29 @@ GROUP_CN = {"final": "单韵母", "initial": "声母", "syllable": "拼读"}
 
 
 def level_to_row(lv: dict) -> dict:
-    """冻结表 → pronunciation_units 行（字段映射见模块 docstring）"""
+    """将关卡配置映射为发音单元草稿字段。"""
     return {
         "id": lv["code"],
-        "pinyin": lv["target"],           # 目标音（C 新增 target 列后迁移）
+        "pinyin": lv["target"],           # 关卡目标音
         "character": lv["char"],
         "category": GROUP_CN.get(lv["group"], lv["group"]),
         "description": f"{lv['code']} 目标音「{lv['target']}」（{GROUP_CN.get(lv['group'])}）",
-        "conclusion": "",                 # 教学结论位：等 I / G 内容定稿后由 CMS 录入
+        "conclusion": "",                 # 教学结论由 CMS 录入
         "detail": (
-            f"第 4 周 CON-02 冻结关卡：ID {lv['code']}，顺序 {lv['order']}，目标音 {lv['target']}。"
+            f"关卡 ID {lv['code']}，顺序 {lv['order']}，目标音 {lv['target']}。"
             "示范 / 练习 / 检测开关 / 审核状态由 CMS 录入后生效。"
         ),
         "mistakes": [],
         "steps": [],
         "related": [],
-        "status": "draft",                # 未审核不公开：不发布，大众端看不到
+        "status": "draft",                # 草稿审核状态
         "verified": False,                # 检测开关默认关闭（分级开放检测）
         "order": lv["order"],
     }
 
 
 def pick_db_path(explicit: str | None) -> str:
-    """按后端实际使用情况选库：优先已存在的库，避免写了另一个空库
-
-    口径：README / package.json 的启动方式都是 `cd backend && python main.py`，
-    因此后端真正读写的库是 `backend/pronunciation.db`；仓库根目录下的 pronunciation.db
-    是历史上从根目录启动留下的副本（*.db 已被 .gitignore 忽略，属运行期产物）。
-    这里优先 backend/，并在发现根目录副本时给出提示。
-    """
+    """依次使用显式路径、DB_PATH 环境变量和已存在的默认数据库。"""
     if explicit:
         return explicit
     env_db = os.environ.get("DB_PATH")
@@ -193,7 +153,7 @@ def main() -> int:
         ).fetchone()[0]
         print(f"[完成] 新增 {created} 关，跳过已存在 {skipped} 关；表内共 {total} 行，其中已发布 {published} 行")
         print("[提醒] 这 30 关是 draft：大众端 /api/units?status=published 不会返回它们，")
-        print("       学习 / 检测入口不会出现，符合「未审核不公开、不许假分」。发布请走 C 的 CMS 审核。")
+        print("       发布请通过 CMS 提交审核。")
         return 0
     finally:
         conn.close()
