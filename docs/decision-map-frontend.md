@@ -1,259 +1,85 @@
 # 决策图 · 前端设计规划
 
-> 范围:页面集合与职责、UI 库与开源包选型、跨页组件与状态架构、前端侧契约消费。
-> 上下文:SRS(docs/srs/)、目标架构 §6(ADR-10 页面登记表)、后端 API 决策图
-> (docs/decision-map.md,已定案,端点清单以其为准+本次会话回填)。
+> 范围：页面职责、UI 与依赖选型、跨页组件、状态管理与 API 消费。
+> 业务需求见 [SRS](srs/README.md)，模块边界见 [目标架构](architecture/02-目标架构.md)，API 契约见 [后端决策图](decision-map-backend.md)。本文描述目标设计。
 
-## 进度
+## 页面与导航
 
-- 骨架现状盘点完成(2026-10-15):路由与 pages.ts 已对齐 P01–P11,views 为
-  带意图注释的占位骨架;可保留资产:PageState+usePageCopy 四态、levels store
-  三值 availability、recording store「唯一 MediaRecorder 封装」意图。
-- **#1–#4 已定案**(2026-10-15 第一次 grilling);琐碎项见「零票定案」。
-- **#5–#8 已定案**(2026-10-15 第二次 grilling):P07 退役(页面集合 10 页)、
-  P04 升级为博客式原理子站、构形三视图切换、小测移出 1.0。
-- **全部票据已定案,决策图完成**。产出:SRS 修订清单(文末,待需求方落文档)、
-  后端决策图回填(已同步)。下一步:/to-prd 排实现或直接按路线图开工。
+1.0 大众端为 P01–P06、P08–P11，共 10 页；新页面从 P12 起编号。
 
-## 页面清单定案(1.0 = 10 页;P07 空缺,编号不复用,新增从 P12 起)
+| 页面 | 路由 | 职责 | 数据来源 |
+| ---- | ---- | ---- | ---- |
+| P01 首页 | `/` | 入口分流、下一已发布关 | levels、me/context；登录且同意后读取 me/progress |
+| P02 搜索 | `/search` | 找关与相近关推荐 | GET /api/search?q= |
+| P03 发音地图 | `/map` | 三层闯关进度与易混关并排 | levels + 本地或授权进度 |
+| P04 原理子站 | `/principles`、`/principles/:slug` | 按气/声/口型分类的文章目录与正文 | article-categories、articles、articles/{slug} |
+| P05 关卡页 | `/learn/:id` | 单关结论、构形、示范、听辨、练习与录音 | levels/{id}、learning-events |
+| P06 发音库 | `/library` | 已发布关目录、试听、任意两关比较 | levels |
+| P08 检测中心 | `/test` | 选关录音与标定 | levels、detection、pitch-calibration |
+| P09 结果 | `/result/:id` | 分数、现象、四步反馈与曲线 | recordings/{id}、audioId 特征 |
+| P10 声音档案 | `/archive` | 本人同关记录与前后变化 | me/recordings、me/recordings/compare |
+| P11 账号 | `/account` | 账号、同意、撤回、注销与重新标定 | auth/*、me/*、pitch-calibration |
 
-| 页 | 路由 | 职责 | 主要 FR | 数据源 |
-| ---- | ---- | ---- | ---- | ---- |
-| P01 首页 | `/` | 入口分流 | FR-202 四主按钮/203/204/205/206 | GET /api/levels + /api/me/progress |
-| P02 搜索 | `/search` | 找到一关(薄视图) | FR-301~305 | levels 客户端过滤(?q=) |
-| P03 发音地图 | `/map` | 闯关进度:我在哪层、下一关、易混并排 | FR-401~404 | levels + progress |
-| P04 原理子站 | `/principles` + `/principles/:slug` | 博客式发音原理文章(不枚举具体音) | FR-501~505 + 原 802~804 的 references | GET /api/content/principles |
-| P05 关卡页 | `/learn/:id` | 单关看听辨练录 | FR-601~610(小测移出) | GET /api/levels/{id} + learning-events |
-| P06 发音库 | `/library` | 已发布关目录卡片+试听+任意两关比较;不承载进度 | FR-701~703 | GET /api/levels |
-| P08 检测中心 | `/test` | 选关录+标定 | FR-901~908、FR-1006 | levels + detection 子对象 |
-| P09 结果 | `/result/:id` | 看懂差距 | FR-1001~1010 | GET /api/recordings/{id} + f0/formants |
-| P10 声音档案 | `/archive` | 前后变化 | FR-1101~1103、FR-104 | GET /api/recordings?levelId= |
-| P11 账号 | `/account` | 账号与同意 | FR-106~108 | /api/auth/* + /api/me/* |
+`/learn` 重定向到 `/library`。后台 `/admin` 为后端管理界面入口。管理员真实内容预览使用受保护的 `/preview` 路由，不计入大众端页面集合。
 
-结构调整累计(#1 + 第二次会话):
+P03 展示学习位置和进度，P06 展示目录与比较工具。具体发音讲解位于 P05；P04 讲普遍原理，参考资料位于文章 references 与关卡专业折叠区。
 
-- AdminView + /admin 路由退役(管理界面 = 后端 starlette-admin,vite 代理直通);
-  /learn(无 id)重定向 /library,目录职责归 P06;/feedback/:id 改 /result/:id。
-- **P07 专业资料页退役**:资料元数据并入 P04 文章 references 与 P05 专业折叠区。
-- **P04 = 博客式原理子站**:不枚举具体发音;具体音的讲解全部住在 P05,
-  从 P06 卡片/搜索/地图进入。内部子路由 /principles(文章目录,按
-  气/声/口型三分类)+ /principles/:slug(文章页)。
-- **P03/P06 职责切清**:P03 = 三层闯关进度图 + 10 组易混并排(FR-403);
-  P06 = 目录卡片(名称/拼音/汉字/试听/进入)+ 任意两关比较(FR-703)。
-  两页不做成同一形态:P03 不做试听目录,P06 不做进度。
+## UI 与依赖
 
-跨页复用组件:RecorderPanel(P05/P08,useAssessmentFlow 的壳)、
-ToneCurveChart(P09/P10)、DemoPlayer(P05/P06/P08/P04)、
-QuizPanel(P05 听辨)、CalibrationPanel(音域标定向导)、
-ConsentGate(存档前同意流)、ArticulationFigure(P05 构形,三视图切换容器)、
-ArticleView(P04 Markdown 渲染)。
+Vue SPA 在 Vite 工程内嵌 Quasar v2，使用 @quasar/vite-plugin、@quasar/extras 与 sass。路由使用 vue-router，状态使用 Pinia 与 composables，通用浏览器能力使用 @vueuse/core。曲线由 echarts/vue-echarts 渲染；文章使用 markdown-it 及受控指令；openapi-typescript 依据后端 OpenAPI 生成类型；three.js 用于 3D 构形。
 
-依赖定案(#2/#4/#5/#6 修订后):加 quasar v2 + @quasar/vite-plugin v2 +
-@quasar/extras + sass、markdown-it(#7 原理文章渲染)、openapi-typescript(dev);
-移除 element-plus、@element-plus/icons-vue、pitchy;
-**three 保留**(#6 修订:三视图之一);保留 vue-router、pinia、@vueuse/core、
-echarts、vue-echarts。
+依赖版本、Vite 插件兼容性、构建能力及浏览器支持须在实现前核实。响应式导航使用 QLayout 等组件；内容在手机端单列布局，保证触控目标与录音主路径可用。
 
-## 零票定案(琐碎,不值得开票)
+## 组件与状态
 
-- pitchy 移除:F0 全走后端(ADR-8);录音中只画波形(canvas + AnalyserNode 原生)。
-- TTS 合成示范兜底退役:FR-1207 媒体齐全方可发布,已发布关必有正式示范;
-  useSpeechDemo/TTS_DISCLAIMER 退役。
-- units store 退役:GET /api/levels + levels store 承担(后端决策图 #5)。
-- 数据层维持 Pinia + composables,不引 vue-query:10 页规模,现有模式是资产。
-- 搜索客户端过滤(30 关规模),不新增搜索端点;levels 列表响应须带一句话
-  结论/学习标签等摘要字段(FR-302,已回填后端契约备注)。
-- 录音格式:MediaRecorder 原生 webm 上传,后端 soundfile→ffmpeg 回落转换
-  (backend/audio/decoding.py 意图已覆盖),前端不做 WAV 编码。
-- P09 结果恢复:直接 GET /api/recordings/{id}(后端决策图 #1),原「内存结果
-  恢复」复杂度删除;刷新/直开本页不再是特殊流。
-- 移动端主路径(NFR-06)由 Quasar 响应式体系承担(QLayout 抽屉导航、触控
-  目标);内容布局仍需单列化 media query。
-- **反馈拆两个端点**:POST /api/feedback(sourcePage + levelId?,type=
-  understood|unclear|result_match|error_report)+ POST /api/wishes
-  (希望增加的音/字,含触发它的搜索词);均匿名挂 sid、统一 envelope,
-  管理界面「反馈处理」动作承接。
-- **learning-events kind 收窄**:listen_quiz | practice_done
-  (mini_quiz 随小测移出 1.0,后端决策图已回填)。
-
-## #1: 页面集合三项结构调整 ✔ 已定案 2026-10-15
-
-Blocked by: —
-Type: Grilling
-
-### Question
-
-前端 AdminView+/admin 路由与后端 starlette-admin 挂载冲突;/learn(无 id)
-30 关总览与 P06 发音库职责重叠;/feedback/:id 命名与页义不符。三项是否调整?
-
-### Answer
-
-**三项都做**:AdminView+/admin 退役;/learn 无 id 重定向 /library(P05 只留
-/learn/:id);/feedback/:id 改 /result/:id。页面集合 = SRS 4.1 的 11 页,无重复职责。
-(第二次会话又退役 P07,见页面清单与 #7。)
-
-## #2: P05 构形与 P09 可视化的技术范围 ✔ 已定案 2026-10-15(构形部分被 #6 修订)
-
-Blocked by: —
-Type: Grilling
-
-### Question
-
-FR-603 只要「图或动画」,图即可合规。three.js(约 600KB,3D 口型动画)与
-pitchy(前端测音高)去留?
-
-### Answer
-
-**移除 pitchy**(F0 全走后端,录音中只画波形)。P09 曲线对比用 ECharts、共振峰
-用后端 PNG(#11/#13),不做前端声学计算。构形部分 three.js 的去留与形态
-由 #6 修订定案(最终:保留,三视图之一)。
-
-## #3: 音域标定(FR-1006)的入口与触发 ✔ 已定案 2026-10-15
-
-Blocked by: —
-Type: Grilling
-
-### Question
-
-后端 T 值换算发生在评分时,标定必须先于提交录音;且只有开放音高维度的关需要。
-入口放哪?
-
-### Answer
-
-**提交流程内嵌门禁**:useAssessmentFlow 提交前检查「本关 allowed_metrics 含
-音高 && 当前无音域」→ 弹 CalibrationPanel 向导(读设定文本→录→POST
-/api/pitch-calibration)→ 完成后继续提交。触发点唯一、口径统一,只在需要的
-关出现;重新标定入口放 P11 账号页(后端决策图 #7 已预留)。
-
-## #4: UI 组件库:Element Plus → Quasar v2 ✔ 已定案 2026-10-15
-
-Blocked by: —
-Type: Grilling(含调研,2026-10 生态现状)
-
-### Question
-
-NFR-06 要求 iOS Safari/Android Chrome 完成主路径。主流库里真为「一套代码
-同时优化 PC+移动端」设计的只有 Quasar(Vuetify/PrimeVue 桌面倾斜,TDesign
-双包,EP/Naive/Arco 桌面优先)。换不换?何时换?
-
-### Answer
-
-**换 Quasar v2,趁骨架期换**(1–3 天机械替换成本,越晚越贵)。动因:录音练声
-是手机原生场景,移动端体验是产品能力不是装饰;Quasar 组件内置移动交互
-(QLayout 抽屉、触控目标),将来可直接打包 Capacitor App。接受代价:Material
-风格 + 框架级约定,冻结日(2026-10-27)风险由需求方自担,必要时顺延。
-
-## #5: Quasar 迁移形态与 Vite 8 兼容性 ✔ 已定案 2026-10-15
-
-Blocked by: #4
-Type: Research(2026-10-15 查证)
-
-### Question
-
-现有 Vite 8 工程(package.json: vite ^8.1.5)内嵌 Quasar(@quasar/vite-plugin
-+ sass)vs 迁到 Quasar CLI 工程?vite 插件对 Vite 8 的兼容性未验证。
-
-### Answer
-
-**留在现有 Vite 8 工程内嵌接入,不迁 Quasar CLI。**
-
-- @quasar/vite-plugin **v2 的 peer dependency 即 Vite 8+**(官方文档与 npm
-  均确认,2026-10 时点);装 quasar@2 + @quasar/vite-plugin@2 + sass 即可。
-- 插件形态的已知限制:不支持 SSR/SSG 构建、不支持 RTL 语言包——本项目纯
-  SPA + 中文,均不碰。
-- 剩余工作为机械替换,归实现(PRD 层),不再开票:el-* → q-* 组件映射
-  (App.vue→QLayout、ElMessage→Notify、pages.ts 图标名→material-icons、
-  PageState/PageFeedback 换装),12 views 换装后 type-check+build 过。
-
-## #6: P05 构形的呈现形态 ✔ 已定案 2026-10-15(推翻 #2 的「图即可」保守案)
-
-Blocked by: #2
-Type: Grilling
-
-### Question
-
-构形按什么做?①CMS 直接放图/动图/视频;②前端参数化 SVG 声道剖面图
-(部位×方法预设表);③three.js 3D 建模。
-
-### Answer
-
-**三视图同时存在、可来回切换**(ArticulationFigure 容器组件,segmented
-control 切换),发音动作指导多角度呈现:
-
-- 视图 A:CMS 媒体(图/动图/视频)——构形材料可用仍是发布前提(FR-1203);
-- 视图 B:SVG 参数化声道剖面图——前端内置「发音部位×方法」预设表
-  (29 关有限枚举,语音学标准数据),CMS 只填枚举字段;
-- 视图 C:three.js 3D 建模。
-- 构形字段 = {place, manner, description, mediaAsset?, altText};
-  three 保留在 1.0 依赖。
-- 风险注记:3D 建模人力消耗大,切换框架先行就位,视图 C 可渐进填充
-  (冻结前允许先 A+B 可用、C 渐进)。
-
-## #7: P04 内容与公开反馈的 API 缺口(后端契约补丁) ✔ 已定案 2026-10-15
-
-Blocked by: —
-Type: Grilling
-
-### Question
-
-后端决策图端点清单缺:①P04 原理内容读取;②(原)P07 资料列表;③公开反馈
-提交(FR-1501~1504)。形状定什么?定案后回填后端决策图。
-
-### Answer
-
-**P07 退役后缺口收窄为三件事,已回填后端决策图:**
-
-- `GET /api/content/{key}`:通用内容端点,CMS 一张 content 表
-  (key/版本/状态)。key=principles 返回**扁平文章列表**:
-  `{nodes: [{slug, title, category(气|声|口型,可扩展), order,
-  body(Markdown), references[]}]}`。
-  正文 Markdown + 五指令:`:::practice / :::audio{id} / :::image{id|alt} /
-  :::levels{L01,L04} / :::pro`——分别落 FR-502/505/502/503;
-  references 承接原 P07 资料元数据(标题/来源/许可/适用边界/关联关,
-  FR-802~804)。缺材料的节点不发布(FR-504 段落级缺席)。
-  前端 markdown-it + directive 插件渲染。
-- `POST /api/feedback`:页面情境反馈,type=understood|unclear|
-  result_match|error_report,带 sourcePage + levelId?。
-- `POST /api/wishes`:希望增加的音/字,含触发搜索词(FR-304/1503)。
-- 两者匿名挂 sid、统一 envelope;管理界面「反馈处理」动作承接(FR-1407)。
-- 放弃的方案:伪装成关卡 L00(污染关卡体系);专用 /api/principles 端点
-  (无复用);结构化 blocks 数组(内容组写作门槛高,Markdown 更顺手)。
-
-## #8: P05 听辨题契约(小测移出 1.0) ✔ 已定案 2026-10-15
-
-Blocked by: #7
-Type: Grilling
-
-### Question
-
-关卡字段「听辨与小测」无 schema。听辨题与小测题的数据结构、对错上报口径?
-
-### Answer
-
-**只做听辨,小测整个移出 1.0(推迟 2.0)。**
-
-- 听辨题(关卡 content JSON,单选):
-  `{id, stimulusAudioId, prompt, options: [{text, audioId?}],
-  answerIndex, explanation?}`——播 stimulus 音频→文本选项→答错展示解释。
-- 上报:一题一事件,`POST /api/learning-events`
-  `{levelId, kind: "listen_quiz", detail: {questionId, choiceIndex, correct}}`;
-  访客挂 sid,进度派生按 correct 汇总(ADR-11),不做整卷、不覆写。
-- learning-events kind 收窄为 listen_quiz | practice_done。
-- SRS 连锁修订:FR-607 小测→2.0;FR-1203 发布前置本就不含小测,发布链不动;
-  附录 A「听辨与小测」字段组 1.0 只录听辨题。多选/判断等题型 2.0 再扩 kind。
-
-## SRS 修订清单(2026-10-15 已按用户指示落 docs/srs/)
-
-| 条目 | 修订 |
+| 组件或状态 | 职责 |
 | ---- | ---- |
-| FR-607 小测 | 1.0 移除,推迟 2.0;08-验收对应条目同步删 |
-| FR-801~804(P07) | 页面退役;资料元数据并入 P04 文章 references 与 P05 专业折叠;边界句由 P09/P01 承担 |
-| FR-701~703(P06) | 补职责注记:目录+比较工具页,不承载进度(与 P03 切清) |
-| FR-501~505(P04) | 页面形态改为博客式原理子站(文章列表+文章页,三分类),不枚举具体音 |
-| 附录 A 听辨与小测 | 1.0 只录听辨题 |
-| D-03 页面结构 | 1.0 = P01–P06、P08–P11 共 10 页;P07 空缺不复用,新增从 P12 起 |
+| PageState / usePageCopy | 加载、空、错误、正常状态与统一文案 |
+| levels store | 公开关卡摘要、身份骨架与 availability |
+| recording store | 唯一 MediaRecorder 封装及录音状态 |
+| useAssessmentFlow / RecorderPanel | P05/P08 共用的录音、提交、查询与失败恢复 |
+| DemoPlayer | P04/P05/P06/P08 共用的正式示范播放 |
+| ToneCurveChart | P09/P10 共用的曲线与缺失状态 |
+| QuizPanel | 1.0 听辨单选题 |
+| CalibrationPanel | 标定文本、录音、标定状态与重新标定 |
+| ConsentGate | 自动全部转存说明与同意流程 |
+| ArticulationFigure | CMS 媒体、SVG、3D 构形视图切换 |
+| ArticleView | Markdown 正文、示范、练习、资料与关卡链接 |
 
-## 后端决策图回填(已同步 docs/decision-map.md,2026-10-15)
+Pinia 按关卡、身份与同意、录音、进度等领域管理状态。初始化使用 `/api/me/context`，访客不查询受保护的 progress 接口。退出或切换账号清除账号相关上下文，并使用服务端轮换后的 sid。
 
-- 端点清单 +3:GET /api/content/{key}、POST /api/feedback、POST /api/wishes;
-- learning-events 注释改为 kind: listen_quiz | practice_done。
+`availability` 为 open、temporarily_unavailable、closed。正常已发布关可学习与检测；应急检测故障明确提示但保留学习入口；closed 仅展示地图身份骨架。P01/P06/P08 过滤未发布关。
+
+## 构形、文章与听辨
+
+构形提供三种视图：CMS 图片/动画/视频、前端参数化 SVG 声道剖面、three.js 3D。1.0 必须具备媒体与 SVG，3D 可渐进提供；2.0 按 SRS 验收 3D 动画。SVG 使用发音部位与方法枚举预设；CMS 提供 place、manner、description、mediaAsset、altText 等字段。构形材料与正式授权示范是发布前提；播放使用正式媒体。
+
+P04 使用分类、文章目录及详情接口，正文支持受控 practice/audio/image/levels/pro 表达。渲染须限制可执行内容、校验媒体来源；草稿与私人录音权限由服务端统一控制。分类和关联关卡按公开版本展示。
+
+1.0 听辨题为单选，包含 `{id, stimulusAudioId, prompt, options: [{text, audioId?}], answerIndex, explanation?}`。播放题干音频、显示选项，答错时展示解释。关卡小测属于 2.0（FR-607）。
+
+登录且同意后，每题提交学习事件 `{eventId, levelId, contentVersion, kind: "listen_quiz", detail: {questionId, choiceIndex}}`；服务端验证题目与选项并派生正确性。1.0 事件 kind 为 listen_quiz 或 practice_done。访客与未同意用户只记录本地进度；同意后仅上传新事件，不导入本地历史。
+
+## 录音、标定与结果
+
+MediaRecorder 采集浏览器支持的格式并上传，前端仅通过 canvas + AnalyserNode 绘制实时波形。F0、共振峰、T 值换算和 PNG 在后端计算；前端渲染返回结果。录音格式适配与解码由后端承担。
+
+提交分两步：multipart 上传得到 audioId，再发送 `{audioId, levelId, contentVersion, submissionId}`。版本冲突提示刷新任务；幂等冲突使用 409；处理中响应 202 并依据 recordingId 查询。P09 刷新或直接打开均读取 `/api/recordings/{id}`。
+
+标定文本与状态读取 `/api/pitch-calibration`，录音标定提交 `{audioId, textVersion}`。未标定仍可质量检查与评分，曲线显示 needs_calibration 并提供向导；无有效 F0 显示 not_available。P11 提供重新标定入口，标定不得成为普通评分的强制门禁。
+
+音频文件、F0、共振峰及图片统一通过 audioId 读取，服务端校验归属与有效期。媒体响应支持 Range，前端按媒体类型消费。JSON 按标准 HTTP、envelope、requestId 处理；QUALITY_FAIL 为 HTTP 200 的业务结果，失败与限流保留真实状态码。
+
+## 同意、留存与删除
+
+同意界面明确自动全部转存当前安全绑定会话中全部未过期、未删除的已完成录音与结果。已有有效同意账号登录同样触发；注册不构成登录或同意。处理中录音完成时重校验同意；质量不合格记录只保存质量结论及重录指引。未提交检测的孤儿上传不存档。
+
+临时上传、录音、结果、标定与缓存从首次上传起最多 72 小时；读取、提交、重试与登录不续期，到期显示不可恢复。已存档记录保留至删除。自动存档无需逐条保存按钮。
+
+撤回说明明确删除录音、结果、学习进度与音域；注销验证密码。当前设备同时清除相关本地数据；其他离线设备在下次联网校验身份和同意时清除。单条删除与清空档案按指定范围执行。P10 调用 compare 比较本人同关存档记录，跨版本提示可比范围。
+
+## 反馈与预览
+
+`POST /api/feedback` 携带 sourcePage、type、content 及适用的 articleSlug、levelId、recordingId、subtype、rating；`POST /api/wishes` 携带希望增加的音/字与 searchQuery。匿名提交受限流保护，反馈不授权管理员读取私人录音。
+
+后台签发绑定管理员会话、对象和草稿修订的短期预览令牌，默认 15 分钟。真实 `/preview` 页面读取同结构草稿 JSON，媒体通过 `/api/preview/media/{mediaId}`。退出管理员会话或草稿修订变化时令牌失效。
