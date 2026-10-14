@@ -13,6 +13,7 @@ dist/
 dist-ssr/
 coverage/
 *.local
+.venv/
 
 # OS junk
 .DS_Store
@@ -21,8 +22,7 @@ Desktop.ini
 ehthumbs.db
 
 # Editor directories and files
-.vscode/*
-!.vscode/extensions.json
+.vscode/
 .idea/
 *.suo
 *.ntvs*
@@ -79,3 +79,4 @@ tmp/
 temp/
 *.cache
 
+openwiki/

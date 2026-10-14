@@ -21,7 +21,6 @@
     "pitchy": "^4.1.0",
     "three": "^0.185.1",
     "vue": "^3.5.40",
-    "vue-audio-visual": "^3.1.1",
     "vue-echarts": "^8.1.0",
     "vue-router": "^4.6.4"
   },

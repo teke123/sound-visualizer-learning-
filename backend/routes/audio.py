@@ -1,22 +1,27 @@
-"""质量、声学参数和评分接口的占位路由，统一返回 HTTP 501。"""
+"""音频处理路由（重构占位骨架）——工具端点，非评分主链路。
+
+1.0 的评分主链路是「录音提交 → 质量两维 → 外部普通话评分服务」
+（FR-1205）；本组端点只承担声学工具能力：
+- POST /api/audio/features：上传录音，返回声学特征（F0/F1/F2/能量/MFCC + 时间轴）；
+- POST /api/audio/quality ：录音质量检查（两维中的维度一，FR-1301）；
+- POST /api/audio/score   ：本地声学栈评分（2.0 专属纠音模型对比用，FR-1605）。
+上传约束沿用旧口径：限 20 MiB、文件名只取后缀。
+"""
 from fastapi import APIRouter, HTTPException
 
-router = APIRouter(prefix="/api/audio", tags=["音频处理（待实现）"])
+router = APIRouter(prefix="/api/audio", tags=["音频处理"])
 
 
-@router.post("/quality", status_code=501)
-def check_quality():
-    """返回质量检测接口的未实现状态。"""
-    raise HTTPException(501, "独立质量检测接口尚未实现")
-
-
-@router.post("/features", status_code=501)
+@router.post("/features")
 def extract_features():
-    """返回声学参数接口的未实现状态。"""
-    raise HTTPException(501, "独立声学参数接口尚未实现")
+    raise HTTPException(501, "重构占位：声学特征提取")
 
 
-@router.post("/score", status_code=501)
+@router.post("/quality")
+def check_quality():
+    raise HTTPException(501, "重构占位：录音质量检测")
+
+
+@router.post("/score")
 def score_pronunciation():
-    """返回评分接口的未实现状态。"""
-    raise HTTPException(501, "独立评分接口尚未实现")
+    raise HTTPException(501, "重构占位：发音评分")

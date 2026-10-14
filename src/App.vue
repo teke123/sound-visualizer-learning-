@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { CHILD_NAV_PAGES } from '@/data/pages'
+import { NAV_PAGES } from '@/data/pages'
 
 const route = useRoute()
 const router = useRouter()
@@ -9,18 +9,16 @@ const isCollapsed = ref(false)
 const mobileOpen = ref(false)
 
 /**
- * 孩子导航（第 4 周 D：确认十页路由与儿童化文案位）
+ * 一级导航（口径：docs/srs/02 4.2）
  * ---------------------------------------------------------------------------
- * 来源：src/data/pages.ts 的 CHILD_NAV_PAGES
- *   - SRS D-15：孩子导航不含发音库（P06 仅家长路径 / CMS 预览）
- *   - 结果页（P09）与后台（ADMIN）也不进孩子导航
- * 标题用儿童化标题位（childTitle），副标题用 copy.subtitle，由 G 定稿后替换。
+ * 来源：src/data/pages.ts 的 NAV_PAGES；结果页（P09）为流程页、后台（ADMIN）
+ * 为 CMS 入口，均不进入一级导航。
  */
-const menuItems = CHILD_NAV_PAGES.map(p => ({
+const menuItems = NAV_PAGES.map(p => ({
   path: p.paths[0],
   icon: p.icon,
-  title: p.childTitle,
-  desc: p.title,
+  title: p.title,
+  desc: p.code,
   code: p.code,
 }))
 
@@ -83,7 +81,7 @@ function handleMenuClick(path: string) {
         </div>
         <div class="header-right">
           <el-button type="primary" :icon="'Search'" @click="router.push('/search')">搜索</el-button>
-          <el-button :icon="'Microphone'" @click="router.push('/test?unit=ma')">快速测试</el-button>
+          <el-button :icon="'Microphone'" @click="router.push('/test')">检测中心</el-button>
         </div>
       </header>
       <div class="page-content">

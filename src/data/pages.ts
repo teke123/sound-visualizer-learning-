@@ -1,26 +1,20 @@
 /**
- * 十页 P01–P10 路由与儿童化文案位（第 4 周 D 交付：确认十页路由与儿童化文案位）
+ * 页面登记表（P01–P11）——页号、路由与文案位的唯一登记处
  * ---------------------------------------------------------------------------
- * 口径来源：《团队学习与第一二学期开发周排期详细方案》
- *   - 模块落点表：「前端路由 src/router/index.ts 对应首页、搜索、地图、原理、发音库、资料、检测、
- *     关卡、结果、档案、后台」
- *   - 排期正文锚点：P04 = 发音原理、P06 = 发音库（仅家长路径 / CMS 预览）、P07 = 专业资料、
- *     P09 = 结果页
- *   - SRS D-15：孩子导航不含发音库
+ * 口径来源：《docs/srs/02-内容模型与信息架构》4.1 页面清单与编号、4.2 一级导航：
+ * P01 首页 / P02 搜索 / P03 发音地图 / P04 发音原理 / P05 关卡页（/learn）、
+ * P06 发音库 / P07 专业资料 / P08 检测中心（/test）、P09 结果、P10 声音档案、P11 账号。
  *
- * 因此十页的其余编号按「先入口后流程」推定为：P01 首页 / P02 搜索 / P03 地图 / P04 原理 /
- * P05 检测 / P06 发音库 / P07 专业资料 / P08 关卡 / P09 结果 / P10 档案；后台 /admin 属 CMS，
- * 不计入十页儿童页面。
- *
- * ⚠ 待确认：P01/P02/P03/P05/P08/P10 的具体编号需与 F（SRS V1.1 验收口径负责人）逐条核对，
- *   核对前本文件即前端唯一登记处，任何页面不得再自造编号。确认后只需改本文件 + router meta。
- *
- * 文案位：D 留位（key 固定），文案由 G（儿童化）/ I（内容）定稿后替换，
- *   页面只消费 PAGE_COPY[code]，不要在页面里散写硬编码提示语。
+ * 规则：
+ *   - 页号 P01–P11（后台 /admin 用 'ADMIN'，不计入编号序列）；
+ *   - 每条路由的 meta.pageCode 由 router 经 PAGE_CODE_BY_ROUTE_NAME 自动写入，
+ *     页面/验收清单不要再手写页号，避免「文档一套、代码一套」；
+ *   - 文案位（key 固定）：页面只消费 PAGE_COPY[code]，不要在页面里散写提示语；
+ *     文案定稿口径 = SRS（FR-202 四主按钮文案、07 章边界句等）。
  */
 
 export interface PageCopySlots {
-  /** 一句话说明：为什么孩子要用这一页 */
+  /** 一句话说明：这一页用来做什么 */
   subtitle: string
   /** 加载中 */
   loading: string
@@ -28,14 +22,14 @@ export interface PageCopySlots {
   empty: string
   /** 加载失败（后端不可用） */
   error: string
-  /** 未开放（按 SRS 收缩规则，不算整版失败，也不得写成「敬请期待」凑数） */
+  /** 未开放（按 SRS 分级开放规则，不算整版失败，也不得写成「敬请期待」凑数） */
   unopened: string
   /** 主要动作按钮 */
   cta: string
 }
 
 export interface PageDef {
-  /** 页号 P01–P10（后台 /admin 用 'ADMIN'） */
+  /** 页号 P01–P11（后台 /admin 用 'ADMIN'） */
   code: string
   /** 路由 path（多段路由用数组） */
   paths: string[]
@@ -43,12 +37,10 @@ export interface PageDef {
   name: string
   /** 同一页号下的其它路由 name（如关卡页：levels 列表 + level 单关） */
   routeNames?: string[]
-  /** 后台/管理用途标题 */
+  /** 页面标题 */
   title: string
-  /** 孩子端标题（文案位） */
-  childTitle: string
-  /** 是否进入孩子导航（D-15：发音库不进入） */
-  childNav: boolean
+  /** 是否进入一级导航（SRS 4.2） */
+  nav: boolean
   /** 图标（Element Plus 图标名） */
   icon: string
   copy: PageCopySlots
@@ -60,14 +52,13 @@ export const PAGES: PageDef[] = [
     paths: ['/'],
     name: 'home',
     title: '首页',
-    childTitle: '开始闯关',
-    childNav: true,
+    nav: true,
     icon: 'HomeFilled',
     copy: {
-      subtitle: '一个音一个音地练，说清楚每个字。',
-      loading: '正在准备今天的练习…',
-      empty: '还没有可以练的关卡，等老师开放吧。',
-      error: '没连上服务器，检查一下后端有没有启动。',
+      subtitle: '看懂口型、听清示范、跟着练、录音比较。',
+      loading: '正在准备练习内容…',
+      empty: '还没有已发布的关卡。',
+      error: '没连上服务器，请检查后端是否启动。',
       unopened: '这一部分还没开放。',
       cta: '开始',
     },
@@ -76,14 +67,13 @@ export const PAGES: PageDef[] = [
     code: 'P02',
     paths: ['/search'],
     name: 'search',
-    title: '搜索结果',
-    childTitle: '找一找',
-    childNav: true,
+    title: '搜索',
+    nav: true,
     icon: 'Search',
     copy: {
-      subtitle: '输入一个字、一个拼音，或者你的小问题。',
+      subtitle: '输入汉字、拼音或关卡名，找到你要练的那一关。',
       loading: '正在找…',
-      empty: '没找到这个音，换个说法再试试。',
+      empty: '没找到这个音，看看下方的相近关卡，或告诉我们希望增加。',
       error: '搜索失败，稍后再试一次。',
       unopened: '这个音还没开放。',
       cta: '搜索',
@@ -94,15 +84,14 @@ export const PAGES: PageDef[] = [
     paths: ['/map'],
     name: 'map',
     title: '发音地图',
-    childTitle: '闯关地图',
-    childNav: true,
+    nav: true,
     icon: 'MapLocation',
     copy: {
-      subtitle: '看看 30 关排在哪里，接下来练哪一关。',
+      subtitle: '单韵母、声母、拼读三层闯关，看看你学到哪一层。',
       loading: '地图正在展开…',
-      empty: '地图上还没有关卡。',
+      empty: '地图上还没有已发布的关卡。',
       error: '地图加载失败，稍后再试。',
-      unopened: '这一片还没开放。',
+      unopened: '这一层还没开放。',
       cta: '去这一关',
     },
   },
@@ -111,13 +100,12 @@ export const PAGES: PageDef[] = [
     paths: ['/principles'],
     name: 'principles',
     title: '发音原理',
-    childTitle: '声音怎么来的',
-    childNav: true,
+    nav: true,
     icon: 'Reading',
     copy: {
-      subtitle: '声音是怎么从嘴巴里出来的？',
+      subtitle: '气从哪里来、声音怎么响、嘴和舌头怎么摆。',
       loading: '正在准备讲解…',
-      empty: '这里的内容还在整理。',
+      empty: '这一部分的内容还在准备。',
       error: '内容加载失败。',
       unopened: '这一节还没开放。',
       cta: '看一看',
@@ -125,19 +113,19 @@ export const PAGES: PageDef[] = [
   },
   {
     code: 'P05',
-    paths: ['/test'],
-    name: 'test',
-    title: '检测中心',
-    childTitle: '录一句试试',
-    childNav: true,
-    icon: 'Microphone',
+    paths: ['/learn', '/learn/:id'],
+    name: 'levels',
+    routeNames: ['levels', 'level'],
+    title: '关卡页',
+    nav: true,
+    icon: 'Flag',
     copy: {
-      subtitle: '录一句，看看清楚不清楚。',
-      loading: '正在准备麦克风…',
-      empty: '还没有开放检测的关卡。',
-      error: '录音或分析失败，检查后端与麦克风权限。',
-      unopened: '这一关还不能检测，先跟着练。',
-      cta: '开始录音',
+      subtitle: '一句话结论、构形、示范、听辨与练习，都在这一关里。',
+      loading: '正在打开这一关…',
+      empty: '这一关还没有内容。',
+      error: '关卡加载失败，请检查后端是否启动。',
+      unopened: '这一关还没开放，先去前面已开放的关卡。',
+      cta: '开始练',
     },
   },
   {
@@ -145,15 +133,14 @@ export const PAGES: PageDef[] = [
     paths: ['/library'],
     name: 'library',
     title: '发音库',
-    childTitle: '发音库（家长）',
-    childNav: false, // SRS D-15：孩子导航不含发音库，仅家长路径 / CMS 预览
+    nav: true,
     icon: 'Collection',
     copy: {
-      subtitle: '家长查看：已发布的发音单元与进度。',
+      subtitle: '按单韵母、声母、拼读查看已发布关卡的目录。',
       loading: '正在加载发音库…',
-      empty: '还没有已发布的单元。',
+      empty: '还没有已发布的关卡。',
       error: '发音库加载失败。',
-      unopened: '该单元未发布，不公开展示。',
+      unopened: '该关未发布，不公开展示。',
       cta: '查看',
     },
   },
@@ -162,13 +149,12 @@ export const PAGES: PageDef[] = [
     paths: ['/materials'],
     name: 'materials',
     title: '专业资料',
-    childTitle: '给爸爸妈妈看',
-    childNav: false,
+    nav: true,
     icon: 'Document',
     copy: {
-      subtitle: '呼吸、共鸣、发声、口型：给家长的参考资料。',
+      subtitle: '需要看依据时查阅：有来源、许可与适用边界。',
       loading: '正在加载资料…',
-      empty: '资料还在整理，来源与许可靠后再发布。',
+      empty: '资料还在整理，来源与许可齐全后才会发布。',
       error: '资料加载失败。',
       unopened: '这部分资料还没开放。',
       cta: '查看来源',
@@ -176,32 +162,29 @@ export const PAGES: PageDef[] = [
   },
   {
     code: 'P08',
-    paths: ['/learn', '/learn/:id'],
-    name: 'levels',
-    routeNames: ['levels', 'level'],
-    title: '关卡页',
-    childTitle: '开始这一关',
-    childNav: true,
-    icon: 'Flag',
+    paths: ['/test'],
+    name: 'test',
+    title: '检测中心',
+    nav: true,
+    icon: 'Microphone',
     copy: {
-      subtitle: '听示范、跟着读，一关一关来。',
-      loading: '正在打开这一关…',
-      empty: '这一关还没有内容。',
-      error: '关卡加载失败，检查后端是否启动。',
-      unopened: '这一关还没开放，先去前面几关吧。',
-      cta: '开始练',
+      subtitle: '选一个已开放检测的关，按要求朗读并提交。',
+      loading: '正在准备检测任务…',
+      empty: '还没有开放检测的关卡，可以先跟着练。',
+      error: '任务加载失败，请检查后端是否启动。',
+      unopened: '这一关还不能检测，先跟着练。',
+      cta: '开始录音',
     },
   },
   {
     code: 'P09',
     paths: ['/feedback/:id'],
     name: 'feedback',
-    title: '检测结果',
-    childTitle: '看看读得怎么样',
-    childNav: false,
+    title: '结果',
+    nav: false,
     icon: 'DataAnalysis',
     copy: {
-      subtitle: '这里会告诉你哪里读得好、哪里再练一次。',
+      subtitle: '录音质量、曲线对比、分数、现象与四步反馈都在这里。',
       loading: '正在看你的录音…',
       empty: '还没有录音结果。',
       error: '结果加载失败，可以重新录一次。',
@@ -213,32 +196,46 @@ export const PAGES: PageDef[] = [
     code: 'P10',
     paths: ['/archive'],
     name: 'archive',
-    title: '我的声音档案',
-    childTitle: '我的声音',
-    childNav: true,
+    title: '声音档案',
+    nav: true,
     icon: 'FolderOpened',
     copy: {
-      subtitle: '听过、练过的都记在这里，家长同意后才保存。',
+      subtitle: '同意保存后，可以看同一关的前后变化，也可以随时删除。',
       loading: '正在打开档案…',
-      empty: '还没有记录，练一次就会出现。',
+      empty: '还没有保存的录音。登录并同意后，录音才会保存到这里。',
       error: '档案加载失败。',
       unopened: '档案功能未开放。',
       cta: '去看看',
     },
   },
+  {
+    code: 'P11',
+    paths: ['/account'],
+    name: 'account',
+    title: '账号',
+    nav: true,
+    icon: 'User',
+    copy: {
+      subtitle: '注册、登录、退出，管理保存同意与删除档案。',
+      loading: '正在加载账号信息…',
+      empty: '未登录。不登录也能学习；要保存进度和录音，需要先登录并同意。',
+      error: '账号服务加载失败。',
+      unopened: '账号功能未开放。',
+      cta: '登录 / 注册',
+    },
+  },
 ]
 
-/** 后台（CMS）：不属于十页儿童页面，单独登记避免与 P01–P10 混编 */
+/** 后台（CMS）：不属于 P01–P11，单独登记避免与页面编号混编 */
 export const ADMIN_PAGE: PageDef = {
   code: 'ADMIN',
   paths: ['/admin'],
   name: 'admin',
   title: '后台管理',
-  childTitle: '后台管理',
-  childNav: false,
+  nav: false,
   icon: 'Setting',
   copy: {
-    subtitle: '内容录入、审核、发布与反馈处理。',
+    subtitle: '关卡录入、发布治理、检测开关、版本与反馈处理。',
     loading: '正在加载后台数据…',
     empty: '暂无数据。',
     error: '后台接口异常。',
@@ -264,5 +261,5 @@ export const PAGE_CODE_BY_ROUTE_NAME: Record<string, string> = ALL_PAGES.reduce(
   {} as Record<string, string>,
 )
 
-/** 孩子导航（D-15：不含发音库 / 结果页 / 后台） */
-export const CHILD_NAV_PAGES: PageDef[] = PAGES.filter(p => p.childNav)
+/** 一级导航（SRS 4.2：全部页面进入一级导航；结果页 P09 为流程页不进） */
+export const NAV_PAGES: PageDef[] = PAGES.filter(p => p.nav)

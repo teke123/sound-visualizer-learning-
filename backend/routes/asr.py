@@ -1,54 +1,22 @@
-"""模型状态、模型加载、上传诊断和关卡查询的 HTTP 路由。"""
-from dataclasses import asdict
-import time
-
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
-from pydantic import BaseModel
-
-from backend.asr_analyzer import DEFAULT_MODEL_ID, get_analyzer
-from backend.audio.diagnosis import diagnose_upload
-from backend.levels import FROZEN_SINCE, LEVELS, LEVELS_BY_ID
+"""模型状态、模型加载与上传诊断的 HTTP 路由（重构占位骨架）。"""
+from fastapi import APIRouter, HTTPException
 
 router = APIRouter(tags=["ASR 诊断"])
 
 
-class LoadModelRequest(BaseModel):
-    model_id: str = DEFAULT_MODEL_ID
-    force: bool = False
-
-
 @router.get("/api/asr/status")
 def asr_status():
-    return {"service": "asr", "version": "1.0", **get_analyzer().status()}
+    """意图：模型加载状态、设备与推理统计。"""
+    raise HTTPException(501, "重构占位：ASR 状态")
 
 
 @router.post("/api/asr/load")
-def asr_load(payload: LoadModelRequest | None = None):
-    request = payload or LoadModelRequest()
-    started_at = time.perf_counter()
-    result = get_analyzer().load(model_id=request.model_id, force=request.force)
-    result["api_ms"] = round((time.perf_counter() - started_at) * 1000, 1)
-    return result
+def asr_load():
+    """意图：加载/切换模型（本地 -> 缓存 -> 远程逐级降级），返回耗时。"""
+    raise HTTPException(501, "重构占位：ASR 模型加载")
 
 
 @router.post("/api/asr/diagnose")
-def asr_diagnose(
-    file: UploadFile = File(...),
-    level_id: str = Form(""),
-    target_pinyin: str = Form(""),
-):
-    """校验目标参数，调用上传诊断流程并返回结果。"""
-    if not level_id and not target_pinyin:
-        raise HTTPException(422, "需要 level_id 或 target_pinyin")
-    if level_id and level_id not in LEVELS_BY_ID:
-        raise HTTPException(422, f"未知关卡：{level_id}")
-    return diagnose_upload(
-        file.file.read(), file.filename,
-        level_id=level_id or None, target_pinyin=target_pinyin or None,
-    )
-
-
-@router.get("/api/levels")
-def levels():
-    return {"frozen_since": FROZEN_SINCE, "count": len(LEVELS),
-            "levels": [asdict(level) for level in LEVELS]}
+def asr_diagnose():
+    """意图：上传音频 + 目标（关卡或拼音），返回结构化诊断结果。"""
+    raise HTTPException(501, "重构占位：ASR 诊断")

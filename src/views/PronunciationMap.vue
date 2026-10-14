@@ -1,268 +1,106 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+// 关卡数据与三态来自 levels store；易混关并排入口（FR-403）为固定清单，
+// 仅显示双方都已发布的比较。专业说明默认折叠（FR-404）。
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { useUnitsStore } from '@/stores/units'
-import { useSpeechDemo } from '@/composables/useSpeechDemo'
-import { buildMapNodes, LAYER_LABELS, LAYER_ORDER, type MapNode, type MapLayer } from '@/data/mapNodes'
-import { PLACE_FILTERS, METHOD_FILTERS } from '@/data/unitSearchMeta'
+import { useLevelsStore } from '@/stores/levels'
 import { usePageCopy } from '@/composables/usePageCopy'
+import LevelRoadmap from '@/components/LevelRoadmap.vue'
 import PageState from '@/components/PageState.vue'
 import PageFeedback from '@/components/PageFeedback.vue'
 
 const router = useRouter()
-const unitsStore = useUnitsStore()
-const speech = useSpeechDemo()
-
-/** 儿童化文案位：P03（D 留位，G / I 定稿） */
+const levelsStore = useLevelsStore()
 const { copy } = usePageCopy('P03')
 
-const selectedNode = ref<MapNode | null>(null)
-const drawerOpen = computed({
-  get: () => selectedNode.value !== null,
-  set: (open: boolean) => { if (!open) selectedNode.value = null },
-})
-const activeLayer = ref<MapLayer | 'all'>('all')
-const filterPlace = ref('')
-const filterMethod = ref('')
-const filterAspiration = ref('')
-const filterNasal = ref('')
-const filterTone = ref('')
-const proExpanded = ref<string[]>([])
+/** 易混关清单（FR-403 固定十对；仅显示双方都已发布的比较） */
+const CONFUSABLE_PAIRS: Array<[string, string]> = [
+  ['n', 'l'], ['b', 'p'], ['d', 't'], ['g', 'k'], ['j', 'q'],
+  ['z', 'zh'], ['c', 'ch'], ['s', 'sh'], ['f', 'h'], ['u', 'ü'],
+]
 
-onMounted(() => unitsStore.fetchPublished())
+const publishedTargets = computed(() =>
+  new Set(levelsStore.levels.filter(l => l.availability !== 'unopened').map(l => l.char)),
+)
 
-const allNodes = computed(() => buildMapNodes(unitsStore.coreUnits))
+const visiblePairs = computed(() =>
+  CONFUSABLE_PAIRS
+    .map(([a, b]) => ({ a, b }))
+    .filter(p => publishedTargets.value.has(p.a) && publishedTargets.value.has(p.b)),
+)
 
-/**
- * 地图节点区状态：loading → error → empty 三态互斥。
- * 后端不可用时必须走 error（不能让人误判成「地图上就是没有关卡」），
- * 加载完成且确实构不出节点才算 empty。
- */
-const mapState = computed<'loading' | 'error' | 'empty' | null>(() => {
-  if (unitsStore.loading) return 'loading'
-  if (unitsStore.error) return 'error'
-  if (!allNodes.value.length) return 'empty'
+const mapState = computed(() => {
+  // TODO(重构): store 补 loading/error 状态后接入错误态；当前仅能判空
+  if (!levelsStore.levels.length) return 'empty' as const
   return null
 })
 
-const filteredNodes = computed(() => {
-  return allNodes.value.filter(n => {
-    if (activeLayer.value !== 'all' && n.layer !== activeLayer.value) return false
-    if (filterPlace.value && !n.meta.place.includes(filterPlace.value)) return false
-    if (filterMethod.value && !n.meta.method.includes(filterMethod.value)) return false
-    if (filterAspiration.value && n.meta.aspiration !== filterAspiration.value) return false
-    if (filterNasal.value === '鼻音' && !n.meta.nasal) return false
-    if (filterNasal.value === '口音' && n.meta.nasal) return false
-    if (filterTone.value && n.meta.tone !== filterTone.value && n.layer !== 'tone') return false
-    return true
-  })
-})
-
-const nodesByLayer = computed(() => {
-  const map = new Map<MapLayer, MapNode[]>()
-  for (const layer of LAYER_ORDER) map.set(layer, [])
-  for (const n of filteredNodes.value) {
-    map.get(n.layer)?.push(n)
-  }
-  return map
-})
-
-/** 节点存在但被当前筛选条件滤空：只在网格区提示，不动地图主体与筛选栏 */
-const filterEmpty = computed(() => !mapState.value && !filteredNodes.value.length)
-
-const similarNodes = computed(() => {
-  if (!selectedNode.value) return []
-  return selectedNode.value.meta.similar
-    .map(id => allNodes.value.find(n => n.id === id))
-    .filter(Boolean) as MapNode[]
-})
-
-function selectNode(node: MapNode) {
-  selectedNode.value = node
-  proExpanded.value = []
-}
-
-function clearFilters() {
-  filterPlace.value = ''
-  filterMethod.value = ''
-  filterAspiration.value = ''
-  filterNasal.value = ''
-  filterTone.value = ''
-  activeLayer.value = 'all'
-}
-
-async function playDemo(char: string) {
-  const text = char.split('/')[0] || char
-  await speech.speak(text, 'normal')
+function openByTarget(target: string) {
+  const hit = levelsStore.levels.find(l => l.char === target)
+  if (hit) router.push(`/learn/${hit.code}`)
 }
 </script>
 
 <template>
-  <div class="pronunciation-map">
+  <div class="map-view">
     <header class="map-header">
       <h3>发音地图</h3>
       <p>{{ copy.subtitle }}</p>
     </header>
 
-    <!-- 加载 / 错误 / 空态统一走 P03 文案位：后端不可用必须说成 error，不能让人误读成「地图上就是没有关卡」 -->
-    <PageState
-      :state="mapState"
-      :copy="copy"
-      :detail="mapState === 'error' ? (unitsStore.error || undefined) : undefined"
-      @action="unitsStore.fetchPublished()"
-    />
+    <!-- 加载 / 空态统一走 P03 文案位 -->
+    <PageState :state="mapState" :copy="copy" @action="levelsStore.fetchLevels()" />
 
     <template v-if="!mapState">
-      <!-- MAP-01 总览：声母→韵母→声调→音节→汉字 -->
-      <section class="overview card">
-        <h4>发音层级关系</h4>
-        <div class="flow-chain">
-          <template v-for="(layer, idx) in LAYER_ORDER" :key="layer">
-            <button
-              class="flow-node"
-              :class="{ active: activeLayer === layer }"
-              @click="activeLayer = activeLayer === layer ? 'all' : layer"
-            >
-              <span class="flow-label">{{ LAYER_LABELS[layer] }}</span>
-              <span class="flow-count">{{ nodesByLayer.get(layer)?.length || 0 }} 项</span>
-            </button>
-            <span v-if="idx < LAYER_ORDER.length - 1" class="flow-arrow">→</span>
-          </template>
-        </div>
-        <p class="flow-hint">声母与韵母组合成音节，叠加声调后对应汉字；「妈」单元覆盖完整闭环。</p>
+      <!-- 三层闯关定位图（FR-401：单韵母 L01–L06 → 声母 L07–L29 → 拼读 L30；
+           未发布或检测未开放显示「未开放」，已发布可点进，FR-402） -->
+      <section class="roadmap-card card" @click="levelsStore.fetchLevels()">
+        <LevelRoadmap />
+        <p class="legend">
+          <span class="dot dot--open" /> 可练可测
+          <span class="dot dot--learn_only" /> 只学不测
+          <span class="dot dot--unopened" /> 未开放
+        </p>
       </section>
 
-      <!-- MAP-02 分类筛选 -->
-      <section class="filters card">
-        <h4>分类筛选</h4>
-        <div class="filter-row">
-          <el-select v-model="filterPlace" placeholder="发音部位" clearable style="width: 140px">
-            <el-option v-for="p in PLACE_FILTERS" :key="p" :label="p" :value="p" />
-          </el-select>
-          <el-select v-model="filterMethod" placeholder="发音方法" clearable style="width: 140px">
-            <el-option v-for="m in METHOD_FILTERS" :key="m" :label="m" :value="m" />
-          </el-select>
-          <el-select v-model="filterAspiration" placeholder="送气/不送气" clearable style="width: 140px">
-            <el-option label="送气" value="送气" />
-            <el-option label="不送气" value="不送气" />
-          </el-select>
-          <el-select v-model="filterNasal" placeholder="口音/鼻音" clearable style="width: 130px">
-            <el-option label="鼻音" value="鼻音" />
-            <el-option label="口音" value="口音" />
-          </el-select>
-          <el-select v-model="filterTone" placeholder="声调" clearable style="width: 120px">
-            <el-option label="四声" value="四声" />
-            <el-option label="阴平" value="阴平" />
-          </el-select>
-          <el-button @click="clearFilters">重置</el-button>
+      <!-- 易混关并排入口（FR-403） -->
+      <section class="confusable card">
+        <h4>易混的音，并排来练</h4>
+        <div v-if="visiblePairs.length" class="pair-list">
+          <el-button v-for="p in visiblePairs" :key="`${p.a}-${p.b}`" size="large" class="pair-btn" @click="openByTarget(p.a)">
+            <strong>{{ p.a }}</strong><span class="vs">vs</span><strong>{{ p.b }}</strong>
+          </el-button>
         </div>
+        <p v-else class="hint">双方都已发布的易混关出现后，这里可以并排进入比较。</p>
       </section>
 
-      <!-- 节点网格 -->
-      <section class="nodes-section">
-        <div v-for="layer in LAYER_ORDER" :key="layer" v-show="activeLayer === 'all' || activeLayer === layer" class="layer-block">
-          <h4 v-if="activeLayer === 'all'">{{ LAYER_LABELS[layer] }}</h4>
-          <div class="node-grid">
-            <el-card
-              v-for="node in nodesByLayer.get(layer)"
-              :key="node.id"
-              shadow="hover"
-              class="map-node"
-              :class="{ selected: selectedNode?.id === node.id }"
-              @click="selectNode(node)"
-            >
-              <div class="char">{{ node.character }}</div>
-              <div class="py">{{ node.pinyin }}</div>
-              <div class="ipa">{{ node.meta.ipa }}</div>
-            </el-card>
-          </div>
-        </div>
-        <!-- 节点被当前筛选条件滤空：同一套文案位，只有网格区提示 -->
-        <PageState v-if="filterEmpty" state="empty" :copy="copy" compact :show-action="false" />
-      </section>
+      <!-- 专业说明默认折叠（FR-404：IPA、发音部位学术分类） -->
+      <el-collapse class="pro-collapse">
+        <el-collapse-item title="专业说明（IPA 与发音部位分类，点击展开）" name="pro">
+          <p class="hint">专业内容与对应已发布关的说明，由内容服务提供（默认折叠，需要时再展开）。</p>
+        </el-collapse-item>
+      </el-collapse>
     </template>
-
-    <!-- MAP-03 节点详情 -->
-    <el-drawer v-model="drawerOpen" :title="selectedNode?.character || '发音详情'" size="420px" direction="rtl">
-      <template v-if="selectedNode">
-        <div class="detail">
-          <p class="detail-conclusion">{{ selectedNode.conclusion }}</p>
-          <dl class="detail-meta">
-            <dt>拼音</dt><dd>{{ selectedNode.pinyin }}</dd>
-            <dt>IPA</dt><dd>{{ selectedNode.meta.ipa }}</dd>
-            <dt>部位</dt><dd>{{ selectedNode.meta.place.join('、') }}</dd>
-            <dt>方法</dt><dd>{{ selectedNode.meta.method.join('、') }}</dd>
-          </dl>
-          <div class="detail-actions">
-            <el-button type="primary" @click="playDemo(selectedNode.character)">播放示范</el-button>
-            <el-button @click="router.push(`/learn/${selectedNode.unitId}`)">进入单元</el-button>
-          </div>
-          <p class="tts-note">{{ speech.disclaimer }}</p>
-
-          <!-- MAP-04 相近音比较 -->
-          <div v-if="similarNodes.length" class="similar-block">
-            <h4>相近音比较</h4>
-            <div class="similar-list">
-              <el-card v-for="s in similarNodes" :key="s.id" shadow="never" class="similar-card">
-                <strong>{{ s.character }}</strong> {{ s.pinyin }}
-                <p>{{ s.conclusion }}</p>
-                <el-button size="small" @click="router.push(`/learn/${s.unitId}`)">并排学习</el-button>
-              </el-card>
-            </div>
-          </div>
-
-          <!-- MAP-05 专业展开 -->
-          <el-collapse v-model="proExpanded" class="pro-collapse">
-            <el-collapse-item title="专业术语（点击展开）" name="pro">
-              <ul>
-                <li v-for="t in selectedNode.meta.professional" :key="t.term">
-                  <strong>{{ t.term }}</strong>：{{ t.explain }}
-                </li>
-              </ul>
-              <p class="boundary">专业内容仅供学习参考，不构成医学诊断依据。</p>
-            </el-collapse-item>
-          </el-collapse>
-        </div>
-      </template>
-    </el-drawer>
 
     <PageFeedback page="map" type="learning" />
   </div>
 </template>
 
 <style scoped>
-.pronunciation-map { max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+.map-view { max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
 .map-header h3 { margin: 0; font-size: 20px; }
 .map-header p { margin: 8px 0 0; color: #909399; font-size: 14px; }
 .card { background: #fff; border-radius: 12px; padding: 16px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-.overview h4, .filters h4, .layer-block h4 { margin: 0 0 12px; font-size: 15px; color: #303133; }
-.flow-chain { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.flow-node { border: 1px solid #dcdfe6; background: #f5f7fa; border-radius: 8px; padding: 10px 14px; cursor: pointer; text-align: center; min-width: 72px; }
-.flow-node.active { border-color: #409eff; background: #ecf5ff; }
-.flow-label { display: block; font-weight: 600; font-size: 14px; }
-.flow-count { font-size: 12px; color: #909399; }
-.flow-arrow { color: #c0c4cc; font-size: 18px; }
-.flow-hint { margin: 12px 0 0; font-size: 13px; color: #909399; }
-.filter-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.node-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; margin-bottom: 16px; }
-.map-node { cursor: pointer; text-align: center; }
-.map-node.selected { border-color: #409eff; }
-.char { font-size: 28px; font-weight: 700; }
-.py { color: #409eff; font-size: 13px; margin: 4px 0; }
-.ipa { font-size: 11px; color: #909399; font-family: serif; }
-.detail-conclusion { font-size: 15px; line-height: 1.6; margin: 0 0 16px; }
-.detail-meta { display: grid; grid-template-columns: 64px 1fr; gap: 6px 12px; font-size: 14px; margin: 0 0 16px; }
-.detail-meta dt { color: #909399; }
-.detail-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
-.tts-note { font-size: 12px; color: #909399; }
-.similar-block { margin-top: 20px; }
-.similar-block h4 { margin: 0 0 10px; font-size: 14px; }
-.similar-list { display: flex; flex-direction: column; gap: 8px; }
-.similar-card p { font-size: 13px; color: #606266; margin: 6px 0; }
-.pro-collapse { margin-top: 16px; }
-.boundary { font-size: 12px; color: #909399; margin-top: 8px; }
-@media (max-width: 768px) {
-  .flow-chain { justify-content: center; }
-  .filter-row .el-select { width: 100% !important; }
-}
+.roadmap-card .legend { display: flex; align-items: center; gap: 8px; margin: 12px 0 0; font-size: 12px; color: #909399; }
+.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-left: 8px; }
+.dot--open { background: #f0f9eb; border: 2px solid #67c23a; }
+.dot--learn_only { background: #fdf6ec; border: 2px dashed #e6a23c; }
+.dot--unopened { background: #f4f4f5; border: 2px dashed #dcdfe6; }
+.confusable h4 { margin: 0 0 12px; font-size: 15px; color: #303133; }
+.pair-list { display: flex; flex-wrap: wrap; gap: 10px; }
+.pair-btn { display: inline-flex; align-items: baseline; gap: 8px; }
+.pair-btn strong { font-size: 18px; }
+.pair-btn .vs { font-size: 12px; color: #909399; }
+.hint { font-size: 13px; color: #909399; margin: 0; }
+.pro-collapse { background: #fff; border-radius: 12px; padding: 4px 16px; }
 </style>

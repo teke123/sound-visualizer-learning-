@@ -3,11 +3,11 @@ import { ElMessage } from 'element-plus'
 import { PAGE_CODE_BY_ROUTE_NAME } from '@/data/pages'
 
 /**
- * 十页 P01–P10 路由表（第 4 周 D 交付：确认十页路由）
+ * P01–P11 路由表（口径：docs/srs/02 4.1 页面清单）
  * ---------------------------------------------------------------------------
- * 页号登记处：src/data/pages.ts（P01–P10 的路由、标题、儿童化文案位）
- * 每条路由的 meta.pageCode 由 PAGE_CODE_BY_ROUTE_NAME 自动写入，
- * 页面/验收清单不要再手写页号，避免「文档一套、代码一套」。
+ * 页号登记处：src/data/pages.ts；每条路由的 meta.pageCode 由
+ * PAGE_CODE_BY_ROUTE_NAME 自动写入，页面/验收清单不要再手写页号，
+ * 避免「文档一套、代码一套」。
  */
 function meta(name: string, title: string, extra: Record<string, unknown> = {}) {
   return { title, pageCode: PAGE_CODE_BY_ROUTE_NAME[name] ?? '', ...extra }
@@ -18,22 +18,17 @@ const routes: RouteRecordRaw[] = [
   { path: '/search', name: 'search', component: () => import('@/views/SearchResultsView.vue'), meta: meta('search', '搜索结果') },
   { path: '/map', name: 'map', component: () => import('@/views/PronunciationMap.vue'), meta: meta('map', '发音地图') },
   { path: '/principles', name: 'principles', component: () => import('@/views/PronunciationPrinciples.vue'), meta: meta('principles', '发音原理') },
-  { path: '/library', name: 'library', component: () => import('@/views/PronunciationLibrary.vue'), meta: meta('library', '发音库', { childNav: false }) },
-  { path: '/materials', name: 'materials', component: () => import('@/views/ProfessionalMaterials.vue'), meta: meta('materials', '专业资料', { childNav: false }) },
+  { path: '/library', name: 'library', component: () => import('@/views/PronunciationLibrary.vue'), meta: meta('library', '发音库') },
+  { path: '/materials', name: 'materials', component: () => import('@/views/ProfessionalMaterials.vue'), meta: meta('materials', '专业资料') },
   { path: '/test', name: 'test', component: () => import('@/views/TestCenterView.vue'), meta: meta('test', '检测中心') },
-  // P08 关卡页：/learn 为 30 关总览骨架，/learn/:id 为单关骨架（同一页号）
+  // P05 关卡页：/learn 为 30 关总览骨架，/learn/:id 为单关骨架（同一页号）
   { path: '/learn', name: 'levels', component: () => import('@/views/LearningView.vue'), meta: meta('levels', '关卡页') },
   { path: '/learn/:id', name: 'level', component: () => import('@/views/LearningView.vue'), meta: meta('level', '关卡页') },
   { path: '/feedback/:id', name: 'feedback', component: () => import('@/views/FeedbackView.vue'), meta: meta('feedback', '检测结果') },
-  { path: '/archive', name: 'archive', component: () => import('@/views/HistoryView.vue'), meta: meta('archive', '我的声音档案') },
-  // 后台（CMS）：不属于十页儿童页面
+  { path: '/archive', name: 'archive', component: () => import('@/views/HistoryView.vue'), meta: meta('archive', '声音档案') },
+  { path: '/account', name: 'account', component: () => import('@/views/AccountView.vue'), meta: meta('account', '账号') },
+  // 后台（CMS）：不属于 P01–P11 页面
   { path: '/admin', name: 'admin', component: () => import('@/views/AdminView.vue'), meta: meta('admin', '后台管理') },
-  // 兼容旧路由
-  { path: '/home', redirect: '/' },
-  { path: '/history', redirect: '/archive' },
-  { path: '/progress', redirect: '/archive' },
-  { path: '/compare', redirect: '/archive' },
-  { path: '/progress-manage', redirect: '/archive' },
 ]
 
 const router = createRouter({

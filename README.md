@@ -1,33 +1,19 @@
 # 看得见的声音 - 智能发音学习平台
 
-音频后端的当前模块、接口状态和流程见 [音频模块架构](docs/AUDIO_ARCHITECTURE.md)。
-`/api/audio/analyze` 已删除；quality、features、score 为返回 HTTP 501 的占位接口。
-ASR 已统一到主应用，前端录音结果链路待重新接入。
-
 ## 项目简介
 
-基于多模态可视化技术的智能发音学习系统，通过3D口腔动画、声调曲线对比、AI发音评估等功能，帮助用户快速掌握标准普通话发音。
+以浏览器为入口、以发音关卡学习与检测为主线的普通话发音学习系统。
+学习者看懂口型、听清示范、完成听辨与练习；在已发布且检测已开放的关上提交录音，
+得到录音质量结论、曲线对比、分数、可观察现象和规则引擎四步反馈。
 
-## 技术栈
-
-### 前端
-- **Vue 3** + TypeScript + Vite
-- **Three.js** - 3D口腔动画可视化
-- **ECharts** - 声调曲线图表
-- **Element Plus** - UI组件库
-- **Web Audio API** - 实时音频录制和可视化
-
-### 后端
-- **FastAPI** - Python Web框架
-- **Librosa** - 音频分析库
-- **PyTorch** - 深度学习框架（Wav2Vec2/HuBERT）
-- **WebSocket** - 实时音频流传输
+> 需求口径：`docs/srs/`（软件需求规格说明书，需求 ID 全局唯一）。
+> 当前仓库处于**重构骨架状态**：前后端实现均已按 SRS 重新对齐清空，
+> 各文件保留了意图注释作为恢复实现的设计稿；架构建议见 `docs/architecture/`。
 
 ## 快速开始
 
 ### 1. 安装前端依赖
 ```bash
-cd pronunciation-learning
 npm install
 ```
 
@@ -39,7 +25,7 @@ npm run dev
 
 ### 3. 安装后端依赖
 
-使用 Python 3.10 或 3.11。运行服务、测试、样本生成和文档转换的 Python 依赖统一在 `backend/requirements.txt`。
+使用 Python 3.10 或 3.11。Python 依赖统一在 `backend/requirements.txt`。
 
 ```bash
 cd backend
@@ -50,10 +36,7 @@ pip install -r requirements.txt
 ```bash
 env -u PYTHONPATH python3 main.py
 ```
-> - macOS/Linux 使用 `python3`；若使用 `python main.py` 提示命令不存在，请改用 `python3`。
-> - **必须使用 `env -u PYTHONPATH` 启动**：在 CodeBuddy 等 IDE 的集成终端中，
->   PYTHONPATH 会被注入 IDE 的 Python shim，拦截 librosa 写缓存时的 unlink 操作，
->   导致 `/api/audio/analyze` 返回 500。`./start-dev.sh` 已自动处理该问题。
+
 后端将在 http://localhost:8000 启动
 
 ### 5. 一键启动前后端
@@ -62,133 +45,55 @@ env -u PYTHONPATH python3 main.py
 ```
 脚本会先后台启动后端（端口 8000）与前端（端口 5173），并在退出时自动清理。
 
-## 功能模块
+## 页面清单（口径：docs/srs/02 4.1）
 
-### P01 发音地图
-- 63个拼音字母的二维矩阵布局
-- 颜色区分：声母(蓝)、韵母(绿)、声调(橙)
-- 点击跳转到发音学习页面
-
-### P02 发音库
-- 12个发音单元的卡片网格布局
-- 显示学习进度和状态
-- 搜索和筛选功能
-
-### P03 发音学习
-- 目标发音展示和文字描述
-- 示范音频播放
-- 实时录音和波形可视化
-- 常见误区提示
-
-### P04 反馈系统
-- 综合评分环形进度条
-- 声调曲线对比图（ECharts）
-- 3D口腔动画（Three.js）
-- 改进建议列表
-
-### P05 学习进度
-- 进度概览卡片
-- 学习趋势图表
-- 单元进度表格
-
-### P06 发音对比
-- 双录音区域对比
-- 相似度评分
-
-### P07 学习记录
-- 练习历史表格
-- 重听和重练功能
-
-### P08 后台管理
-- 内容管理
-- 媒体管理
-- 数据统计
-
-### P09 音频录制
-- 底部固定控制栏
-- 实时波形显示
-
-### P10 进度管理
-- 概览、单元、趋势、成就标签页
+| 页号 | 页面 | 路由 | 用途 |
+| ---- | ---- | ---- | ---- |
+| P01 | 首页 | `/` | 四个主按钮（搜一个音 / 看懂发音 / 跟着练 / 录音比较）、搜索、已发布关入口 |
+| P02 | 搜索 | `/search` | 汉字、拼音、关卡名搜索；无结果给相近关与「希望增加」 |
+| P03 | 发音地图 | `/map` | 单韵母 → 声母 → 拼读三层闯关定位；易混关并排入口 |
+| P04 | 发音原理 | `/principles` | 气 → 声 → 口型三步；专业句默认折叠 |
+| P05 | 关卡页 | `/learn`、`/learn/:id` | 一句话结论、构形、示范、听辨小测、练习、误区、录音（若开放） |
+| P06 | 发音库 | `/library` | 已发布关目录；相近关比较 |
+| P07 | 专业资料 | `/materials` | 授权资料：来源、许可、适用边界 |
+| P08 | 检测中心 | `/test` | 已发布且检测开放的关：听示范、按要求朗读、提交 |
+| P09 | 结果 | `/feedback/:id` | 质量、曲线对比、分数、现象、四步反馈、可靠性、重录 |
+| P10 | 声音档案 | `/archive` | 同意后保存；同关两次比较；可删 |
+| P11 | 账号 | `/account` | 注册登录、同意状态、撤回、删除档案 |
+| — | 后台（CMS） | `/admin` | 关卡录入、发布 / 下架（三态）、检测开关、版本回退、反馈处理 |
 
 ## 项目结构
 
 ```
-pronunciation-learning/
 ├── src/
-│   ├── api/              # API接口
-│   ├── assets/           # 静态资源
-│   ├── components/       # 通用组件
-│   ├── composables/      # Vue组合式函数
+│   ├── api/              # API 客户端（唯一网络层）
+│   ├── components/       # 通用组件（PageState / PageFeedback / LevelRoadmap / SiteFooter）
+│   ├── composables/      # 组合式函数（文案位 / 同意提示 / 示范播放）
+│   ├── data/pages.ts     # 页号 P01–P11 唯一登记处
 │   ├── router/           # 路由配置
-│   ├── stores/           # Pinia状态管理
-│   ├── types/            # TypeScript类型定义
-│   ├── utils/            # 工具函数
-│   └── views/            # 页面组件
-│       ├── HomeView.vue          # 首页
-│       ├── PronunciationMap.vue  # P01 发音地图
-│       ├── PronunciationLibrary.vue # P02 发音库
-│       ├── LearningView.vue      # P03 发音学习
-│       ├── FeedbackView.vue      # P04 反馈系统
-│       ├── ProgressView.vue      # P05 学习进度
-│       ├── ComparisonView.vue    # P06 发音对比
-│       ├── HistoryView.vue       # P07 学习记录
-│       ├── AdminView.vue         # P08 后台管理
-│       └── ProgressManagement.vue # P10 进度管理
+│   ├── stores/           # Pinia（levels / units / recording / user）
+│   ├── types/            # 前后端契约类型登记处
+│   ├── utils/            # 工具（声调曲线处理意图）
+│   └── views/            # 页面组件（与上表一一对应）
 ├── backend/
-│   ├── main.py           # FastAPI后端
-│   └── requirements.txt  # Python依赖
-├── package.json
-└── README.md
+│   ├── main.py           # FastAPI 组装与 501 意图端点
+│   ├── cms_routes.py     # CMS：三态发布 / 检测开关 / 审计
+│   ├── database.py       # 数据访问层（含一致性不变量）
+│   ├── audio/            # 解码 / 声学特征 / 质量（维度一） / 评分 / 反馈
+│   ├── routes/           # asr / audio 路由
+│   └── requirements.txt
+├── docs/
+│   ├── srs/              # 软件需求规格说明书（当前需求口径）
+│   └── architecture/     # 架构建议与重构路线图
+└── package.json
 ```
 
-## GitHub参考项目
+## 关键口径（重构对齐后）
 
-1. **VocalTractLab** - 3D声道建模
-   - https://github.com/egonelbre/VocalTractLab
-
-2. **Wav2Vec2/HuBERT** - 预训练语音模型
-   - https://github.com/pytorch/audio
-
-3. **Librosa** - 音频分析库
-   - https://github.com/librosa/librosa
-
-4. **Parselmouth** - Praat Python接口
-   - https://github.com/YannickJadw/Parselmouth
-
-5. **PitchDetect** - 浏览器音高检测
-   - https://github.com/cwilso/PitchDetect
-
-## 开发计划
-
-### 第一阶段：基础架构（第1-2周）✅
-- [x] Vue 3 + TypeScript + Vite项目搭建
-- [x] Vue Router路由配置
-- [x] Pinia状态管理
-- [x] Element Plus UI集成
-- [x] Three.js集成
-- [x] FastAPI后端搭建
-
-### 第二阶段：核心功能（第3-8周）
-- [x] 发音地图页面
-- [x] 发音库页面
-- [x] 发音学习页面
-- [x] 反馈系统页面
-- [ ] 完整音频分析流程
-- [ ] 3D口腔动画优化
-
-### 第三阶段：高级功能（第9-16周）
-- [ ] Wav2Vec2/HuBERT模型集成
-- [ ] 实时WebSocket音频流
-- [ ] 发音对比功能
-- [ ] 学习进度管理
-
-### 第四阶段：完善优化（第17-24周）
-- [ ] 后台管理系统
-- [ ] 性能优化
-- [ ] 用户体验优化
-- [ ] 测试和文档
-
-## 许可证
-
-MIT License
+- **评分主链路**：1.0 调用外部普通话评分服务（科大讯飞语音评测，FR-1205）；
+  本地 Wav2Vec2 + Praat 栈定位为曲线 / 质检工具与 2.0 专属纠音模型对比（FR-1605）。
+- **质量两维闸门**：录音质量（信号维）+ 是否按要求朗读（文本维，来自评分服务
+  音节粒度检错）；任一维不合格即停止评分（FR-1301）。
+- **CMS 三态**：草稿 → 已发布 → 已下架（→ 已发布），检测开关独立（SRS 05 附录 C）。
+- **数据控制**：可不登录先学；保存进度 / 录音须服务端记录的本人同意，可拒绝、
+  可撤回、可删（D-08、NFR-15）。

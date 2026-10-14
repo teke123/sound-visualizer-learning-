@@ -1,160 +1,47 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { useRecordingStore } from '@/stores/recording'
+// 检测中心（P08，FR-901~908）：任务列表仅含「已发布且检测已开放」的关；
+// 录音前可听示范并看到朗读内容；环境与用途说明；录音过程控制；处理失败可理解。
+// 与 P05 关卡内录音是同一任务、同一套评分口径（FR-907）。
+// 以下为占位状态与动作（不包含任何假实现），重构时按意图恢复。
+import { computed, ref } from 'vue'
 import { useUnitsStore } from '@/stores/units'
-import { useUserStore } from '@/stores/user'
-import { useArchiveConsent } from '@/composables/useArchiveConsent'
-import { useSpeechDemo } from '@/composables/useSpeechDemo'
+import { useRecordingStore } from '@/stores/recording'
 import { usePageCopy } from '@/composables/usePageCopy'
-import { CORE_UNIT_IDS } from '@/data/coreUnits'
+import { TTS_DISCLAIMER } from '@/composables/useSpeechDemo'
 import PageState from '@/components/PageState.vue'
 import PageFeedback from '@/components/PageFeedback.vue'
 
-const route = useRoute()
-const router = useRouter()
-const recordingStore = useRecordingStore()
 const unitsStore = useUnitsStore()
-const userStore = useUserStore()
-const { consented } = useArchiveConsent()
-const speech = useSpeechDemo()
+const recordingStore = useRecordingStore()
+const { copy } = usePageCopy('P08')
 
-/** 儿童化文案位：P05（D 留位，G / I 定稿） */
-const { copy } = usePageCopy('P05')
+/** TODO(重构): 任务列表 = 已发布且检测开放的关（FR-901） */
+type Task = { id: string; character: string; pinyin: string; conclusion?: string }
+const verifiedTasks = ref<Task[]>([])
+const unitId = ref('')
+const unit = computed(() => verifiedTasks.value.find(t => t.id === unitId.value) || null)
 
-const unitId = ref(String(route.query.unit || 'ma'))
-const envOk = ref(false)
-const authOk = ref(false)
-const countdown = ref(0)
-const unit = ref<any>(null)
-const micError = ref<string | null>(null)
-const saveError = ref<string | null>(null)
+/** CMS 正式示范音缺失时的合成示意（必须如实标注，不冒充授权示范） */
+const speech = { speak: (_text: string, _speed: 'normal' | 'slow') => { /* TODO(重构): useSpeechDemo */ }, disclaimer: TTS_DISCLAIMER }
 
-const verifiedTasks = computed(() =>
-  unitsStore.coreUnits.filter(u => u.verified && CORE_UNIT_IDS.includes(u.id as any))
+const loadState = computed<'loading' | 'error' | 'empty' | null>(() =>
+  unitsStore.error ? 'error' : verifiedTasks.value.length ? null : 'empty',
 )
+function handleLoadAction(): void { unitsStore.fetchPublished() }
+function selectTask(): void { /* TODO(重构): 载入该关检测任务（提示词/示范/质检要求） */ }
 
-/**
- * 任务加载状态：loading → error → 空。
- * 已发布单元里一个都没通过检测验证 → unopened（按 SRS 收缩规则，不是整版失败）；
- * 连已发布单元都没有 → empty。
- */
-const loadState = computed<'loading' | 'error' | 'empty' | 'unopened' | null>(() => {
-  if (unitsStore.loading) return 'loading'
-  if (unitsStore.error) return 'error'
-  if (verifiedTasks.value.length) return null
-  return unitsStore.coreUnits.length ? 'unopened' : 'empty'
-})
+const envOk = ref(false)
+const consented = ref(false)   // TODO(重构): 读服务端同意状态
+const authOk = ref(false)
+const micError = ref('')
+function checkMic(): void { /* TODO(重构): getUserMedia 权限请求与失败指引（FR-904） */ }
 
-/** 分析阶段状态：正在分析 → loading；分析或落库失败 → error（原始错误进 detail） */
-const analysisState = computed<'loading' | 'error' | null>(() => {
-  if (recordingStore.isAnalyzing) return 'loading'
-  if (recordingStore.error || saveError.value) return 'error'
-  return null
-})
-
-const analysisDetail = computed(() => {
-  if (saveError.value) return `本轮结果未能保存到学习记录：${saveError.value}`
-  return recordingStore.error || undefined
-})
-
-async function loadUnits() {
-  await unitsStore.fetchPublished()
-  unit.value = await unitsStore.getUnit(unitId.value)
-}
-
-/** 加载 / 错误 / 未开放态下的主按钮：未开放时切到第一个可检测任务，其余重新拉取单元 */
-function handleLoadAction() {
-  if (loadState.value === 'unopened') {
-    const first = verifiedTasks.value[0]
-    if (first) selectTask(first.id)
-    return
-  }
-  loadUnits()
-}
-
-/** 分析失败后的主按钮：清掉本轮错误，回到「重录 → 再提交」 */
-function retryAnalysis() {
-  saveError.value = null
-  recordingStore.clearError()
-}
-
-onMounted(loadUnits)
-
-async function selectTask(id: string) {
-  unitId.value = id
-  unit.value = await unitsStore.getUnit(id)
-  recordingStore.clearRecording()
-  router.replace({ query: { unit: id } })
-}
-
-async function checkMic() {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-    authOk.value = true
-    micError.value = null
-    stream.getTracks().forEach(t => t.stop())
-  } catch (e: any) {
-    micError.value = e?.message || String(e)
-    ElMessage.error(`${copy.error} 麦克风未授权：${micError.value}`)
-  }
-}
-
-async function startTest() {
-  if (!envOk.value || !authOk.value) {
-    ElMessage.warning(copy.error)
-    return
-  }
-  countdown.value = 3
-  const timer = setInterval(() => {
-    countdown.value--
-    if (countdown.value <= 0) {
-      clearInterval(timer)
-      recordingStore.startRecording()
-    }
-  }, 1000)
-}
-
-async function submit() {
-  await recordingStore.stopRecording() // 等录音 Blob 就绪，避免竞态取到空录音
-  saveError.value = null
-  try {
-    await recordingStore.analyzeRecording(unitId.value)
-  } catch (e: any) {
-    // 分析链路的异常仍按文案位提示，原始信息留在 detail
-    saveError.value = e?.message || String(e)
-    ElMessage.error(copy.error)
-    return
-  }
-  if (recordingStore.error) {
-    ElMessage.error(recordingStore.error)
-    return
-  }
-  const a = recordingStore.assessment
-  if (consented.value && a?.evaluable) {
-    try {
-      await userStore.addLearningRecord({
-        unitId: unitId.value,
-        pinyin: unit.value?.pinyin || '',
-        character: unit.value?.character || '',
-        score: a.score,
-        accuracy: a.accuracy,
-        fluency: a.fluency,
-        pronunciation: a.pronunciation,
-        duration: recordingStore.duration,
-        feedback: a.feedback.map(f => f.phenomenon).join('; '),
-        audioBlob: recordingStore.recordingState.audioBlob ?? new Blob(),
-      })
-    } catch (e: any) {
-      // 落库失败不阻塞：分析结果已在内存里（P09 会照常完整展示样式与图表），
-      // 但必须如实告知这次练习没进档案，不能静默——与关卡页 LearningView 的口径一致。
-      saveError.value = e?.message || String(e)
-      ElMessage.error(`分析结果仍会显示，但这次练习没能存进档案：${saveError.value}`)
-    }
-  }
-  router.push(`/feedback/${unitId.value}`)
-}
+const countdown = ref(0)
+const analysisState = ref<'loading' | 'error' | null>(null)
+const analysisDetail = ref('')
+function startTest(): void { /* TODO(重构): useAssessmentFlow 录音开始（含倒计时） */ }
+function submit(): void { /* TODO(重构): 提交检测（幂等键），进度态与超时按 NFR-03 */ }
+function retryAnalysis(): void { /* TODO(重构): 失败重试，保留已录内容 */ }
 </script>
 
 <template>
@@ -162,7 +49,7 @@ async function submit() {
     <h2>检测中心</h2>
     <p class="intro">{{ copy.subtitle }}</p>
 
-    <!-- 任务加载 / 错误 / 未开放统一走 P05 文案位：后端没连上要说清，不能让人误读成「就是没有任务」 -->
+    <!-- 任务加载 / 错误 / 未开放统一走 P08 文案位：后端没连上要说清，不能让人误读成「就是没有任务」 -->
     <PageState
       :state="loadState"
       :copy="copy"

@@ -1,181 +1,73 @@
 <script setup lang="ts">
-/**
- * P08 关卡页（第 4 周 D 交付：LearningView 关卡页骨架）
- * ---------------------------------------------------------------------------
- * 两种形态（同一个页号，列表 + 单关）：
- *   - /learn         → 30 关 L01–L30 总览骨架（关卡身份来自 CON-02 冻结表）
- *   - /learn/:id     → 单关骨架（示范 / 练习 / 检测开关 + 上一关下一关）
- *
- * 数据链路（D 接 C）：
- *   CMS: GET /api/units?status=published  →  src/api/index.ts (levelsApi) → src/stores/levels.ts
- *   冻结表: src/data/levels.ts（只提供 ID / 顺序 / 目标音 / 分组 / 例字 / 文案位）
- *
- * 未开放 / 只学不测的关：只显示状态说明，不出现录音按钮、不出现分数（禁止假分）。
- * 历史单元（不在 30 关内）：落到 UnitLearningPanel，保留原有示范单元能力，不计入十页验收口径。
- */
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+// 关卡页（P05）：30 关总览与单关「学→录→评→存」闭环。统一结构
+// （FR-601）：一句话结论、构形、示范、听辨与小测、3–5 步练习、误区；
+// 检测开放才有录音入口（FR-609），与 P08 同任务同口径（FR-907）。
+// 以下为占位状态与动作（不包含任何假实现），重构时按意图恢复。
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { useLevelsStore } from '@/stores/levels'
+import { useLevelsStore, type LevelView } from '@/stores/levels'
 import { useRecordingStore } from '@/stores/recording'
-import { useUserStore } from '@/stores/user'
-import { useDemoPlayer } from '@/composables/useDemoPlayer'
 import { usePageCopy } from '@/composables/usePageCopy'
+import { TTS_DISCLAIMER } from '@/composables/useSpeechDemo'
 import PageState from '@/components/PageState.vue'
-import { getLevelNeighbors } from '@/data/levels'
-import UnitLearningPanel from '@/components/UnitLearningPanel.vue'
 
 const route = useRoute()
 const router = useRouter()
 const levelsStore = useLevelsStore()
 const recordingStore = useRecordingStore()
-const userStore = useUserStore()
-/**
- * 示范音播放（第 5 周 D 交付：关卡页至少一关示范可播放）
- *   有 CMS 正式示范音 unit.demoAudio → 播真实音频；
- *   没有 → 回落浏览器语音合成，并挂「非正式授权示范音」声明。
- * C 补 demo_audio 列并发布后，前端不需要再改代码。
- */
-const { play: playDemoSource, isPlaying: isDemoPlaying, disclaimer: ttsDisclaimer } = useDemoPlayer()
+const { copy } = usePageCopy('P05')
 
-/** 儿童化文案位：P08（唯一登记处 src/data/pages.ts，G / I 定稿后只改那一处） */
-const { copy } = usePageCopy('P08')
-
-const routeId = computed(() => (route.params.id as string | undefined) ?? '')
+const routeId = computed(() => (route.params.id as string) || '')
 const isListMode = computed(() => !routeId.value)
-const level = computed(() => (routeId.value ? levelsStore.getLevel(routeId.value) : undefined))
-/** 历史单元：有 id 但不在冻结的 30 关里 */
-const isLegacyUnit = computed(() => !!routeId.value && !level.value)
 
-/** 送后端分析的 unit_id：优先用 CMS 命中的 id（后端 UNIT_REFERENCE 按 CMS id 校验） */
-const activeUnitId = computed(() => level.value?.cmsId ?? '')
-const neighbors = computed(() => (level.value ? getLevelNeighbors(level.value.code) : {}))
-
-/**
- * 本关是否只能用语音合成示意。
- * true → 页面上必须挂 TTS 声明，不把合成音冒充正式授权示范音（SRS 要求如实标注）。
- */
-const demoIsSynthetic = computed(() => !level.value?.unit?.demoAudio)
-
-const canvasRef = ref<HTMLCanvasElement | null>(null)
-let animationFrame: number | null = null
-
-onMounted(() => {
-  if (!isLegacyUnit.value) levelsStore.fetchLevels()
+/** TODO(重构): level 视图 = 关卡身份 + CMS 内容（结论/步骤/误区）+ availability */
+type LevelCard = LevelView & {
+  target?: string
+  pinyin?: string
+  groupLabel?: string
+  detectionOpen?: boolean
+  unit?: {
+    pinyin?: string; character?: string; conclusion?: string; description?: string; detail?: string
+    steps?: any[]; mistakes?: any[]
+  }
+}
+const level = ref<LevelCard | null>(null)
+const groups = computed(() => levelsStore.levelGroups as Array<{ key: string; label: string; items: LevelCard[] }>)
+const counts = computed(() => {
+  const all = levelsStore.levels
+  return {
+    opened: all.filter(l => l.availability === 'open').length,
+    learnOnly: all.filter(l => l.availability === 'learn_only').length,
+    unopened: all.filter(l => l.availability === 'unopened').length,
+  }
 })
-onUnmounted(() => stopVisualization())
 
-function availabilityText(l: { availability: string }): string {
-  if (l.availability === 'open') return '可以练习 + 可以检测'
-  if (l.availability === 'learn_only') return '只学习，暂不检测'
-  return '未开放'
+const neighbors = computed<{ prev: LevelCard | null; next: LevelCard | null }>(() => ({ prev: null, next: null }))
+const isDemoPlaying = ref(false)
+const demoIsSynthetic = ref(false)
+const ttsDisclaimer = TTS_DISCLAIMER
+const canvasRef = ref<HTMLCanvasElement | null>(null)
+/** TODO(重构): 该关检测任务（朗读提示词/示范）就绪后才有录音链路 */
+const activeUnitId = computed(() => (level.value?.detectionOpen ? routeId.value : ''))
+
+function availabilityTag(l: LevelView) {
+  return l.availability === 'open' ? 'success' : l.availability === 'learn_only' ? 'warning' : 'info'
 }
-
-function availabilityTag(l: { availability: string }): 'success' | 'warning' | 'info' {
-  if (l.availability === 'open') return 'success'
-  if (l.availability === 'learn_only') return 'warning'
-  return 'info'
+function availabilityText(l: LevelView) {
+  return l.availability === 'open' ? '可练可测' : l.availability === 'learn_only' ? '只学不测' : '未开放'
 }
-
-function openLevel(code: string) {
-  router.push(`/learn/${code}`)
-}
-
-/** 示范朗读文本：优先 CMS 的例字，其次冻结表的例字 */
-const demoText = computed(() => level.value?.unit?.character || level.value?.char || '')
-
-function playDemo() {
-  const text = demoText.value
-  if (!text) return
-  playDemoSource(text, level.value?.unit?.demoAudio, false)
-    .catch(() => ElMessage.warning('这台设备暂时不能播放示范音，先跟着老师读一遍吧'))
-}
-
-function playSlow() {
-  const text = demoText.value
-  if (!text) return
-  playDemoSource(text, level.value?.unit?.demoAudio, true)
-    .catch(() => ElMessage.warning('慢速播放失败，稍后再试'))
-}
-
-/* ------------------------------ 录音 → 结果页闭环 ------------------------------ */
-async function startRecording() {
-  await recordingStore.startRecording()
-  startVisualization()
-}
-
-function stopRecording() {
-  recordingStore.stopRecording()
-  stopVisualization()
-}
-
-function startVisualization() {
-  const analyser = recordingStore.getAnalyser()
-  if (!analyser || !canvasRef.value) return
-  const canvas = canvasRef.value
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return
-  const safeAnalyser = analyser
-  const bufLen = safeAnalyser.frequencyBinCount
-  const data = new Uint8Array(bufLen)
-  function draw() {
-    animationFrame = requestAnimationFrame(draw)
-    safeAnalyser.getByteTimeDomainData(data)
-    ctx!.fillStyle = '#1a1a2e'
-    ctx!.fillRect(0, 0, canvas.width, canvas.height)
-    ctx!.lineWidth = 2; ctx!.strokeStyle = '#409eff'; ctx!.beginPath()
-    const sw = canvas.width / bufLen; let x = 0
-    for (let i = 0; i < bufLen; i++) {
-      const y = ((data[i] ?? 128) / 128.0) * canvas.height / 2
-      i === 0 ? ctx!.moveTo(x, y) : ctx!.lineTo(x, y)
-      x += sw
-    }
-    ctx!.lineTo(canvas.width, canvas.height / 2); ctx!.stroke()
-  }
-  draw()
-}
-
-function stopVisualization() {
-  if (animationFrame) { cancelAnimationFrame(animationFrame); animationFrame = null }
-}
-
-async function analyzeAndGoFeedback() {
-  if (!activeUnitId.value) return
-  await recordingStore.stopRecording()
-  await recordingStore.analyzeRecording(activeUnitId.value)
-  const assessment = recordingStore.assessment
-  // 分析失败 / 没拿到结果：就地给出原因并留在本页重录，绝不跳到空白结果页
-  if (recordingStore.error || !assessment) {
-    ElMessage.error(recordingStore.error || '分析没有返回结果，请重录一次')
-    return
-  }
-  try {
-    await userStore.addLearningRecord({
-      unitId: activeUnitId.value,
-      pinyin: level.value?.unit?.pinyin || level.value?.pinyin || '',
-      character: level.value?.unit?.character || level.value?.char || '',
-      score: assessment.score || 0,
-      accuracy: assessment.accuracy || 0,
-      fluency: assessment.fluency || 0,
-      pronunciation: assessment.pronunciation || 0,
-      duration: recordingStore.duration,
-      feedback: assessment.feedback.map(f => f.message).join('; ') || '',
-      audioBlob: recordingStore.recordingState.audioBlob ?? new Blob(),
-    })
-  } catch {
-    ElMessage.error('学习记录保存失败（分析结果仍会显示），请确认后端服务已启动')
-  }
-  router.push(`/feedback/${activeUnitId.value}`)
-}
+function playDemo(): void { /* TODO(重构): 播正式示范音（CMS），缺失时合成示意并标注 */ }
+function playSlow(): void { /* TODO(重构): 慢速示范 */ }
+function startRecording(): void { /* TODO(重构): useAssessmentFlow 录音开始 */ }
+function stopRecording(): void { recordingStore.stopRecording() }
+function analyzeAndGoFeedback(): void { /* TODO(重构): 提交检测并跳 P09 */ }
+function openLevel(code: string): void { router.push(`/learn/${code}`) }
 </script>
 
 <template>
-  <!-- ============ 历史单元：不在 30 关冻结表内 ============ -->
-  <UnitLearningPanel v-if="isLegacyUnit" :unit-id="routeId" />
-
   <!-- ============ 单关骨架 ============ -->
-  <div v-else-if="!isListMode" class="level-view">
-    <!-- 加载中（关卡身份来自冻结表，可先渲染；内容状态等 CMS 返回后再判，避免闪一下「未开放」） -->
+  <div v-if="!isListMode" class="level-view">
+    <!-- 加载中（关卡身份可先渲染；内容状态等 CMS 返回后再判，避免闪一下「未开放」） -->
     <div v-if="levelsStore.loading && !levelsStore.loaded" class="state-card">
       <PageState state="loading" :copy="copy" />
     </div>
@@ -191,7 +83,7 @@ async function analyzeAndGoFeedback() {
       />
     </div>
 
-    <!-- 不在 30 关内的 id（兜底） -->
+    <!-- 不存在或未发布的关卡 id（兜底） -->
     <div v-else-if="!level" class="state-card">
       <PageState
         state="empty"
@@ -202,7 +94,7 @@ async function analyzeAndGoFeedback() {
     </div>
 
     <template v-else>
-      <!-- 关卡头部：身份（冻结表）+ 状态（CMS） -->
+      <!-- 关卡头部：身份（关卡清单）+ 状态（CMS） -->
       <div class="level-header card">
         <div class="level-badge">{{ level.code }}</div>
         <div class="level-identity">
@@ -217,7 +109,6 @@ async function analyzeAndGoFeedback() {
               {{ availabilityText(level) }}
             </el-tag>
           </div>
-          <p class="level-hint">{{ level.childHint }}</p>
         </div>
         <div class="level-actions">
           <el-button type="primary" :icon="'VideoPlay'" :loading="isDemoPlaying" @click="playDemo">
@@ -229,7 +120,7 @@ async function analyzeAndGoFeedback() {
 
       <!-- 示范音来源如实标注：有正式授权示范音就说明，没有就明说这是合成示意，不冒充 -->
       <p v-if="demoIsSynthetic" class="disclaimer demo-source">{{ ttsDisclaimer }}</p>
-      <p v-else class="disclaimer demo-source is-real">示范音来自 CMS 已审核发布的正式录音。</p>
+      <p v-else class="disclaimer demo-source is-real">示范音来自 CMS 已发布的正式授权录音。</p>
 
       <!-- 未开放 / 只学不测：明确状态，不给检测入口、不给分数 -->
       <el-alert
@@ -239,7 +130,7 @@ async function analyzeAndGoFeedback() {
         show-icon
         :closable="false"
         :title="copy.unopened"
-        description="本关的内容还没通过审核发布，按 SRS 收缩规则记「未开放」：可以先练前面已经开放的关卡。"
+        description="本关还未发布，按「未开放」处理：可以先练前面已开放的关卡。"
       />
       <el-alert
         v-else-if="level.availability === 'learn_only'"
@@ -363,9 +254,9 @@ async function analyzeAndGoFeedback() {
         <h2>{{ copy.subtitle }}</h2>
         <p class="levels-meta">
           共 {{ levelsStore.levels.length }} 关 ·
-          可练可测 {{ levelsStore.openedCount }} ·
-          只学不测 {{ levelsStore.learnOnlyCount }} ·
-          未开放 {{ levelsStore.unopenedCount }}
+          可练可测 {{ counts.opened }} ·
+          只学不测 {{ counts.learnOnly }} ·
+          未开放 {{ counts.unopened }}
         </p>
       </div>
       <el-button :icon="'Refresh'" :loading="levelsStore.loading" @click="levelsStore.fetchLevels(true)">
@@ -388,7 +279,7 @@ async function analyzeAndGoFeedback() {
       :copy="copy"
     />
 
-    <template v-for="group in levelsStore.levelGroups" :key="group.key">
+    <template v-for="group in groups" :key="group.key">
       <div v-if="group.items.length" class="group-block">
         <div class="group-title">
           <span>{{ group.label }}</span>
@@ -414,8 +305,8 @@ async function analyzeAndGoFeedback() {
     </template>
 
     <p class="levels-foot">
-      关卡身份（ID / 顺序 / 目标音）已按 CON-02 冻结；内容与检测开关以 CMS（C 的
-      <code>/api/units</code>）为准，未发布即「未开放」。
+      关卡身份（ID / 顺序 / 目标音）以关卡清单为准（SRS 02 3.4）；内容、发布状态与检测开关
+      以 CMS 为唯一内容源，未发布即「未开放」（FR-1405）。
     </p>
   </div>
 </template>
@@ -437,7 +328,6 @@ async function analyzeAndGoFeedback() {
 .level-pinyin { font-size: 20px; color: #409eff; margin-left: 12px; }
 .level-sub { display: flex; align-items: center; gap: 10px; margin-top: 6px; flex-wrap: wrap; }
 .level-char { font-size: 13px; color: #606266; }
-.level-hint { margin: 8px 0 0; font-size: 14px; color: #606266; }
 .level-actions { display: flex; flex-direction: column; gap: 8px; }
 .level-body { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
 .block h3 { margin: 0 0 12px; font-size: 16px; color: #303133; }

@@ -1,11 +1,12 @@
-"""使用 soundfile 和 FFmpeg 将音频文件解码为单声道浮点波形。"""
+"""音频解码（重构占位骨架）。
+
+意图：把任意上传格式（WAV/WebM/Opus…）解码为单声道浮点波形。
+- 首选 soundfile 直读；失败回落 FFmpeg 转码（浏览器 webm 录音必需）；
+- 输出幅度语义必须全链路统一（原始 [-1,1] 还是归一化，只允许一种口径）。
+"""
 from dataclasses import dataclass
-from pathlib import Path
-from tempfile import TemporaryDirectory
-import subprocess
 
 import numpy as np
-import soundfile as sf
 
 
 @dataclass
@@ -14,27 +15,6 @@ class DecodedAudio:
     sample_rate: int
 
 
-def decode_audio(path: str | Path) -> DecodedAudio:
-    """读取音频文件，返回单声道波形及采样率。"""
-    try:
-        samples, sample_rate = sf.read(path, dtype="float32", always_2d=True)
-    except Exception:
-        samples, sample_rate = _decode_via_ffmpeg(path)
-    return DecodedAudio(samples.mean(axis=1), sample_rate)
-
-
-def _decode_via_ffmpeg(path: str | Path) -> tuple[np.ndarray, int]:
-    """将音频转码为 16 kHz 单声道 WAV，并读取波形。"""
-    import imageio_ffmpeg
-
-    with TemporaryDirectory(prefix="pronunciation-decode-") as directory:
-        output = Path(directory) / "decoded.wav"
-        result = subprocess.run(
-            [imageio_ffmpeg.get_ffmpeg_exe(), "-y", "-i", str(path),
-             "-ar", "16000", "-ac", "1", "-f", "wav", str(output)],
-            capture_output=True,
-        )
-        if result.returncode != 0:
-            error = result.stderr.decode("utf-8", errors="replace")[-200:]
-            raise RuntimeError(f"ffmpeg 解码失败: {error}")
-        return sf.read(output, dtype="float32", always_2d=True)
+def decode_audio(path) -> DecodedAudio:
+    """意图：读音频文件，返回单声道波形及采样率。"""
+    raise NotImplementedError("重构占位：音频解码")

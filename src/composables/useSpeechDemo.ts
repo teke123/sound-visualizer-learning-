@@ -1,45 +1,13 @@
-import { ref } from 'vue'
-
-export const TTS_DISCLAIMER = '系统语音合成示意，非正式授权示范音。正式示范将以审核通过的录音替换。'
+/**
+ * 浏览器语音合成示意（重构占位）
+ * ---------------------------------------------------------------------------
+ * 意图：在 CMS 正式示范音缺失时，用浏览器 TTS 播示意音；
+ * 页面必须挂 TTS_DISCLAIMER，绝不让合成音冒充正式授权示范音。
+ * （具体实现待重构恢复。）
+ */
+export const TTS_DISCLAIMER = '系统语音合成示意，非正式授权示范音。正式示范将以授权发布的录音替换。'
 
 export function useSpeechDemo() {
-  const isPlaying = ref(false)
-  const mode = ref<'normal' | 'slow' | null>(null)
-
-  function speak(text: string, speed: 'normal' | 'slow' = 'normal') {
-    if (!('speechSynthesis' in window)) {
-      return Promise.reject(new Error('浏览器不支持语音合成'))
-    }
-    speechSynthesis.cancel()
-    isPlaying.value = true
-    mode.value = speed
-    return new Promise<void>((resolve, reject) => {
-      const utterance = new SpeechSynthesisUtterance(text)
-      utterance.lang = 'zh-CN'
-      utterance.rate = speed === 'slow' ? 0.55 : 0.85
-      utterance.pitch = 1
-      const voices = speechSynthesis.getVoices()
-      const zh = voices.find(v => v.lang.startsWith('zh'))
-      if (zh) utterance.voice = zh
-      utterance.onend = () => {
-        isPlaying.value = false
-        mode.value = null
-        resolve()
-      }
-      utterance.onerror = () => {
-        isPlaying.value = false
-        mode.value = null
-        reject(new Error('播放失败'))
-      }
-      speechSynthesis.speak(utterance)
-    })
-  }
-
-  function stop() {
-    speechSynthesis.cancel()
-    isPlaying.value = false
-    mode.value = null
-  }
-
-  return { isPlaying, mode, speak, stop, disclaimer: TTS_DISCLAIMER }
+  // TODO(重构): 恢复 speak/stop（lang=zh-CN、normal/slow 两档语速）
+  throw new Error('重构占位：浏览器 TTS 示范音')
 }
