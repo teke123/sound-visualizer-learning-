@@ -20,7 +20,7 @@ interface NavItem {
   available: boolean
 }
 
-function toItem(id: string, label: string): NavItem | null {
+function toItem(id: string | null | undefined, label: string): NavItem | null {
   if (!id) return null
   const summary = levelsStore.byId.get(id)
   return {
@@ -34,10 +34,9 @@ function toItem(id: string, label: string): NavItem | null {
 const items = computed<NavItem[]>(() => {
   const nav = props.level.nav
   const list: Array<NavItem | null> = [
-    nav.prevId ? toItem(nav.prevId, '上一关') : null,
-    nav.nextId ? toItem(nav.nextId, '下一关') : null,
-    ...(nav.confusableIds ?? []).map((id) => toItem(id, '易混关')),
-    ...(nav.relatedIds ?? []).map((id) => toItem(id, `回看 ${id}`)),
+    toItem(nav?.prev, '上一关'),
+    toItem(nav?.next, '下一关'),
+    ...(nav?.confusables ?? []).map((id) => toItem(id, '易混关')),
   ]
   return list.filter((item): item is NavItem => item !== null)
 })

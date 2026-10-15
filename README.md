@@ -58,12 +58,11 @@ docs/architecture/03 的 M0 实测验证。
 | P01 | 首页 | `/` | 四个主按钮（搜一个音 / 看懂发音 / 跟着练 / 录音比较）、搜索、已发布关入口 |
 | P02 | 搜索 | `/search` | 汉字、拼音、关卡名搜索；无结果给相近关与「希望增加」 |
 | P03 | 发音地图 | `/map` | 单韵母 → 声母 → 拼读三层闯关定位；易混关并排入口 |
-| P04 | 发音原理 | `/principles` | 气 → 声 → 口型三步；专业句默认折叠 |
-| P05 | 关卡页 | `/learn`、`/learn/:id` | 一句话结论、构形、示范、听辨小测、练习、误区、录音（若开放） |
+| P04 | 发音原理 | `/principles`、`/principles/:slug` | 气 → 声 → 口型三步；专业文章与折叠的专业句 |
+| P05 | 关卡页 | `/learn/:id` | 一句话结论、构形、示范、听辨题、练习、误区、录音（若开放） |
 | P06 | 发音库 | `/library` | 已发布关目录；相近关比较 |
-| P07 | 专业资料 | `/materials` | 授权资料：来源、许可、适用边界 |
-| P08 | 检测中心 | `/test` | 已发布且检测开放的关：听示范、按要求朗读、提交 |
-| P09 | 结果 | `/feedback/:id` | 质量、曲线对比、分数、现象、四步反馈、可靠性、重录 |
+| P08 | 检测中心 | `/test`、`/test/:levelId` | 已发布的关（检测应急关闭的关除外）：听示范、按要求朗读、提交 |
+| P09 | 结果 | `/result/:id` | 质量、曲线对比、分数、现象、四步反馈、可靠性、重录 |
 | P10 | 声音档案 | `/archive` | 同意后保存；同关两次比较；可删 |
 | P11 | 账号 | `/account` | 注册登录、同意状态、撤回、删除档案 |
 | — | 后台（CMS） | `/admin` | 关卡录入、发布 / 下架（三态）、检测开关、版本回退、反馈处理 |
@@ -72,15 +71,16 @@ docs/architecture/03 的 M0 实测验证。
 
 ```
 ├── src/
-│   ├── api/              # API 客户端（唯一网络层）
-│   ├── components/       # 通用组件（PageState / PageFeedback / LevelRoadmap / SiteFooter）
-│   ├── composables/      # 组合式函数（文案位 / 同意提示 / 示范播放）
-│   ├── data/pages.ts     # 页号 P01–P11 唯一登记处
+│   ├── api/              # API 客户端（唯一网络层：client、endpoints、生成契约类型 generated/）
+│   ├── components/       # 通用组件（40+：PageState、RecorderPanel、QualityVerdict、ConsentDialog 等）
+│   ├── copy/             # 文案位（页面文案按页号登记）
+│   ├── features/         # 组合式功能模块（auth / consent / calibration / result / archive 等）
+│   ├── mocks/            # MSW mock（dev:mock 模式，形状与后端契约同步）
+│   ├── pages/            # 页面组件（与上表一一对应）
+│   ├── renderers/        # 渲染器（关卡 / 文章 / 声调曲线 / 共振峰 / 声道剖面）
 │   ├── router/           # 路由配置
-│   ├── stores/           # Pinia（levels / units / recording / user）
-│   ├── types/            # 前后端契约类型登记处
-│   ├── utils/            # 工具（声调曲线处理意图）
-│   └── views/            # 页面组件（与上表一一对应）
+│   ├── stores/           # Pinia（levels / context / progress / completion / recorder / player / outbox）
+│   └── utils/            # 工具（UUID、安全存储、时间格式化）
 ├── backend/
 │   ├── main.py           # FastAPI 组装（/api、/admin、调度任务、启动恢复）
 │   ├── seed.py           # 种子脚本：30 关内容/文章/标定文本/合成音频/发布
@@ -106,7 +106,8 @@ docs/architecture/03 的 M0 实测验证。
 ## 关键口径（重构对齐后）
 
 - **评分主链路**：1.0 调用外部普通话评分服务（科大讯飞语音评测，FR-1205）；
-  本地 Wav2Vec2 + Praat 栈定位为曲线 / 质检工具与 2.0 专属纠音模型对比（FR-1605）。
+  本地声学栈（Praat/parselmouth、tone_py）定位为曲线 / 质检工具，并作为
+  2.0 专属纠音模型对比（FR-1604）的基座。
 - **质量两维闸门**：录音质量（信号维）+ 是否按要求朗读（文本维，来自评分服务
   音节粒度检错）；任一维不合格即停止评分（FR-1301）。
 - **CMS 三态**：草稿 → 已发布 → 已下架（→ 已发布），检测开关独立（SRS 05 附录 C）。

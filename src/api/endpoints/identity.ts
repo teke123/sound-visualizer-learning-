@@ -3,10 +3,13 @@ import { apiRequest } from '../client'
 import type {
   AuthLoginResponse,
   ConsentPostResponse,
+  ConsentRevokedResponse,
   ConsentStateResponse,
+  DeletedResponse,
+  LoggedOutResponse,
   MeContext,
   MeProgress,
-  TransferResult,
+  RegisterResponse,
 } from '../generated/types'
 
 export const identityApi = {
@@ -14,14 +17,14 @@ export const identityApi = {
     return apiRequest<MeContext>('/me/context')
   },
   register(payload: { username: string; password: string }) {
-    return apiRequest<{ created: boolean }>('/auth/register', { method: 'POST', body: payload })
+    return apiRequest<RegisterResponse>('/auth/register', { method: 'POST', body: payload })
   },
   /** 成功响应直接携带替换后的 context；已有同意时附 transfer */
   login(payload: { username: string; password: string }) {
     return apiRequest<AuthLoginResponse>('/auth/login', { method: 'POST', body: payload })
   },
   logout() {
-    return apiRequest<{ loggedOut: boolean }>('/auth/logout', { method: 'POST' })
+    return apiRequest<LoggedOutResponse>('/auth/logout', { method: 'POST' })
   },
 
   consentState() {
@@ -33,13 +36,13 @@ export const identityApi = {
   },
   /** 撤回：dataEpoch 递增，按 D-17 删除；重复调用幂等 */
   revokeConsent() {
-    return apiRequest<{ consent: { status: 'revoked' } ; transfer?: TransferResult }>('/me/consent', {
+    return apiRequest<ConsentRevokedResponse>('/me/consent', {
       method: 'DELETE',
     })
   },
   /** 注销：按撤回范围清理并失效全部会话 */
   deleteAccount(payload: { password: string }) {
-    return apiRequest<{ deleted: boolean }>('/me/account', { method: 'DELETE', body: payload })
+    return apiRequest<DeletedResponse>('/me/account', { method: 'DELETE', body: payload })
   },
 
   /** 登录且同意；按 D-24 派生 */

@@ -162,12 +162,33 @@ def get_formants_png(db: Session, row: AudioRow) -> Path:
     return config.DATA_DIR / payload["path"]
 
 
-def _render_formants_png(audio_id: str, formants: dict) -> Path:
-    """F2(反向 x)–F1(y) 元音散点图（matplotlib Agg）。"""
+def get_spectrogram_png(db: Session, row: AudioRow) -> Path:
+    if row.purpose != "recording":
+        raise ApiError(404, "NOT_FOUND", "资源不存在")
+
+    def compute() -> dict:
+        return {"path": str(_render_spectrogram_png(row.id, audio_path(row)).relative_to(config.DATA_DIR))}
+
+    payload = _load_or_compute(db, row, "spectrogram_png", compute)
+    return config.DATA_DIR / payload["path"]
+
+
+def _matplotlib_png():
+    """Agg 后端 + CJK 字体回退链（默认 DejaVu Sans 无中文字形，标题会变方框）。"""
     import matplotlib
 
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
+
+    plt.rcParams["font.sans-serif"] = [
+        "Microsoft YaHei", "SimHei", "Noto Sans CJK SC", "WenQuanYi Micro Hei", "DejaVu Sans"]
+    plt.rcParams["axes.unicode_minus"] = False
+    return plt
+
+
+def _render_formants_png(audio_id: str, formants: dict) -> Path:
+    """F2(反向 x)–F1(y) 元音散点图。"""
+    plt = _matplotlib_png()
 
     xs, ys = [], []
     for fr in formants.get("frames", []):
@@ -185,6 +206,28 @@ def _render_formants_png(audio_id: str, formants: dict) -> Path:
     out_dir = config.PRIVATE_DIR / "features"
     out_dir.mkdir(parents=True, exist_ok=True)
     out = out_dir / f"{audio_id}_formants.png"
+    fig.savefig(out)
+    plt.close(fig)
+    return out
+
+
+def _render_spectrogram_png(audio_id: str, wav_path: Path) -> Path:
+    """Praat Spectrogram 热力图（时间 × 频率，Praat 式 50dB 动态范围）。"""
+    plt = _matplotlib_png()
+
+    sg = analysis.compute_spectrogram(wav_path)
+    vmax = float(sg.values_db.max()) if sg.values_db.size else 0.0
+    fig, ax = plt.subplots(figsize=(6, 3), dpi=110)
+    im = ax.imshow(sg.values_db, origin="lower", aspect="auto", cmap="inferno",
+                   extent=[sg.tmin, sg.tmax, 0.0, sg.fmax],
+                   vmin=vmax - analysis.SPECTRO_DYNAMIC_RANGE_DB, vmax=vmax)
+    fig.colorbar(im, ax=ax, label="dB")
+    ax.set_xlabel("时间 (s)")
+    ax.set_ylabel("频率 (Hz)")
+    ax.set_title("频谱图")
+    out_dir = config.PRIVATE_DIR / "features"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out = out_dir / f"{audio_id}_spectrogram.png"
     fig.savefig(out)
     plt.close(fig)
     return out

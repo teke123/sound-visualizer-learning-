@@ -2,31 +2,51 @@
 /**
  * QualityVerdict：质量结论先行（FR-1001 / FR-1301）。
  * 质量结论与本关分数分开显示；不合格显示「本次不能评」+ 原因 + 重录指引，不显示分数。
+ * 信号维为结构化检查项（dbfs/snrDb/ratio/valueSec），朗读维为漏读/增读等列表。
  */
 import { computed } from 'vue'
 import type { Quality } from '@/api'
 
 const props = defineProps<{ quality: Quality }>()
 
-const DIMENSION_LABELS: Array<{ key: keyof Quality['signal'] | keyof Quality['reading']; label: string }> = [
+const SIGNAL_CHECKS: Array<{ key: 'volume' | 'noise' | 'clipping' | 'duration'; label: string }> = [
   { key: 'volume', label: '音量' },
   { key: 'noise', label: '噪音' },
   { key: 'clipping', label: '爆音' },
   { key: 'duration', label: '时长' },
-  { key: 'omission', label: '漏读' },
-  { key: 'addition', label: '增读' },
-  { key: 'reread', label: '回读' },
-  { key: 'substitution', label: '替换' },
-  { key: 'gibberish', label: '乱读' },
 ]
 
-const issues = computed(() => {
+const READING_CHECKS: Array<{ key: 'missing' | 'extra' | 'repeated' | 'replaced' | 'disordered'; label: string }> = [
+  { key: 'missing', label: '漏读' },
+  { key: 'extra', label: '增读' },
+  { key: 'repeated', label: '回读' },
+  { key: 'replaced', label: '替换' },
+  { key: 'disordered', label: '乱读' },
+]
+
+/** 不合格检查项（label + 指引），失败项优先 */
+const failedChecks = computed(() => {
   const found: Array<{ label: string; note: string }> = []
-  for (const { key, label } of DIMENSION_LABELS) {
-    const signalNote = props.quality.signal[key as keyof Quality['signal']]
-    if (signalNote) found.push({ label, note: signalNote })
-    const readingNote = props.quality.reading[key as keyof Quality['reading']]
-    if (readingNote) found.push({ label, note: readingNote })
+  for (const { key, label } of SIGNAL_CHECKS) {
+    const check = props.quality.signal?.[key]
+    if (check && check.pass === false) {
+      found.push({ label, note: check.advice ?? '未通过' })
+    }
+  }
+  const reading = props.quality.reading
+  if (reading) {
+    for (const { key, label } of READING_CHECKS) {
+      const value = reading[key]
+      if (value === true || (Array.isArray(value) && value.length > 0)) {
+        found.push({
+          label,
+          note: Array.isArray(value) ? `（${value.join('、')}）` : (reading.advice ?? '未按要求朗读'),
+        })
+      }
+    }
+    if (found.some((item) => READING_CHECKS.some((rc) => rc.label === item.label)) && reading.advice) {
+      found.push({ label: '指引', note: reading.advice })
+    }
   }
   return found
 })
@@ -45,8 +65,8 @@ const passed = computed(() => props.quality.verdict === 'pass')
         </p>
       </div>
     </div>
-    <ul v-if="issues.length > 0" class="issue-list">
-      <li v-for="issue in issues" :key="issue.label">
+    <ul v-if="failedChecks.length > 0" class="issue-list">
+      <li v-for="issue in failedChecks" :key="issue.label + issue.note">
         <span class="issue-label">{{ issue.label }}</span>
         <span>{{ issue.note }}</span>
       </li>
@@ -108,6 +128,7 @@ const passed = computed(() => props.quality.verdict === 'pass')
   border-radius: 4px
   padding: 1px 8px
   height: fit-content
+  white-space: nowrap
 
 .retake
   margin-top: 12px

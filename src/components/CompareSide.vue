@@ -8,8 +8,10 @@ import { usePlayerStore } from '@/stores/player'
 const props = defineProps<{ level: LevelDetail }>()
 
 const player = usePlayerStore()
-const demo = computed(() => props.level.demo.find((item) => item.speed === 'normal') ?? props.level.demo[0])
-const mainMedia = computed(() => props.level.articulation.media[0])
+const demos = computed(() => props.level.demos ?? [])
+const demo = computed(() => demos.value.find((item) => item.speed === 'normal') ?? demos.value[0])
+const mainMedia = computed(() => (props.level.articulation?.media ?? [])[0])
+const articulationDesc = computed(() => props.level.articulation?.description ?? '')
 const listenKey = computed(() => `demo:${props.level.id}`)
 
 function playDemo() {
@@ -30,7 +32,7 @@ function playDemo() {
     <button v-if="demo" type="button" class="compare-demo-btn" @click="playDemo">
       {{ player.isCurrent(listenKey) ? '⏸ 暂停示范' : '▶ 播放示范' }}
     </button>
-    <p class="compare-desc">{{ level.articulation.description }}</p>
+    <p class="compare-desc">{{ articulationDesc }}</p>
   </div>
 </template>
 

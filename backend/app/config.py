@@ -50,12 +50,14 @@ SECRET: str = _load_or_create_secret()
 
 # --- 临时数据留存（D-15）---
 TEMP_DATA_TTL_HOURS: int = 72          # 私有上传/临时录音/会话标定及缓存
-HARD_DELETE_GRACE_HOURS: int = 24      # 本地物理删除上限
 PREVIEW_TOKEN_TTL_MINUTES: int = 15    # 预览令牌（D 决策图 #21）
 
 # --- 检测处理模型（决策图「检测处理模型」）---
 SYNC_WINDOW_SECONDS: float = float(os.environ.get("SVS_SYNC_WINDOW", "8"))
 HARD_DEADLINE_SECONDS: float = float(os.environ.get("SVS_HARD_DEADLINE", "30"))  # 自受理起
+# 标定路由等待上限：与录音硬截止解耦（标定不受调度器 sweep 约束，
+# 借用 HARD_DEADLINE 会让慢 Provider 场景下标定先于检测误超时）
+CALIBRATION_TIMEOUT_SECONDS: float = float(os.environ.get("SVS_CALIBRATION_TIMEOUT", "45"))
 RETRY_AFTER_SECONDS: int = 2           # 202 响应 Retry-After
 EXECUTOR_WORKERS: int = int(os.environ.get("SVS_EXECUTOR_WORKERS", "4"))
 EXECUTOR_QUEUE_LIMIT: int = int(os.environ.get("SVS_EXECUTOR_QUEUE", "32"))
@@ -86,7 +88,9 @@ PROVIDER_VERSION: str = {"mock": "mock-1.0.0", "xfyun": "xfyun-ise-1.0"}.get(PRO
 XFYUN_APP_ID: str = os.environ.get("XFYUN_APP_ID", "")
 XFYUN_API_KEY: str = os.environ.get("XFYUN_API_KEY", "")
 XFYUN_API_SECRET: str = os.environ.get("XFYUN_API_SECRET", "")
-XFYUN_WS_URL: str = os.environ.get("XFYUN_WS_URL", "wss://ise.api.xfyun.cn/v2/open-ise")
+XFYUN_WS_URL: str = os.environ.get("XFYUN_WS_URL", "wss://ise-api.xfyun.cn/v2/open-ise")
+XFYUN_CATEGORY: str = os.environ.get("XFYUN_CATEGORY", "read_syllable")   # 中文题型：read_syllable | read_word | read_sentence | read_chapter
+XFYUN_TIMEOUT_SEC: float = float(os.environ.get("XFYUN_TIMEOUT_SEC", "20"))   # 单次评测整体预算（管线硬截止 30s）
 
 # --- 限流（令牌桶：次数 / 窗口秒）---
 RATE_LIMITS: dict[str, tuple[int, int]] = {
@@ -98,7 +102,6 @@ RATE_LIMITS: dict[str, tuple[int, int]] = {
     "wish": (10, 600),
     "register": (5, 3600),
     "login": (10, 600),
-    "login_fail": (5, 600),
     "auth": (120, 300),
 }
 

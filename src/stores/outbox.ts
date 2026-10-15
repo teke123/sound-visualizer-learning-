@@ -74,7 +74,8 @@ export const useOutboxStore = defineStore('outbox', () => {
   }
 
   /**
-   * 批量上传：accepted / duplicates / rejected 均视为已处理并移除；
+   * 批量上传。响应 accepted / duplicates 为计数、rejected 携带 eventId：
+   * 200 即视为本批已处理——移除除 rejected 以外的全部事件；
    * 网络或服务失败时保留，等待下一次触发。
    */
   async function flush(): Promise<boolean> {
@@ -83,8 +84,8 @@ export const useOutboxStore = defineStore('outbox', () => {
     const batch = events.value.slice(0, BATCH_LIMIT)
     try {
       const res = await learningApi.postEvents(batch)
-      const handled = new Set<string>([...res.data.accepted, ...res.data.duplicates])
-      res.data.rejected.forEach((item) => handled.add(item.eventId))
+      const rejectedIds = new Set((res.data.rejected ?? []).map((item) => item.eventId))
+      const handled = new Set(batch.filter((event) => !rejectedIds.has(event.eventId)).map((event) => event.eventId))
       events.value = events.value.filter((event) => !handled.has(event.eventId))
       persist()
       lastError.value = null

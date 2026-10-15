@@ -305,4 +305,36 @@ def formant_stats_in_segments(formants: FormantResult, segments: list[list[float
     }
 
 
+# ---------------- 频谱图 ----------------
+
+# Praat 默认参数：Gaussian 窗 5ms / 2ms 帧移 / 20Hz 频率步长
+SPECTRO_WINDOW_SEC = 0.005
+SPECTRO_TIME_STEP_SEC = 0.002
+SPECTRO_FREQ_STEP_HZ = 20.0
+# Praat 绘图动态范围：从峰值向下 50 dB 之外不区分
+SPECTRO_DYNAMIC_RANGE_DB = 50.0
+
+
+@dataclass
+class SpectrogramResult:
+    values_db: np.ndarray    # dB 功率谱阵，形状 (频率格 × 时间格)
+    tmin: float
+    tmax: float
+    fmax: float
+
+
+def compute_spectrogram(wav_path: Path, *, max_freq: float = 8000.0) -> SpectrogramResult:
+    """Praat Spectrogram（parselmouth，Gaussian 窗）→ dB 阵列，供热力图渲染。"""
+    import parselmouth
+
+    snd = parselmouth.Sound(str(wav_path))
+    sg = snd.to_spectrogram(window_length=SPECTRO_WINDOW_SEC,
+                            maximum_frequency=max_freq,
+                            time_step=SPECTRO_TIME_STEP_SEC,
+                            frequency_step=SPECTRO_FREQ_STEP_HZ)
+    db = 10.0 * np.log10(np.maximum(sg.values, 1e-12))
+    return SpectrogramResult(values_db=db, tmin=float(sg.xmin),
+                             tmax=float(sg.xmax), fmax=max_freq)
+
+
 ALGORITHM_VERSION = config.ALGORITHM_VERSION

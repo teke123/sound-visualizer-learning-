@@ -10,6 +10,7 @@ import { errorCopy } from '@/copy/usePageCopy'
 import { useFeedback } from '@/features/feedback'
 
 type Mode = 'understanding' | 'correction' | 'rating'
+// 后端反馈类型：understanding→clarity，correction→content_error，rating→result_match（rating：符合=1 不符合=0）
 
 const props = withDefaults(
   defineProps<{
@@ -24,7 +25,7 @@ const props = withDefaults(
 
 const feedback = useFeedback()
 const detail = ref('')
-const subtype = ref<'text' | 'sound' | 'image' | 'subtitle'>('text')
+const subtype = ref<'text' | 'audio' | 'image' | 'subtitle'>('text')
 const rating = ref<'match' | 'mismatch' | null>(null)
 const expanded = ref(false)
 
@@ -36,7 +37,7 @@ const title = computed(() => {
 
 async function submitUnderstanding(ok: boolean) {
   if (ok) {
-    await feedback.submit({ sourcePage: props.sourcePage, type: 'understanding', content: '看懂了' })
+    await feedback.submit({ sourcePage: props.sourcePage, type: 'clarity', content: '看懂了' })
     expanded.value = false
   } else {
     expanded.value = true
@@ -48,15 +49,15 @@ async function submitDetail() {
   if (props.mode === 'rating') {
     await feedback.submit({
       sourcePage: props.sourcePage,
-      type: 'result_rating',
-      rating: rating.value ?? undefined,
-      content: detail.value.trim(),
+      type: 'result_match',
+      rating: rating.value === 'match' ? 1 : 0,
+      content: detail.value.trim() || undefined,
       recordingId: props.recordingId,
     })
   } else {
     await feedback.submit({
       sourcePage: props.sourcePage,
-      type: 'correction',
+      type: 'content_error',
       subtype: subtype.value,
       content: detail.value.trim(),
       articleSlug: props.articleSlug,
@@ -72,8 +73,8 @@ async function submitRating(value: 'match' | 'mismatch') {
   rating.value = value
   await feedback.submit({
     sourcePage: props.sourcePage,
-    type: 'result_rating',
-    rating: value,
+    type: 'result_match',
+    rating: value === 'match' ? 1 : 0,
     recordingId: props.recordingId,
   })
 }
@@ -109,7 +110,7 @@ async function submitRating(value: 'match' | 'mismatch') {
           <button
             v-for="option in [
               { key: 'text', label: '文字' },
-              { key: 'sound', label: '声音' },
+              { key: 'audio', label: '声音' },
               { key: 'image', label: '图片' },
               { key: 'subtitle', label: '字幕' },
             ]"

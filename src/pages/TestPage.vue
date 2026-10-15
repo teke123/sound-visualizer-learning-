@@ -71,7 +71,7 @@ watch(
 
 const summary = computed(() => (levelId.value ? levelsStore.byId.get(levelId.value) : undefined))
 const detectionOff = computed(
-  () => summary.value?.availability === 'temporarily_unavailable' || level.value?.detection.available === false,
+  () => summary.value?.availability === 'temporarily_unavailable' || level.value?.detection?.available === false,
 )
 </script>
 

@@ -18,8 +18,11 @@ export function usePractice(level: LevelDetail, options: { interactive?: boolean
     return new Set([...persisted, ...sessionDone.value])
   })
 
+  // 草稿预览等场景可能缺 practice，按空处理
+  const practiceSteps = level.practice ?? []
+
   const allDone = computed(
-    () => level.practice.length > 0 && level.practice.every((step) => doneIds.value.has(step.id)),
+    () => practiceSteps.length > 0 && practiceSteps.every((step) => doneIds.value.has(step.id)),
   )
 
   function markDone(step: PracticeStep) {
@@ -41,12 +44,12 @@ export function usePractice(level: LevelDetail, options: { interactive?: boolean
 
   /** 供 LevelView 事件转发使用 */
   function markDoneById(payload: { stepId: string }): void {
-    const step = level.practice.find((item) => item.id === payload.stepId)
+    const step = practiceSteps.find((item) => item.id === payload.stepId)
     if (step) markDone(step)
   }
 
   function redoById(payload: { stepId: string }): void {
-    const step = level.practice.find((item) => item.id === payload.stepId)
+    const step = practiceSteps.find((item) => item.id === payload.stepId)
     if (step) redo(step)
   }
 

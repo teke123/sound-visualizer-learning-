@@ -15,7 +15,7 @@ export function useSessionRecords() {
     error.value = null
     try {
       const res = await sessionApi.recordings()
-      items.value = res.data.items
+      items.value = res.data.recordings
       transferableCount.value = res.data.transferableCount
     } catch (err) {
       error.value = err

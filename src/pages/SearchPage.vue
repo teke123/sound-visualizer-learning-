@@ -17,7 +17,7 @@ const router = useRouter()
 const q = computed(() => (typeof route.query.q === 'string' ? route.query.q : ''))
 const queryInput = ref(q.value)
 const results = ref<LevelSummary[]>([])
-const suggestions = ref<LevelSummary[]>([])
+const nearLevels = ref<LevelSummary[]>([])
 const loading = ref(false)
 const error = ref<unknown>(null)
 const wishOpen = ref(false)
@@ -33,11 +33,11 @@ async function runSearch(term: string) {
   try {
     const res = await contentApi.search(term)
     results.value = res.data.results
-    suggestions.value = res.data.suggestions
+    nearLevels.value = res.data.near ?? []
   } catch (err) {
     error.value = err
     results.value = []
-    suggestions.value = []
+    nearLevels.value = []
   } finally {
     loading.value = false
   }
@@ -79,8 +79,8 @@ function onSearch(term: string) {
       <section v-else class="result-section" aria-label="无结果">
         <h2>没有找到「{{ q }}」</h2>
         <p class="no-hit-hint">可能是这个音还没有发布，或者名字不太一样。可以试试相近的关卡：</p>
-        <div v-if="suggestions.length > 0" class="result-grid">
-          <LevelCard v-for="level in suggestions" :key="level.id" :level="level" />
+        <div v-if="nearLevels.length > 0" class="result-grid">
+          <LevelCard v-for="level in nearLevels" :key="level.id" :level="level" />
         </div>
         <p v-else class="no-suggestion">暂时没有相近的已发布关卡。</p>
         <button type="button" class="wish-open" @click="wishOpen = true">

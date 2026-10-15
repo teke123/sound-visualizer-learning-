@@ -20,6 +20,8 @@ from app.platform.security import (
     issue_preview_token, require_admin, verify_preview_token,
 )
 
+from app.api.schemas import ArticleDetail, Envelope, LevelDetail, PreviewTokenResponse
+
 router = APIRouter(prefix="/api/preview", tags=["preview"])
 
 
@@ -28,7 +30,7 @@ class TokenBody(BaseModel):
     id: str
 
 
-@router.post("/tokens")
+@router.post("/tokens", response_model=Envelope[PreviewTokenResponse])
 async def create_token(request: Request, body: TokenBody,
                        db: Session = Depends(db_session)):
     admin_sid = require_admin(db, admin_session_cookie(request))
@@ -53,7 +55,7 @@ async def create_token(request: Request, body: TokenBody,
         admin_session_id=admin_sid))
 
 
-@router.get("/levels/{level_id}")
+@router.get("/levels/{level_id}", response_model=Envelope[LevelDetail])
 async def preview_level(request: Request, level_id: str, token: str = "",
                         db: Session = Depends(db_session)):
     verify_preview_token(db, token=token, kind="level", object_id=level_id,
@@ -68,41 +70,19 @@ async def preview_level(request: Request, level_id: str, token: str = "",
 
 def _draft_level_detail(db: Session, draft: LevelDraftRow, level_id: str) -> dict:
     from app.content.models import LevelRow
+    from app.content.usecases import LAYER_LABEL, _nav, level_sections
 
     level = db.get(LevelRow, level_id)
     content = JSONText.load(draft.content, {})
-    from app.content.usecases import LAYER_LABEL, _nav
-
-    demos = [
-        {"mediaId": d["mediaId"], "speed": d.get("speed", "normal"),
-         "voice": d.get("voice"), "text": d.get("text", "")}
-        for d in (content.get("demos") or []) if d.get("mediaId")
-    ]
-    quizzes = [
-        {"id": q["id"], "stimulusMediaId": q.get("stimulusMediaId"),
-         "prompt": q.get("prompt", "听一听，这是哪个音？"),
-         "options": [{"text": o.get("text", ""), "mediaId": o.get("mediaId")}
-                     for o in (q.get("options") or [])],
-         "answerIndex": q.get("answerIndex", 0), "explanation": q.get("explanation")}
-        for q in (content.get("quizzes") or [])
-    ]
-    practice = [
-        {"id": p["id"], "title": p.get("title", ""), "instruction": p.get("instruction", ""),
-         "repeat": p.get("repeat"), "durationSec": p.get("durationSec"),
-         "bodyCue": p.get("bodyCue", ""), "mediaId": p.get("mediaId"),
-         "stopNote": p.get("stopNote", "不舒服就停止")}
-        for p in (content.get("practice") or [])
-    ]
-    articulation_raw = content.get("articulation") or {}
-    detection_raw = content.get("detection") or {}
+    layer = level.layer if level else None
     return {
         "id": level_id,
         "contentVersion": None,   # 草稿无公开版本号
         "ruleVersion": None,
         "draftRevision": draft.revision,
         "order": level.order if level else None,
-        "layer": level.layer if level else None,
-        "type": content.get("type") or LAYER_LABEL.get(level.layer if level else "", ""),
+        "layer": layer,
+        "type": content.get("type") or LAYER_LABEL.get(layer or "", ""),
         "targetSound": content.get("targetSound"),
         "pinyin": content.get("pinyin"),
         "representativeChar": content.get("representativeChar"),
@@ -112,30 +92,14 @@ def _draft_level_detail(db: Session, draft: LevelDraftRow, level_id: str) -> dic
         "applicableIssues": content.get("applicableIssues"),
         "tags": content.get("tags") or [],
         "nav": _nav(db, level, content) if level else {"prev": None, "next": None, "confusables": []},
-        "articulation": {
-            "media": [{"mediaId": m.get("mediaId"), "kind": m.get("kind", "image"),
-                       "altText": m.get("altText", "")}
-                      for m in (articulation_raw.get("media") or []) if m.get("mediaId")],
-            "description": articulation_raw.get("description", ""),
-            "sagittal": articulation_raw.get("sagittal") or {"keyframes": []},
-            "model3dMediaId": articulation_raw.get("model3dMediaId"),
-        },
-        "demos": demos,
-        "quizzes": quizzes,
-        "practice": practice,
         "misconceptions": content.get("misconceptions") or [],
         "professional": content.get("professional") or {},
-        "detection": {
-            "promptText": detection_raw.get("promptText", ""),
-            "sampleMediaId": detection_raw.get("sampleMediaId"),
-            "allowedMetrics": detection_raw.get("allowedMetrics", []),
-            "reliabilityNote": detection_raw.get("reliabilityNote", ""),
-            "available": False,   # 草稿预览关闭录音、听辨提交与学习事件
-        },
+        # 草稿预览关闭录音、听辨提交与学习事件
+        **level_sections(content, detection_available=False),
     }
 
 
-@router.get("/articles/{slug}")
+@router.get("/articles/{slug}", response_model=Envelope[ArticleDetail])
 async def preview_article(request: Request, slug: str, token: str = "",
                           db: Session = Depends(db_session)):
     verify_preview_token(db, token=token, kind="article", object_id=slug,

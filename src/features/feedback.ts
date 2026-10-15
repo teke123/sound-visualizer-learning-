@@ -1,8 +1,6 @@
 /** 反馈与希望增加（FR-1501–1504）：429 时显示等待时间 */
 import { ref } from 'vue'
-import { ApiError, feedbackApi } from '@/api'
-
-export type FeedbackKind = 'understanding' | 'correction' | 'result_rating'
+import { ApiError, feedbackApi, type FeedbackPayload } from '@/api'
 
 export function useFeedback() {
   const submitting = ref(false)
@@ -10,7 +8,7 @@ export function useFeedback() {
   const error = ref<unknown>(null)
   const waitSeconds = ref<number | null>(null)
 
-  async function submit(payload: Parameters<typeof feedbackApi.submit>[0]): Promise<boolean> {
+  async function submit(payload: FeedbackPayload): Promise<boolean> {
     submitting.value = true
     submitted.value = false
     error.value = null

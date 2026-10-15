@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import hashlib
 import subprocess
-import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -93,22 +92,3 @@ def read_pcm_samples(wav_path: Path):
         raw = w.readframes(n)
     samples = np.frombuffer(raw, dtype="<i2").astype(np.float32) / 32768.0
     return samples
-
-
-def with_tempfile(suffix: str):
-    """临时文件上下文（Windows 下改名前须关闭句柄）。"""
-    import contextlib
-
-    @contextlib.contextmanager
-    def _tmp():
-        fd, name = tempfile.mkstemp(suffix=suffix)
-        import os
-
-        os.close(fd)
-        try:
-            yield Path(name)
-        finally:
-            with contextlib.suppress(OSError):
-                os.unlink(name)
-
-    return _tmp()

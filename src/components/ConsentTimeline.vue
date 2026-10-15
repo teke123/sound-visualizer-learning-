@@ -20,7 +20,7 @@ defineProps<{ decisions: ConsentDecision[] }>()
       <li v-for="(decision, index) in decisions" :key="index" :class="`tl-item ${decision.decision}`">
         <span class="tl-dot" aria-hidden="true"></span>
         <span class="tl-label">{{ DECISION_LABELS[decision.decision] }}</span>
-        <span class="tl-time">{{ formatDateTime(decision.decidedAt) }}</span>
+        <span class="tl-time">{{ formatDateTime(decision.createdAt) }}</span>
         <span class="tl-version">文案版本 {{ decision.consentTextVersion }}</span>
       </li>
     </ol>

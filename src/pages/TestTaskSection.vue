@@ -18,10 +18,10 @@ const levelRef = toRef(props, 'level')
 const flow = useAssessmentFlow({ level: levelRef, reloadLevel: async () => undefined })
 const calibrating = computed(() => flow.state.value === 'calibrating')
 
-const sampleKey = computed(() => `demo:${props.level.detection.sampleMediaId ?? ''}`)
+const sampleKey = computed(() => `demo:${props.level.detection?.sampleMediaId ?? ''}`)
 
 function playSample() {
-  const mediaId = props.level.detection.sampleMediaId
+  const mediaId = props.level.detection?.sampleMediaId
   if (!mediaId) return
   void player.play({ key: sampleKey.value, url: mediaUrl(mediaId), label: '参考示范' })
 }
@@ -34,11 +34,11 @@ onBeforeUnmount(() => recorder.release())
     <!-- 进入前可听示范并看到朗读内容（FR-902） -->
     <section class="task-brief" aria-label="任务说明">
       <h2>要朗读的内容</h2>
-      <p class="prompt-text">{{ level.detection.promptText }}</p>
-      <button v-if="level.detection.sampleMediaId" type="button" class="sample-btn" @click="playSample">
+      <p class="prompt-text">{{ level.detection?.promptText }}</p>
+      <button v-if="level.detection?.sampleMediaId" type="button" class="sample-btn" @click="playSample">
         {{ player.isCurrent(sampleKey) ? '⏸ 暂停参考示范' : '▶ 听参考示范' }}
       </button>
-      <p v-if="level.detection.reliabilityNote" class="task-note">{{ level.detection.reliabilityNote }}</p>
+      <p v-if="level.detection?.reliabilityNote" class="task-note">{{ level.detection?.reliabilityNote }}</p>
     </section>
 
     <RecordingTips />

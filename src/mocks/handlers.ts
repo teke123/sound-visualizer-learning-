@@ -82,7 +82,7 @@ function sessionRecordingList() {
       audioId: item.recording.audioId,
       levelId: item.recording.levelId,
       createdAt: item.recording.createdAt,
-      expiresAt: item.recording.expiresAt ?? '',
+      expiresAt: item.recording.expiresAt ?? null,
       verdict: item.result?.quality.verdict ?? 'pass',
       score: item.result?.score,
     }))
@@ -117,7 +117,7 @@ export const handlers = [
   http.get('/api/levels', () => {
     const data: LevelsResponse = {
       levels: LEVEL_SUMMARIES,
-      skeletons: SKELETONS,
+      skeleton: SKELETONS,
       confusablePairs: CONFUSABLE_PAIRS,
     }
     return envelope(data)
@@ -140,8 +140,8 @@ export const handlers = [
         .toLowerCase()
         .includes(q)
     const results = LEVEL_SUMMARIES.filter(match)
-    const suggestions = results.length === 0 ? LEVEL_SUMMARIES.slice(0, 3) : []
-    const data: SearchResponse = { results, suggestions }
+    const near = results.length === 0 ? LEVEL_SUMMARIES.slice(0, 3) : []
+    const data: SearchResponse = { results, near, query: q }
     return envelope(data)
   }),
 
@@ -222,7 +222,7 @@ export const handlers = [
       t: Number((i * 0.03).toFixed(3)),
       hz: 150 + 60 * Math.sin(i * 0.25) + (freqForMediaId(id) % 30),
     }))
-    return envelope({ algorithmVersion: 'algo-mock-1', hopMs: 30, frames, voicedRanges: [[0, 1.2]] })
+    return envelope({ algorithmVersion: 'algo-mock-1', hopMs: 30, frames, voicedRanges: [[0, 1.2]], voicedRatio: 0.62 })
   }),
 
   http.get('/api/audio/:id/formants', () =>
@@ -246,7 +246,7 @@ export const handlers = [
       text: CALIBRATION_TEXT.text,
       textVersion: CALIBRATION_TEXT.textVersion,
       status: state.session.calibration.status,
-      pitchRange: state.session.calibration.status === 'none' ? undefined : { floorHz: 120, ceilHz: 260 },
+      pitchRange: state.session.calibration.status === 'none' ? undefined : { fLo: 120, fHi: 260 },
       vowelSpaceReady: state.session.calibration.status !== 'none',
       expiresAt: state.session.calibration.expiresAt,
     }),
@@ -263,7 +263,14 @@ export const handlers = [
     const failThis = state.submissionCounter % 5 === 0
     if (failThis) {
       return envelope(
-        { reason: '未检出足够的有声段', advice: '请用平常说话的音量完整朗读整段文本，不要忽快忽慢。' },
+        {
+          reason: '未检出足够的有声段',
+          signal: {
+            verdict: 'fail',
+            volume: { dbfs: -30.1, pass: false, advice: '请用平常说话的音量完整朗读整段文本' },
+            noise: { snrDb: 6.2, pass: false, advice: '环境噪声较大，请找安静的地方重录' },
+          },
+        },
         { code: 'CALIBRATION_FAIL', message: '标定未得出有效音域' },
       )
     }
@@ -273,9 +280,12 @@ export const handlers = [
       : { status: 'session', expiresAt: new Date(Date.now() + 72 * 3_600_000).toISOString() }
     state.uploads.delete(body.audioId) // 标定音频用后即删
     return envelope({
-      floorHz: 110 + Math.round(Math.random() * 30),
-      ceilHz: 240 + Math.round(Math.random() * 40),
+      ok: true,
+      status: state.session.calibration.status,
+      pitchRange: { fLo: 110 + Math.round(Math.random() * 30), fHi: 240 + Math.round(Math.random() * 40) },
       vowelSpaceReady: true,
+      rangeSnapshotId: `prs-mock-${Math.random().toString(36).slice(2, 8)}`,
+      expiresAt: state.session.calibration.expiresAt ?? null,
       updatedAt: new Date().toISOString(),
     })
   }),
@@ -362,8 +372,8 @@ export const handlers = [
   /* ------------------------------ 当前会话 ------------------------------ */
 
   http.get('/api/session/recordings', () => {
-    const items = sessionRecordingList()
-    return envelope({ items, transferableCount: items.length })
+    const recordings = sessionRecordingList()
+    return envelope({ recordings, transferableCount: recordings.length })
   }),
 
   http.post('/api/session/reset', () => {
@@ -372,7 +382,7 @@ export const handlers = [
     }
     state.session.calibration = { status: 'none' }
     resetSession()
-    return envelope({ reset: true })
+    return envelope({ reset: true, newSidIssued: !currentUser() })
   }),
 
   /* --------------------------- 档案、学习与进度 --------------------------- */
@@ -381,7 +391,7 @@ export const handlers = [
     if (!currentUser()) return fail(401, 'AUTH_REQUIRED', '需要登录')
     if (!consentGranted()) return fail(403, 'CONSENT_REQUIRED', '需要先同意保存')
     void request
-    const items = [...state.recordings.values()]
+    const recordings = [...state.recordings.values()]
       .filter((item) => item.recording.storage === 'archived')
       .map((item) => ({
         recordingId: item.recording.recordingId,
@@ -393,15 +403,19 @@ export const handlers = [
         verdict: item.result?.quality.verdict ?? 'pass',
         score: item.result?.score,
       }))
-    return envelope({ items, nextCursor: undefined })
+    return envelope({ recordings, nextCursor: null })
   }),
 
   http.delete('/api/me/recordings', () => {
     if (!currentUser()) return fail(401, 'AUTH_REQUIRED', '需要登录')
+    let deleted = 0
     for (const [id, item] of state.recordings) {
-      if (item.recording.storage === 'archived') state.recordings.delete(id)
+      if (item.recording.storage === 'archived') {
+        state.recordings.delete(id)
+        deleted += 1
+      }
     }
-    return envelope({ cleared: true })
+    return envelope({ deleted })
   }),
 
   http.get('/api/me/recordings/compare', ({ request }) => {
@@ -415,23 +429,25 @@ export const handlers = [
       return fail(422, 'VALIDATION_ERROR', '只能比较同一关的两条记录')
     }
     const toSide = (item: typeof sideA) => ({
-      recordingId: item.recording.recordingId,
-      audioId: item.recording.audioId,
-      levelId: item.recording.levelId,
-      contentVersion: item.recording.contentVersion,
-      ruleVersion: 'rule-v1',
-      createdAt: item.recording.createdAt,
-      verdict: item.result?.quality.verdict ?? 'pass',
-      score: item.result?.score,
-      curve: item.result?.curve,
-      rangeSnapshotId: item.result?.curve?.rangeSnapshotId,
+      recording: {
+        recordingId: item.recording.recordingId,
+        audioId: item.recording.audioId,
+        levelId: item.recording.levelId,
+        contentVersion: item.recording.contentVersion,
+        ruleVersion: 'rule-v1',
+        createdAt: item.recording.createdAt,
+        verdict: item.result?.quality.verdict ?? 'pass',
+        score: item.result?.score,
+      },
+      result: item.result,
+      rangeSnapshot: null,
     })
     const sameVersion = sideA.recording.contentVersion === sideB.recording.contentVersion
     const scoreA = sideA.result?.score
     const scoreB = sideB.result?.score
     const differences: Array<{ dimension: string; description: string }> = []
     if (typeof scoreA === 'number' && typeof scoreB === 'number' && scoreA !== scoreB) {
-      const later = new Date(sideB.recording.createdAt) > new Date(sideA.recording.createdAt) ? '后一条' : '前一条'
+      const later = new Date(sideB.recording.createdAt ?? 0) > new Date(sideA.recording.createdAt ?? 0) ? '后一条' : '前一条'
       differences.push({
         dimension: '分数',
         description: `两次相差 ${Math.abs(Math.round(scoreA - scoreB))} 分（${later}更高一些）`,
@@ -441,7 +457,8 @@ export const handlers = [
     const data: ArchiveCompareResponse = {
       a: toSide(sideA),
       b: toSide(sideB),
-      comparable: { score: sameVersion, curve: true, reasons: sameVersion ? [] : ['两条记录的内容版本不同，分数不能直接比较'] },
+      comparable: { score: sameVersion, curve: true },
+      reasons: sameVersion ? [] : ['两条记录的内容版本不同，分数不能直接比较'],
       differences: sameVersion ? differences : differences.filter((d) => d.dimension !== '分数'),
     }
     return envelope(data)
@@ -451,13 +468,13 @@ export const handlers = [
     if (!currentUser()) return fail(401, 'AUTH_REQUIRED', '需要登录')
     if (!consentGranted()) return fail(403, 'CONSENT_REQUIRED', '需要先同意保存')
     const body = (await request.json()) as { events: Array<{ eventId: string; levelId: string; kind: string; detail: Record<string, unknown> }> }
-    const accepted: string[] = []
-    const duplicates: string[] = []
+    let accepted = 0
+    let duplicates = 0
     const rejected: Array<{ eventId: string; code: string }> = []
     for (const event of body.events.slice(0, 50)) {
       const exists = state.learningEvents.some((e) => e.eventId === event.eventId)
       if (exists) {
-        duplicates.push(event.eventId)
+        duplicates += 1
         continue
       }
       const summary = LEVEL_SUMMARIES.find((item) => item.id === event.levelId)
@@ -482,7 +499,7 @@ export const handlers = [
           detail: { stepId: String(event.detail.stepId) },
         })
       }
-      accepted.push(event.eventId)
+      accepted += 1
     }
     return envelope({ accepted, duplicates, rejected })
   }),
@@ -503,7 +520,7 @@ export const handlers = [
     if (body.password.length < 8) return fail(422, 'VALIDATION_ERROR', '密码至少 8 位')
     if (state.users.has(body.username)) return fail(409, 'USERNAME_TAKEN', '用户名已被使用')
     state.users.set(body.username, { username: body.username, password: body.password })
-    return envelope({ created: true })
+    return envelope({ accountId: `acct-${body.username}`, username: body.username })
   }),
 
   http.post('/api/auth/login', async ({ request }) => {
@@ -531,7 +548,10 @@ export const handlers = [
     return envelope({
       status: state.session.consentStatus,
       consentTextVersion: CONSENT_TEXT_VERSION,
-      decisions: state.session.decisions,
+      currentConsentTextVersion: CONSENT_TEXT_VERSION,
+      consentText:
+        '同意保存后，将保存你的学习进度、录音与检测结果；当前会话未过期的临时录音与音域标定会一并转存。临时录音最长保留 72 小时；你可随时删除或撤回同意（撤回将删除全部录音、进度与音域）。',
+      timeline: state.session.decisions,
     })
   }),
 
@@ -545,13 +565,13 @@ export const handlers = [
     if (body.decision === 'granted') {
       const already = state.session.consentStatus === 'granted'
       if (!already) {
-        state.session.decisions.push({ decision: 'granted', consentTextVersion: CONSENT_TEXT_VERSION, decidedAt: new Date().toISOString() })
+        state.session.decisions.push({ decision: 'granted', consentTextVersion: CONSENT_TEXT_VERSION, createdAt: new Date().toISOString() })
         state.session.consentStatus = 'granted'
       }
       const result = transferSession()
       transfer = { status: 'completed', ...result }
     } else {
-      state.session.decisions.push({ decision: 'rejected', consentTextVersion: CONSENT_TEXT_VERSION, decidedAt: new Date().toISOString() })
+      state.session.decisions.push({ decision: 'rejected', consentTextVersion: CONSENT_TEXT_VERSION, createdAt: new Date().toISOString() })
       state.session.consentStatus = 'rejected'
     }
     return envelope({
@@ -566,9 +586,9 @@ export const handlers = [
     state.learningEvents = []
     state.session.calibration = { status: 'none' }
     state.session.dataEpoch += 1
-    state.session.decisions.push({ decision: 'revoked', consentTextVersion: CONSENT_TEXT_VERSION, decidedAt: new Date().toISOString() })
+    state.session.decisions.push({ decision: 'revoked', consentTextVersion: CONSENT_TEXT_VERSION, createdAt: new Date().toISOString() })
     state.session.consentStatus = 'revoked'
-    return envelope({ consent: { status: 'revoked' as const } })
+    return envelope({ consent: { status: 'revoked' as const }, dataEpoch: state.session.dataEpoch })
   }),
 
   http.delete('/api/me/account', async ({ request }) => {
@@ -585,9 +605,9 @@ export const handlers = [
 
   /* ------------------------------ 反馈与预览 ------------------------------ */
 
-  http.post('/api/feedback', () => envelope({ accepted: true })),
+  http.post('/api/feedback', () => envelope({ feedbackId: `fb-${Math.random().toString(36).slice(2, 10)}` })),
 
-  http.post('/api/wishes', () => envelope({ accepted: true })),
+  http.post('/api/wishes', () => envelope({ wishId: `wish-${Math.random().toString(36).slice(2, 10)}` })),
 
   http.get('/api/preview/levels/:id', ({ request }) => {
     const token = new URL(request.url).searchParams.get('token')

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import secrets
-import time
 import uuid
 
 
@@ -14,7 +13,3 @@ def new_id(prefix: str = "") -> str:
 
 def new_token(nbytes: int = 24) -> str:
     return secrets.token_urlsafe(nbytes)
-
-
-def epoch_ms() -> int:
-    return int(time.time() * 1000)

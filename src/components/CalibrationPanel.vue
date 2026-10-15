@@ -116,7 +116,9 @@ async function submit() {
 
       <!-- 成功 -->
       <div v-if="calibration.phase.value === 'success'" class="cal-success">
-        <p>✅ 标定完成{{ calibration.info.value?.pitchRange ? `，你的音域约 ${Math.round(calibration.info.value.pitchRange.floorHz)}–${Math.round(calibration.info.value.pitchRange.ceilHz)} Hz` : '' }}。</p>
+        <p>
+          ✅ 标定完成{{ calibration.result.value ? `，你的音域约 ${Math.round(calibration.result.value.pitchRange.fLo)}–${Math.round(calibration.result.value.pitchRange.fHi)} Hz` : '' }}。
+        </p>
         <button type="button" class="cal-btn primary" @click="emit('done')">继续</button>
       </div>
 

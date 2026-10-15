@@ -17,26 +17,8 @@ from pathlib import Path
 import numpy as np
 
 from app.acoustics import analysis
+from app.pinyin_utils import expected_syllables
 from app.scoring.provider import ProviderError, ProviderResult, ScoringProvider, SyllableEval
-
-
-def _expected_syllables(text: str) -> list[dict]:
-    """评测文本 → 音节序列（文本/带调拼音/声调）。用 pypinyin。"""
-    from pypinyin import Style, pinyin
-
-    out = []
-    for ch in text:
-        if not ("\u4e00" <= ch <= "\u9fff"):
-            continue
-        py = pinyin(ch, style=Style.TONE3, heteronym=False)[0][0]
-        tone = None
-        for c in py:
-            if c.isdigit():
-                tone = int(c)
-                break
-        plain = "".join(c for c in py if not c.isdigit())
-        out.append({"text": ch, "pinyin": py, "plain": plain, "tone": tone})
-    return out
 
 
 def _syllable_direction_ok(f0: np.ndarray, t: np.ndarray, seg: tuple[float, float],
@@ -78,7 +60,7 @@ class MockProvider(ScoringProvider):
         pcm_hash = hashlib.sha256(path.read_bytes()).hexdigest()
         seed = int(pcm_hash[:12], 16)
 
-        expected = _expected_syllables(evaluation_text)
+        expected = expected_syllables(evaluation_text)
         result = ProviderResult(provider_version=self.version)
 
         f0res = analysis.extract_f0(path)

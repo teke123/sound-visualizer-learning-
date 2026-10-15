@@ -29,7 +29,7 @@ const rendering = ref(false)
 async function render() {
   rendering.value = true
   try {
-    html.value = await renderArticleMarkdown(props.article.content, {
+    html.value = await renderArticleMarkdown(props.article.markdown, {
       mediaResolver: props.mediaResolver,
     })
   } finally {
@@ -76,44 +76,50 @@ function onKeydown(event: KeyboardEvent) {
 
 const references = computed(() => props.article.references ?? [])
 const practiceItems = computed(() => props.article.practice ?? [])
-const relatedLevels = computed(() => props.article.levelIds ?? [])
+const relatedLevels = computed(() => props.article.relatedLevels ?? [])
+const demoMediaIds = computed(() => (props.article.demo?.mediaId ? [props.article.demo.mediaId] : []))
 </script>
 
 <template>
   <article class="article-view">
     <header class="article-header">
       <h1>{{ article.title }}</h1>
-      <p v-if="article.excerpt" class="article-excerpt">{{ article.excerpt }}</p>
+      <p v-if="article.summary" class="article-excerpt">{{ article.summary }}</p>
     </header>
 
-    <div
-      class="article-body"
-      v-html="html"
-      @click="onContentClick"
-      @keydown="onKeydown"
-    ></div>
+    <!-- 文章示范（FR-505：每篇至少一个可播放示范） -->
+    <div v-if="demoMediaIds.length > 0" class="article-demo">
+      <button type="button" class="article-demo-btn" @click="emit('play-media', demoMediaIds[0]!)">
+        ▶ 播放示范
+      </button>
+      <span v-if="article.demo?.text" class="article-demo-text">{{ article.demo.text }}</span>
+    </div>
+
+    <div class="article-body" v-html="html" @click="onContentClick" @keydown="onKeydown"></div>
     <p v-if="rendering" class="article-rendering">正文加载中…</p>
 
     <section v-if="practiceItems.length > 0" class="article-section">
       <h2>短练习</h2>
-      <ol class="article-practice">
-        <li v-for="(item, index) in practiceItems" :key="index">{{ item }}</li>
-      </ol>
+      <ul class="article-practice">
+        <li v-for="item in practiceItems" :key="item.title">
+          <strong>{{ item.title }}</strong>：{{ item.instruction }}
+        </li>
+      </ul>
     </section>
 
     <section v-if="relatedLevels.length > 0" class="article-section">
       <h2>相关关卡</h2>
       <div class="article-levels">
-        <template v-for="levelId in relatedLevels" :key="levelId">
+        <template v-for="related in relatedLevels" :key="related.levelId">
           <button
-            v-if="publishedLevelIds.has(levelId) && interactive !== false"
+            v-if="related.available && interactive !== false"
             type="button"
             class="level-chip"
-            @click="emit('open-level', levelId)"
+            @click="emit('open-level', related.levelId)"
           >
-            {{ levelId }}
+            {{ related.levelId }}
           </button>
-          <span v-else class="level-chip unavailable">{{ levelId }}（暂不可进入）</span>
+          <span v-else class="level-chip unavailable">{{ related.levelId }}（暂不可进入）</span>
         </template>
       </div>
     </section>
@@ -124,7 +130,7 @@ const relatedLevels = computed(() => props.article.levelIds ?? [])
         <li v-for="reference in references" :key="reference.title">
           <strong>{{ reference.title }}</strong>
           <span class="reference-meta">来源：{{ reference.source }} · 许可：{{ reference.license }}</span>
-          <span class="reference-scope">适用边界：{{ reference.scope }}</span>
+          <span v-if="reference.boundary" class="reference-scope">适用边界：{{ reference.boundary }}</span>
         </li>
       </ul>
     </section>
@@ -143,6 +149,29 @@ const relatedLevels = computed(() => props.article.levelIds ?? [])
 .article-excerpt
   color: #607d8b
   margin: 0 0 16px
+
+.article-demo
+  display: flex
+  align-items: center
+  gap: 10px
+  padding: 10px 12px
+  background: #e0f7fa
+  border-radius: 8px
+  margin-bottom: 14px
+
+.article-demo-btn
+  min-height: 40px
+  padding: 4px 16px
+  border: 1px solid #00acc1
+  border-radius: 999px
+  background: #fff
+  color: #00838f
+  cursor: pointer
+  font-size: 14px
+
+.article-demo-text
+  color: #00695f
+  font-size: 14px
 
 .article-body
   font-size: 16px
@@ -229,6 +258,8 @@ const relatedLevels = computed(() => props.article.levelIds ?? [])
 .article-practice
   padding-left: 20px
   line-height: 1.9
+  li
+    margin-bottom: 6px
 
 .article-levels
   display: flex

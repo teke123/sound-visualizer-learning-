@@ -18,11 +18,13 @@ export function useQuiz(level: LevelDetail, options: { interactive?: boolean } =
 
   /** questionId → 最近一次作答 */
   const answers = reactive(new Map<string, QuizAnswerRecord>())
+  // 草稿预览等场景可能缺 quizzes，按空处理
+  const quizzes = level.quizzes ?? []
 
-  const total = computed(() => level.quiz.length)
+  const total = computed(() => quizzes.length)
   const passedIds = computed(() => {
     const passed = new Set<string>()
-    for (const question of level.quiz) {
+    for (const question of quizzes) {
       const record = answers.get(question.id)
       if (record?.correct) passed.add(question.id)
     }
@@ -47,7 +49,7 @@ export function useQuiz(level: LevelDetail, options: { interactive?: boolean } =
 
   /** 供 LevelView 事件转发使用：按 questionId 定位题目后作答 */
   function answerById(payload: { questionId: string; choiceIndex: number; correct?: boolean }): void {
-    const question = level.quiz.find((item) => item.id === payload.questionId)
+    const question = quizzes.find((item) => item.id === payload.questionId)
     if (question) answer(question, payload.choiceIndex)
   }
 

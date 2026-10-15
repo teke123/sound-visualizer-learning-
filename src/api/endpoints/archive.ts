@@ -3,9 +3,14 @@ import { apiRequest } from '../client'
 import type {
   ArchiveCompareResponse,
   ArchiveListResponse,
+  ClearArchiveResponse,
+  FeedbackPayload,
+  FeedbackResponse,
   LearningEvent,
   LearningEventsResponse,
   SessionRecordingsResponse,
+  SessionResetResponse,
+  WishResponse,
 } from '../generated/types'
 
 export const archiveApi = {
@@ -17,7 +22,7 @@ export const archiveApi = {
     return apiRequest<ArchiveListResponse>(`/me/recordings${query}`)
   },
   clearMine() {
-    return apiRequest<{ cleared: boolean }>('/me/recordings', { method: 'DELETE' })
+    return apiRequest<ClearArchiveResponse>('/me/recordings', { method: 'DELETE' })
   },
   /** 本人同关 archived 两条比较 */
   compare(a: string, b: string) {
@@ -42,7 +47,7 @@ export const sessionApi = {
   },
   /** 清空当前会话临时数据；访客同时轮换 sid */
   reset() {
-    return apiRequest<{ reset: boolean }>('/session/reset', { method: 'POST' })
+    return apiRequest<SessionResetResponse>('/session/reset', { method: 'POST' })
   },
 }
 
@@ -52,19 +57,14 @@ export interface WishPayload {
 }
 
 export const feedbackApi = {
-  submit(payload: {
-    sourcePage: string
-    type: 'understanding' | 'correction' | 'result_rating'
-    content?: string
-    articleSlug?: string
-    levelId?: string
-    recordingId?: string
-    subtype?: 'text' | 'sound' | 'image' | 'subtitle'
-    rating?: 'match' | 'mismatch'
-  }) {
-    return apiRequest<{ accepted: boolean }>('/feedback', { method: 'POST', body: payload })
+  /** type ∈ clarity / result_match / content_error / wish_more；rating：符合=1，不符合=0 */
+  submit(payload: FeedbackPayload) {
+    return apiRequest<FeedbackResponse>('/feedback', {
+      method: 'POST',
+      body: payload,
+    })
   },
   submitWish(payload: WishPayload) {
-    return apiRequest<{ accepted: boolean }>('/wishes', { method: 'POST', body: payload })
+    return apiRequest<WishResponse>('/wishes', { method: 'POST', body: payload })
   },
 }

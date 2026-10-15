@@ -45,12 +45,12 @@ function levelTitle(levelId: string): string {
           <RouterLink :to="`/result/${item.recordingId}`" class="sr-level">
             {{ levelTitle(item.levelId) }}
           </RouterLink>
-          <span class="sr-time">{{ formatDateTime(item.createdAt) }}</span>
+          <span class="sr-time">{{ formatDateTime(item.createdAt ?? undefined) }}</span>
         </div>
         <div class="sr-meta">
           <span :class="['sr-verdict', item.verdict]">{{ item.verdict === 'pass' ? '可评' : '本次不能评' }}</span>
           <span v-if="typeof item.score === 'number'" class="sr-score">{{ Math.round(item.score) }} 分</span>
-          <span class="sr-expire">{{ formatRemaining(item.expiresAt) }}</span>
+          <span class="sr-expire">{{ formatRemaining(item.expiresAt ?? undefined) }}</span>
         </div>
         <button type="button" class="sr-delete" @click="session.removeOne(item.recordingId)">删除</button>
       </li>

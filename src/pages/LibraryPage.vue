@@ -23,7 +23,7 @@ onMounted(() => {
 const LAYERS = [
   { key: 'vowel', name: '单韵母' },
   { key: 'initial', name: '声母' },
-  { key: 'fusion', name: '拼读' },
+  { key: 'syllable', name: '拼读' },
 ] as const
 
 const byLayer = computed(() =>
@@ -81,13 +81,13 @@ function comparePair(aId: string, bId: string) {
       <div class="quick-row">
         <button
           v-for="pair in levelsStore.confusablePairs"
-          :key="`${pair.aId}-${pair.bId}`"
+          :key="`${pair.a}-${pair.b}`"
           type="button"
           class="quick-btn"
-          @click="comparePair(pair.aId, pair.bId)"
+          @click="comparePair(pair.a, pair.b)"
         >
-          {{ levelsStore.byId.get(pair.aId)?.targetSound ?? pair.aId }} vs
-          {{ levelsStore.byId.get(pair.bId)?.targetSound ?? pair.bId }}
+          {{ levelsStore.byId.get(pair.a)?.targetSound ?? pair.a }} vs
+          {{ levelsStore.byId.get(pair.b)?.targetSound ?? pair.b }}
         </button>
       </div>
     </section>

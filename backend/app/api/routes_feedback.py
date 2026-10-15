@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 from app.api.deps import Actor, get_actor
 from app.feedback import usecases as feedback_uc
+from app.api.schemas import Envelope, FeedbackResponse, WishResponse
 from app.platform.envelope import envelope
 
 router = APIRouter(prefix="/api", tags=["feedback"])
@@ -22,7 +23,7 @@ class FeedbackBody(BaseModel):
     rating: int | None = None
 
 
-@router.post("/feedback")
+@router.post("/feedback", response_model=Envelope[FeedbackResponse])
 async def submit_feedback(request: Request, body: FeedbackBody,
                           actor: Actor = Depends(get_actor)):
     actor.rate_limit("feedback")
@@ -38,7 +39,7 @@ class WishBody(BaseModel):
     searchQuery: str | None = None
 
 
-@router.post("/wishes")
+@router.post("/wishes", response_model=Envelope[WishResponse])
 async def submit_wish(request: Request, body: WishBody,
                       actor: Actor = Depends(get_actor)):
     actor.rate_limit("wish")

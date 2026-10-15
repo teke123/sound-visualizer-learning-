@@ -129,17 +129,6 @@ def seed_levels(db, speakers: dict[str, str], publish_count: int) -> None:
             print(f"[seed] {level_id} 已存在，跳过")
             continue
         content = dict(item)
-        # 剖面关键帧归一到契约结构 articulation.sagittal.keyframes
-        art = dict(content.get("articulation", {}))
-        if "sagittalKeyframes" in art and "sagittal" not in art:
-            art["sagittal"] = {"keyframes": art.pop("sagittalKeyframes")}
-        # lips.contact 为接触方式枚举（none/bilabial/labiodental），
-        # 种子数据早期把双唇闭合写成 closed，归一为 bilabial
-        for kf in art["sagittal"]["keyframes"]:
-            lips = kf.get("lips")
-            if isinstance(lips, dict) and lips.get("contact") == "closed":
-                lips["contact"] = "bilabial"
-        content["articulation"] = art
         license_note = item.get("license", "内部演示授权（合成音频）")
 
         # 示范音频（男/女正常语速）

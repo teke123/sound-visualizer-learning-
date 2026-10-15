@@ -6,6 +6,7 @@ from __future__ import annotations
 import asyncio
 import datetime
 import hashlib
+import logging
 
 from sqlalchemy.orm import Session
 
@@ -14,6 +15,7 @@ from app.acoustics import analysis
 from app.acoustics.models import AudioRow
 from app.acoustics.usecases import audio_path
 from app.content.models import DetectionSwitchRow, LevelRow, LevelVersionRow
+from app.content_seed_data import GLOBAL_FOUR_STEP_FALLBACKS
 from app.db import JSONText, get_session, now
 from app.detection.models import AssessmentResultRow, RecordingRow
 from app.ids import new_id
@@ -22,6 +24,8 @@ from app.scoring.models import PitchRangeRow, PitchRangeSnapshotRow
 from app.scoring.provider import ProviderError
 from app.scoring import rules as scoring_rules
 from app.scoring import usecases as scoring_uc
+
+logger = logging.getLogger("svs.detection")
 
 STAGES = ["queued", "signal_check", "scoring", "analyzing", "finalizing"]
 
@@ -124,7 +128,7 @@ def submit_recording(db: Session, *, owner_type: str, owner_id: str, user,
                       "basis": effective.get("basisCalibrationId")},
     )
     epoch = user.data_epoch if user is not None else 1
-    if existing is not None:   # failed(retryable) 同键重试
+    if existing is not None and existing.retryable:   # failed(retryable) 同键重试
         existing.status = "processing"
         existing.stage = "queued"
         existing.attempt += 1
@@ -133,6 +137,11 @@ def submit_recording(db: Session, *, owner_type: str, owner_id: str, user,
         existing.range_snapshot_id = snapshot.id
         existing.accepted_request_id = request_id
         rec = existing
+    elif existing is not None:
+        # 不可重试失败：幂等重放直接返回失败结论，不复活重跑
+        code = existing.outcome or "INTERNAL_ERROR"
+        raise ApiError(_stage_failed_code_status(code), code, _failure_message(code),
+                       data={"recordingId": existing.id, "retryable": False})
     else:
         rec = RecordingRow(
             id=new_id("rc_"),
@@ -167,15 +176,25 @@ def submit_recording(db: Session, *, owner_type: str, owner_id: str, user,
     return SubmitOutcome(202, rec, None)
 
 
+def _consume_future_result(f: asyncio.Future) -> None:
+    """窗口外迟到完成时取走结果，避免 "exception was never retrieved" 告警。"""
+    if not f.cancelled():
+        f.exception()
+
+
 async def wait_sync_window(outcome: SubmitOutcome) -> SubmitOutcome:
-    """同步窗口（约 8 秒）内等待完成；未完成回落 202。"""
+    """同步窗口（约 8 秒）内等待完成；未完成回落 202。
+
+    超时只结束等待、绝不取消执行器任务：wait_for 的超时取消会顺着
+    wrap_future 传给尚未开跑的 concurrent Future（SVS_SYNC_WINDOW 极小时
+    必现），管线永不执行、录音滞留 processing 直到硬截止标 TIMEOUT——
+    故改用不对参与者做取消的 asyncio.wait。"""
     future = getattr(outcome.recording, "_future", None)
     if future is None:
         return outcome
-    try:
-        await asyncio.wait_for(asyncio.wrap_future(future), timeout=config.SYNC_WINDOW_SECONDS)
-    except asyncio.TimeoutError:
-        return outcome
+    wrapped = asyncio.wrap_future(future)
+    wrapped.add_done_callback(_consume_future_result)
+    await asyncio.wait({wrapped}, timeout=config.SYNC_WINDOW_SECONDS)
     db = get_session()
     try:
         rec = db.get(RecordingRow, outcome.recording.id)
@@ -247,8 +266,12 @@ def run_pipeline(recording_id: str) -> None:
 
         set_stage("analyzing")
         snapshot_row = db.get(PitchRangeSnapshotRow, rec.range_snapshot_id)
-        snapshot = scoring_uc.snapshot_dict(snapshot_row) if snapshot_row else {
-            "id": None, "fLo": 75.0, "fHi": 400.0}
+        if snapshot_row is None:
+            # 受理时必然已写入快照（submit_recording）；缺失属数据完整性破坏，
+            # 不用兜底音域静默换算，交外层异常处理标可重试失败（重试生成新快照）
+            raise RuntimeError(
+                f"range snapshot {rec.range_snapshot_id} missing for recording {rec.id}")
+        snapshot = scoring_uc.snapshot_dict(snapshot_row)
         f0res = analysis.extract_f0(path)
         curve = scoring_rules.analyze_user_curve(
             f0res, prov, snapshot, content.get("standardCurve"))
@@ -265,7 +288,7 @@ def run_pipeline(recording_id: str) -> None:
         phenomena, four_steps, score = scoring_rules.build_phenomena_and_four_steps(
             provider=prov, curve_phenomena_items=curve_tags,
             formant_deviation=formant_dev, level_content=content,
-            fallback_templates=_global_fallbacks(),
+            fallback_templates=GLOBAL_FOUR_STEP_FALLBACKS,
         )
 
         set_stage("finalizing")
@@ -298,7 +321,7 @@ def run_pipeline(recording_id: str) -> None:
             if rec is not None and rec.status == "processing":
                 _fail(db, rec, "PROVIDER_ERROR", retryable=True)
         except Exception:
-            pass
+            logger.exception("录音 %s 管线失败后标记 failed 时再出错", recording_id)
     finally:
         db.close()
 
@@ -382,6 +405,11 @@ def _finalize_completed(db: Session, rec: RecordingRow, audio: AudioRow,
 
     db.refresh(rec)
     db.refresh(audio)
+    if rec.status != "processing":
+        # 管线跑过硬截止、被调度器标 failed(TIMEOUT) 后醒来收尾：迟到的
+        # 完成不得复活已判死的录音（与下方删除/过期/epoch 守卫同款语义）
+        db.rollback()
+        return
     if rec.deleted_at is not None:
         db.rollback()
         return
@@ -428,15 +456,6 @@ def _fail(db: Session, rec: RecordingRow, code: str, *, retryable: bool) -> None
     rec.retryable = retryable
     rec.completed_at = now()
     db.commit()
-
-
-def _global_fallbacks() -> list[dict]:
-    try:
-        from app.content_seed_data import GLOBAL_FOUR_STEP_FALLBACKS
-
-        return GLOBAL_FOUR_STEP_FALLBACKS
-    except ImportError:
-        return []
 
 
 # ---------------- 查询 / 超时恢复 ----------------

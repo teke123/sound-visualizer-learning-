@@ -22,22 +22,23 @@ export const useContextStore = defineStore('context', () => {
   /** context 请求失败时以访客态渲染公开内容（§6.1 启动） */
   const degraded = ref(false)
 
-  const isAuthenticated = computed(() => context.value.authenticated)
-  const consentStatus = computed(() =>
-    context.value.authenticated ? context.value.consent.status : ('none' as const),
+  const isAuthenticated = computed(() => context.value.authenticated === true)
+  const consentStatus = computed<MeContext['consent']['status']>(() =>
+    context.value.authenticated ? (context.value.consent?.status ?? 'none') : 'none',
   )
   /** 登录且已同意：学习事件与录音走服务端 */
   const consentGranted = computed(
-    () => context.value.authenticated && context.value.consent.status === 'granted',
+    () => context.value.authenticated && context.value.consent?.status === 'granted',
   )
   /** 未处理同意的账号登录后立即弹出 ConsentDialog（FD-07） */
   const needsConsentDialog = computed(
-    () => context.value.authenticated && context.value.consent.status === 'none',
+    () => context.value.authenticated && context.value.consent?.status === 'none',
   )
 
   /** 音域是否可用于检测（个人，或未到期的会话临时标定；D-20） */
   const calibrationValid = computed(() => {
     const cal = context.value.calibration
+    if (!cal || cal.status === 'none') return false
     if (cal.status === 'personal') return true
     if (cal.status === 'session') {
       if (!cal.expiresAt) return true

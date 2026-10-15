@@ -21,7 +21,7 @@ interface PairView {
 
 const visiblePairs = computed<PairView[]>(() =>
   props.pairs
-    .map((pair) => ({ pair, a: props.levelsById.get(pair.aId), b: props.levelsById.get(pair.bId) }))
+    .map((pair) => ({ pair, a: props.levelsById.get(pair.a), b: props.levelsById.get(pair.b) }))
     .filter((item): item is PairView & { a: LevelSummary; b: LevelSummary } => Boolean(item.a && item.b)),
 )
 </script>
@@ -32,7 +32,7 @@ const visiblePairs = computed<PairView[]>(() =>
     <p class="pair-hint">两个容易混淆的音放在一起听、一起看，更容易分辨。</p>
     <div v-if="visiblePairs.length === 0" class="pair-empty">暂无可比较的易混关（需双方都已发布）</div>
     <ul v-else class="pair-list">
-      <li v-for="item in visiblePairs" :key="item.pair.aId" class="pair-item">
+      <li v-for="item in visiblePairs" :key="item.pair.a" class="pair-item">
         <div class="pair-sounds">
           <span class="pair-sound">{{ item.a!.targetSound }}</span>
           <span class="pair-vs">vs</span>

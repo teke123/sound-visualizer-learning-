@@ -67,7 +67,7 @@ export function useRecordingResult(recordingId: Ref<string>) {
       }
       const { recording: rec, result: rst } = res.data
       recording.value = rec
-      result.value = rst
+      result.value = rst ?? null
       stage.value = null
       phase.value = 'completed'
     } catch (err) {

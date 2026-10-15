@@ -92,13 +92,15 @@ def main() -> int:
         check("guest nextLevelId L01", ctx["nextLevelId"] == "L01")
 
         # 3 未标定提交 → 409 CALIBRATION_REQUIRED（先传录音再提交）
+        # admin 段发布/回退会让 L30 版本逐轮 +1：全程动态取版本号，保证连跑幂等
+        cv = c.get("/api/levels/L30").json()["data"]["contentVersion"]
         rec_audio = wav_bytes(synthesize_text("妈麻马骂", "male", syllable_dur=0.32))
         r = c.post("/api/audio/uploads", data={"purpose": "recording"},
                    files={"file": ("rec.webm", rec_audio, "audio/webm")})
         check("upload recording audio", r.status_code == 200, r.text[:200])
         audio_id = r.json()["data"]["audioId"]
         r = c.post("/api/recordings", json={
-            "audioId": audio_id, "levelId": "L30", "contentVersion": 1,
+            "audioId": audio_id, "levelId": "L30", "contentVersion": cv,
             "submissionId": "e2e-nocal-1"})
         check("submit without calibration → 409 CALIBRATION_REQUIRED",
               r.status_code == 409 and r.json()["code"] == "CALIBRATION_REQUIRED",
@@ -127,7 +129,7 @@ def main() -> int:
 
         # 5 检测提交（正常）
         r = c.post("/api/recordings", json={
-            "audioId": audio_id, "levelId": "L30", "contentVersion": 1,
+            "audioId": audio_id, "levelId": "L30", "contentVersion": cv,
             "submissionId": "e2e-sub-1"})
         body = r.json()
         check("submit → 200 with result",
@@ -146,20 +148,20 @@ def main() -> int:
 
         # 幂等重放：同 submissionId 同负载
         r = c.post("/api/recordings", json={
-            "audioId": audio_id, "levelId": "L30", "contentVersion": 1,
+            "audioId": audio_id, "levelId": "L30", "contentVersion": cv,
             "submissionId": "e2e-sub-1"})
         check("idempotent replay same recordingId",
               r.status_code == 200 and r.json()["data"]["recording"]["recordingId"] == rec_id)
         # 幂等冲突：同 submissionId 不同负载
         r = c.post("/api/recordings", json={
-            "audioId": audio_id, "levelId": "L30", "contentVersion": 1,
+            "audioId": audio_id, "levelId": "L30", "contentVersion": cv,
             "submissionId": "e2e-sub-1x", })
         r2_audio = wav_bytes(synthesize_text("妈麻马骂", "female", syllable_dur=0.3))
         r2up = c.post("/api/audio/uploads", data={"purpose": "recording"},
                       files={"file": ("r2.webm", r2_audio, "audio/webm")})
         other_audio = r2up.json()["data"]["audioId"]
         r = c.post("/api/recordings", json={
-            "audioId": other_audio, "levelId": "L30", "contentVersion": 1,
+            "audioId": other_audio, "levelId": "L30", "contentVersion": cv,
             "submissionId": "e2e-sub-1"})
         check("same submissionId different payload → 409 IDEMPOTENCY_CONFLICT",
               r.status_code == 409 and r.json()["code"] == "IDEMPOTENCY_CONFLICT")
@@ -182,6 +184,8 @@ def main() -> int:
         check("audio formants", r.status_code == 200 and r.json()["data"]["frames"])
         r = c.get(f"/api/audio/{audio_id}/formants.png")
         check("audio formants png", r.status_code == 200 and r.headers.get("content-type") == "image/png")
+        r = c.get(f"/api/audio/{audio_id}/spectrogram.png")
+        check("audio spectrogram png", r.status_code == 200 and r.headers.get("content-type") == "image/png")
         r = c.get(f"/api/audio/{audio_id}/file", headers={"Range": "bytes=0-49"})
         check("audio file range 206", r.status_code == 206 and len(r.content) == 50)
 
@@ -190,7 +194,7 @@ def main() -> int:
                          files={"file": ("s.webm", silence_bytes(3), "audio/webm")})
         sil_id = sil_rec.json()["data"]["audioId"]
         r = c.post("/api/recordings", json={
-            "audioId": sil_id, "levelId": "L30", "contentVersion": 1,
+            "audioId": sil_id, "levelId": "L30", "contentVersion": cv,
             "submissionId": "e2e-sil-1"})
         body = r.json()
         check("silence recording → 200 QUALITY_FAIL",
@@ -237,7 +241,7 @@ def main() -> int:
                    files={"file": ("r3.webm", r2_audio, "audio/webm")})
         a3 = r.json()["data"]["audioId"]
         r = c.post("/api/recordings", json={
-            "audioId": a3, "levelId": "L30", "contentVersion": 1, "submissionId": "e2e-sub-2"})
+            "audioId": a3, "levelId": "L30", "contentVersion": cv, "submissionId": "e2e-sub-2"})
         check("post-consent submit auto-archived",
               r.status_code == 200 and r.json()["data"]["recording"]["storage"] == "archived",
               r.text[:200])
@@ -257,13 +261,13 @@ def main() -> int:
         d30 = c.get("/api/levels/L30").json()["data"]
         quiz_ids = [q["id"] for q in d30["quizzes"]]
         step_ids = [p["id"] for p in d30["practice"]]
-        events = [{"eventId": f"ev-{qid}", "levelId": "L30", "contentVersion": 1,
+        events = [{"eventId": f"ev-{qid}", "levelId": "L30", "contentVersion": cv,
                    "kind": "listen_quiz",
                    "detail": {"questionId": qid,
                               "choiceIndex": next(q["answerIndex"] for q in d30["quizzes"]
                                                   if q["id"] == qid)}}
                   for qid in quiz_ids]
-        events += [{"eventId": f"ev-{sid}", "levelId": "L30", "contentVersion": 1,
+        events += [{"eventId": f"ev-{sid}", "levelId": "L30", "contentVersion": cv,
                     "kind": "practice_done", "detail": {"stepId": sid}} for sid in step_ids]
         r = c.post("/api/learning-events", json={"events": events})
         acc = r.json()["data"]
@@ -333,15 +337,22 @@ def main() -> int:
         check("search no L30 after unpublish",
               all(x["id"] != "L30" for x in r.json()["data"]["results"]))
 
-        # 重新发布（回退到上一版本亦可，这里直接重新发布）
+        # 重新发布（回退到上一版本亦可，这里直接重新发布）→ 版本号 +1（连跑幂等）
         r = a.post("/api/admin/levels/L30/publish", json={"changeNote": "e2e 重新发布"})
-        check("republish L30", r.status_code == 200 and r.json()["data"]["contentVersion"] == 2)
+        repub_cv = r.json()["data"]["contentVersion"]
+        check("republish L30 bumps version",
+              r.status_code == 200 and repub_cv == cv + 1,
+              f"{r.status_code} {r.text[:150]}")
         r = a.get("/api/levels/L30")
-        check("L30 back with v2", r.status_code == 200 and r.json()["data"]["contentVersion"] == 2)
+        check("L30 back at republished version",
+              r.status_code == 200 and r.json()["data"]["contentVersion"] == repub_cv)
 
-        # 回退 → v3 内容同 v1
+        # 回退 → 版本号再 +1，内容回到上一公开版本
         r = a.post("/api/admin/levels/L30/rollback")
-        check("rollback → v3", r.status_code == 200 and r.json()["data"]["contentVersion"] == 3)
+        rolled_cv = r.json()["data"]["contentVersion"]
+        check("rollback bumps version",
+              r.status_code == 200 and rolled_cv == repub_cv + 1,
+              f"{r.status_code} {r.text[:150]}")
 
         # 熔断：全局关 → 提交 503 DETECTION_OFF
         a.post("/api/admin/detection-switches", json={"levelId": None, "enabled": False,
@@ -355,7 +366,7 @@ def main() -> int:
                         files={"file": ("x.webm", rec_audio, "audio/webm")})
             r = c.post("/api/recordings", json={
                 "audioId": ra.json()["data"]["audioId"], "levelId": "L30",
-                "contentVersion": 3, "submissionId": "e2e-off-1"})
+                "contentVersion": rolled_cv, "submissionId": "e2e-off-1"})
             check("submit while fused → 503 DETECTION_OFF",
                   r.status_code == 503 and r.json()["code"] == "DETECTION_OFF",
                   f"{r.status_code} {r.text[:150]}")

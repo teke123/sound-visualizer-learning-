@@ -13,7 +13,7 @@
 
 | 候选 | 形态 | 判定 | 依据 |
 | ---- | ---- | ---- | ---- |
-| sqladmin / starlette-admin | FastAPI 同进程管理界面 | ✅ 采用 | Python 生态；#8 引入 fastapi-users[sqlalchemy] 后 SQLAlchemy 已在栈内，近乎零边际成本；CRUD 壳白嫖，域逻辑留 Python |
+| sqladmin / starlette-admin | FastAPI 同进程管理界面 | ✅ 采用 | Python 生态；SQLAlchemy 已在栈内，近乎零边际成本；CRUD 壳白嫖，域逻辑留 Python |
 | Directus | Node 服务，可 introspect 共享库 | ❌ | 换 Postgres 后结构上最干净的开源形态（单库无双源），但状态机/发布前置/检测开关校验须写 TS hooks；FR-1204 的 allowed_metrics 校验要跨进程调我们的评分域；两运行时共写一库 |
 | Strapi v5 | 独立 Node 服务 | ❌ | 内容真源须搬入，我们后端变代理/同步层；单管理员使其角色/工作流卖点闲置；TS 全家桶 |
 | Payload 3.0 | 装进 Next.js 的库 | ❌ | 绑 Next.js（我们前端是 Vue SPA）；同代理/同步问题 |
@@ -35,7 +35,7 @@ CMS 域的真复杂度是定制治理逻辑，不是 CRUD：
 
 ## 管理界面整合要点（细则归 #10）
 
-- 挂载：`/admin`，通过框架认证扩展配置单管理员登录（D-09），与 fastapi-users
+- 挂载：`/admin`，通过框架认证扩展配置单管理员登录（D-09），与学习侧
   用户体系不混流——管理员不需要用户侧登录；
 - 发布/下架/检测开关/版本回退：管理界面自定义动作/ModelView 钩子，调
   `domain/level_state.py` 纯函数——治理逻辑仍单点在 Python；

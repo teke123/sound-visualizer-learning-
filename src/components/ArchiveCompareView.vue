@@ -2,6 +2,7 @@
 /**
  * ArchiveCompareView：本人同关两条存档比较（FR-1103 / V1-AC27）：
  * 并排播放、曲线对比、可比范围提示、主要差异（仅可比维度）。
+ * 后端比较响应为嵌套结构：a/b = {recording, result, rangeSnapshot}。
  */
 import { computed, defineAsyncComponent, ref, watch } from 'vue'
 import { audioFileUrl, type ArchiveCompareResponse } from '@/api'
@@ -44,7 +45,8 @@ function play(audioId: string) {
   void player.play({ key: `audio:${audioId}`, url: audioFileUrl(audioId), label: '存演回放' })
 }
 
-const comparableNotes = computed(() => data.value?.comparable.reasons ?? [])
+const comparableNotes = computed(() => data.value?.reasons ?? [])
+const sides = computed(() => (data.value ? [data.value.a, data.value.b] : []))
 </script>
 
 <template>
@@ -55,7 +57,7 @@ const comparableNotes = computed(() => data.value?.comparable.reasons ?? [])
     </header>
 
     <PageState v-if="loading" state="loading" />
-    <PageState v-else-if="error" state="not-visible" text="这两条记录暂时无法比较（可能已删除或不是同一关）" />
+    <PageState v-else-if="error" state="not-visible" :text="errorCopy(error).title" />
 
     <template v-if="data">
       <p v-if="comparableNotes.length > 0" class="ac-notes" role="note">
@@ -63,24 +65,26 @@ const comparableNotes = computed(() => data.value?.comparable.reasons ?? [])
       </p>
 
       <div class="ac-grid">
-        <section v-for="side in [data.a, data.b]" :key="side.recordingId" class="ac-side">
+        <section v-for="side in sides" :key="side.recording.recordingId" class="ac-side">
           <header class="ac-side-head">
-            <span class="ac-date">{{ formatDateTime(side.createdAt) }}</span>
-            <span v-if="typeof side.score === 'number'" class="ac-score">{{ Math.round(side.score) }} 分</span>
+            <span class="ac-date">{{ formatDateTime(side.recording.createdAt ?? undefined) }}</span>
+            <span v-if="typeof side.result?.score === 'number'" class="ac-score">
+              {{ Math.round(side.result.score!) }} 分
+            </span>
             <span v-else class="ac-score muted">未评分</span>
-            <button type="button" class="ac-play" @click="play(side.audioId)">
-              {{ player.isCurrent(`audio:${side.audioId}`) ? '⏸ 暂停' : '▶ 播放' }}
+            <button type="button" class="ac-play" @click="play(side.recording.audioId)">
+              {{ player.isCurrent(`audio:${side.recording.audioId}`) ? '⏸ 暂停' : '▶ 播放' }}
             </button>
           </header>
-          <ToneCurveChart v-if="side.curve" :curve="side.curve" :height="240" />
+          <ToneCurveChart v-if="side.result?.curve" :curve="side.result.curve" :height="240" />
           <p v-else class="ac-no-curve">无曲线数据</p>
         </section>
       </div>
 
-      <section v-if="data.differences.length > 0" class="ac-diff" aria-label="主要差异">
+      <section v-if="(data.differences?.length ?? 0) > 0" class="ac-diff" aria-label="主要差异">
         <h3>主要差异</h3>
         <ul>
-          <li v-for="(diff, index) in data.differences" :key="index">
+          <li v-for="(diff, index) in data.differences ?? []" :key="index">
             <strong>{{ diff.dimension }}</strong>：{{ diff.description }}
           </li>
         </ul>

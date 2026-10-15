@@ -5,7 +5,7 @@
  * 网络或服务失败保留 blob 可重试。
  */
 import { computed, ref } from 'vue'
-import { ApiError, detectionApi, type PitchCalibrationInfo } from '@/api'
+import { detectionApi, type CalibrationFailResult, type PitchCalibrationInfo } from '@/api'
 import { RECORD_MAX_MS, useRecorderStore } from '@/stores/recorder'
 import { useContextStore } from '@/stores/context'
 
@@ -28,6 +28,8 @@ export function useCalibration() {
   const error = ref<unknown>(null)
   /** CALIBRATION_FAIL 的原因与重录指引 */
   const failAdvice = ref<string | null>(null)
+  /** 成功结果（音域区间展示） */
+  const result = ref<{ pitchRange: { fLo: number; fHi: number } } | null>(null)
   const busy = computed(() => phase.value === 'uploading' || phase.value === 'submitting')
 
   async function loadText(): Promise<void> {
@@ -75,13 +77,22 @@ export function useCalibration() {
         textVersion: info.value.textVersion,
       })
       if (res.code === 'CALIBRATION_FAIL') {
-        const data = res.data as unknown as { reason?: string; advice?: string }
-        failAdvice.value = data.advice ?? data.reason ?? '这次标定没有得出有效音域，请再试一次。'
+        const data = res.data as CalibrationFailResult
+        const signalAdvice = [
+          data.signal?.volume?.advice,
+          data.signal?.noise?.advice,
+          data.signal?.clipping?.advice,
+          data.signal?.duration?.advice,
+        ]
+          .filter(Boolean)
+          .join('；')
+        failAdvice.value = signalAdvice || data.reason || '这次标定没有得出有效音域，请再试一次。'
         recorder.reRecord()
         phase.value = 'intro'
         return false
       }
       phase.value = 'success'
+      result.value = res.data as { pitchRange: { fLo: number; fHi: number } }
       await contextStore.refresh()
       recorder.release()
       return true
@@ -97,16 +108,14 @@ export function useCalibration() {
     recorder.release()
     phase.value = 'loading-text'
     error.value = null
-    failAdviceValueClear()
-  }
-
-  function failAdviceValueClear() {
     failAdvice.value = null
+    result.value = null
   }
 
   return {
     phase,
     info,
+    result,
     error,
     failAdvice,
     busy,
@@ -118,9 +127,4 @@ export function useCalibration() {
     submit,
     reset,
   }
-}
-
-/** 是否 409 CALIBRATION_REQUIRED */
-export function isCalibrationRequired(error: unknown): boolean {
-  return error instanceof ApiError && error.code === 'CALIBRATION_REQUIRED'
 }

@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from app.api.deps import Actor, get_actor
 from app.archive import usecases as archive_uc
 from app.identity import usecases as identity_uc
+from app.api.schemas import AuthLoginResponse, Envelope, LoggedOutResponse, RegisterResponse
 from app.platform.envelope import envelope
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -17,7 +18,7 @@ class RegisterBody(BaseModel):
     password: str
 
 
-@router.post("/register")
+@router.post("/register", response_model=Envelope[RegisterResponse])
 async def register(request: Request, body: RegisterBody,
                    actor: Actor = Depends(get_actor)):
     actor.rate_limit("register")
@@ -32,7 +33,7 @@ class LoginBody(BaseModel):
     password: str
 
 
-@router.post("/login")
+@router.post("/login", response_model=Envelope[AuthLoginResponse])
 async def login(request: Request, body: LoginBody, actor: Actor = Depends(get_actor)):
     actor.rate_limit("login")
     # 已登录时先按退出处理（失效会话、轮换 sid）
@@ -52,7 +53,7 @@ async def login(request: Request, body: LoginBody, actor: Actor = Depends(get_ac
     # 已有有效同意时自动转存（D-14）
     transfer = None
     if identity_uc.consent_granted(actor.db, user):
-        from app.identity.usecases import grant_consent, _bound_sid
+        from app.identity.usecases import _bound_sid
 
         sid = _bound_sid(actor.db, user.id)
         if sid:
@@ -66,7 +67,7 @@ async def login(request: Request, body: LoginBody, actor: Actor = Depends(get_ac
     return envelope(request, {"context": context, "transfer": transfer})
 
 
-@router.post("/logout")
+@router.post("/logout", response_model=Envelope[LoggedOutResponse])
 async def logout(request: Request, actor: Actor = Depends(get_actor)):
     identity_uc.logout(actor.db, auth_cookie=actor.request.cookies.get("svs_auth"),
                        sid=None)

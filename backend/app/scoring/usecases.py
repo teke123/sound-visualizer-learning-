@@ -13,8 +13,10 @@ from app.acoustics.usecases import audio_path, mark_deleted as mark_audio_delete
 from app.db import JSONText, now
 from app.ids import new_id
 from app.platform.envelope import ApiError
+from app.pinyin_utils import expected_syllables, main_vowel
 from app.scoring.models import PitchRangeRow, PitchRangeSnapshotRow, ScoreCacheRow
-from app.scoring.provider_mock import MockProvider, _expected_syllables
+from app.scoring.provider import ProviderError
+from app.scoring.provider_mock import MockProvider
 
 ROLLING_WINDOW_N = 20   # 最近 N 条存档合格录音
 
@@ -112,7 +114,8 @@ def calibrate_path(path, syllables: list[str]) -> dict:
     try:
         prov = get_provider().evaluate(str(path), text)
         segments = [(s.t0, s.t1) for s in prov.syllables]
-    except Exception:
+    except ProviderError:
+        # Provider 拿不到音节时间戳（不可达/返回异常）：退回有声段等分切分
         segments = []
     if not segments:
         voiced = f0res.voiced_ranges
@@ -133,13 +136,13 @@ def calibrate_path(path, syllables: list[str]) -> dict:
     formants = analysis.extract_formants(path)
     vowel_space: dict = {}
     f1_all, f2_all = [], []
-    expected = _expected_syllables(text)
+    expected = expected_syllables(text)
     for i, seg in enumerate(segments):
         stats = analysis.formant_stats_in_segments(formants, [seg])
         if not stats:
             continue
         exp = expected[i] if i < len(expected) else None
-        vowel = _main_vowel(exp.get("plain", "")) if exp else None
+        vowel = main_vowel(exp.get("plain", "")) if exp else None
         if vowel:
             vowel_space[vowel] = {"f1Mean": stats["f1Mean"], "f2Mean": stats["f2Mean"]}
         f1_all.append(stats["f1Mean"])
@@ -339,13 +342,32 @@ def read_score_cache(db: Session, *, owner_type: str, owner_id: str, audio: Audi
 def write_score_cache(db: Session, *, owner_type: str, owner_id: str, audio_id: str,
                       pcm_sha256: str, level_id: str, content_version: int,
                       payload: dict) -> None:
-    row = ScoreCacheRow(
-        owner_type=owner_type, owner_id=owner_id, audio_id=audio_id,
-        pcm_sha256=pcm_sha256, level_id=level_id, content_version=content_version,
-        rule_version=config.RULE_VERSION, provider_version=config.PROVIDER_VERSION,
-        payload=JSONText.dump(payload), created_at=now(),
+    # 同键（所有者+音频内容+版本）可能已存在：登录迁移 sid→user 后重录同一
+    # 内容会再写同键——串行流程能读到迁移行，但迁移前受理的旧管线会在
+    # finalize 时经 db.refresh 取到迁移后的 user 归属，与新管线并发写同键；
+    # 裸 INSERT 撞 UNIQUE 会使管线崩溃、录音滞留 processing——幂等更新处理
+    row = (
+        db.query(ScoreCacheRow)
+        .filter(
+            ScoreCacheRow.owner_type == owner_type, ScoreCacheRow.owner_id == owner_id,
+            ScoreCacheRow.pcm_sha256 == pcm_sha256, ScoreCacheRow.level_id == level_id,
+            ScoreCacheRow.content_version == content_version,
+            ScoreCacheRow.rule_version == config.RULE_VERSION,
+            ScoreCacheRow.provider_version == config.PROVIDER_VERSION,
+        )
+        .one_or_none()
     )
-    db.add(row)
+    if row is not None:
+        row.audio_id = audio_id
+        row.payload = JSONText.dump(payload)
+        row.created_at = now()
+    else:
+        db.add(ScoreCacheRow(
+            owner_type=owner_type, owner_id=owner_id, audio_id=audio_id,
+            pcm_sha256=pcm_sha256, level_id=level_id, content_version=content_version,
+            rule_version=config.RULE_VERSION, provider_version=config.PROVIDER_VERSION,
+            payload=JSONText.dump(payload), created_at=now(),
+        ))
     db.flush()
 
 
@@ -366,12 +388,3 @@ def migrate_score_cache_owner(db: Session, *, from_type: str, from_id: str,
         else:
             row.owner_type, row.owner_id = to_type, to_id
     db.flush()
-
-
-def _main_vowel(pinyin_plain: str) -> str | None:
-    """带调拼音（无声调数字）→ 主元音（六个单韵母口径）。"""
-    v = pinyin_plain.replace("v", "ü")
-    for ch in ("a", "o", "e", "i", "u", "ü"):
-        if ch in v:
-            return ch
-    return None

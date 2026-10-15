@@ -61,12 +61,15 @@ export function useAuth() {
     error.value = null
     try {
       const res = await identityApi.login(payload)
-      // 登录成功：清除上一账号内存状态，替换 context（§5 表）
+      // 登录成功：清除上一账号内存状态，替换 context（§5 表）。
+      // 后端 login 响应只携带部分身份字段（authenticated/accountId/username/dataEpoch），
+      // 先合并避免 context 出现空洞，再拉取全量（consent/calibration/pendingTransfer）。
       progressStore.onLogout()
       recorder.release()
-      contextStore.apply(res.data.context)
+      contextStore.apply({ ...contextStore.context, ...res.data.context })
+      await contextStore.refresh()
       progressStore.onIdentityEstablished()
-      if (res.data.context.consent.status === 'none') hooks.onNeedConsent?.()
+      if (contextStore.consentStatus === 'none') hooks.onNeedConsent?.()
       if (res.data.transfer) hooks.onTransfer?.(res.data.transfer)
       return true
     } catch (err) {

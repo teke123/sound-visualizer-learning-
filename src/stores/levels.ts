@@ -4,7 +4,7 @@
  */
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { contentApi, type ConfusablePair, type LevelSkeleton, type LevelSummary } from '@/api'
+import { contentApi, type ConfusablePair, type LevelSkeleton, type LevelSummary, type LevelsResponse } from '@/api'
 
 export const useLevelsStore = defineStore('levels', () => {
   const levels = ref<LevelSummary[]>([])
@@ -28,9 +28,9 @@ export const useLevelsStore = defineStore('levels', () => {
 
   const firstPublishedId = computed(() => published.value[0]?.id ?? null)
 
-  function apply(data: { levels: LevelSummary[]; skeletons: LevelSkeleton[]; confusablePairs: ConfusablePair[] }) {
+  function apply(data: LevelsResponse) {
     levels.value = data.levels
-    skeletons.value = data.skeletons
+    skeletons.value = data.skeleton
     confusablePairs.value = data.confusablePairs
     loaded.value = true
     error.value = null

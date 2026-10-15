@@ -1,14 +1,6 @@
 /** 客户端 UUID：学习事件 eventId / 检测 submissionId 均在产生时生成，重试沿用 */
 export function uuid(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID()
-  }
-  // 兜底（旧 Safari）：RFC4122 v4
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0
-    const v = c === 'x' ? r : (r & 0x3) | 0x8
-    return v.toString(16)
-  })
+  return crypto.randomUUID()
 }
 
 /** localStorage 安全读写（隐私模式 / 配额异常时静默降级为内存态） */

@@ -4,7 +4,7 @@
  * 未登录 → 注册 / 登录入口与说明；已登录 → 退出、同意状态 + 历史、撤回、
  * 注销（密码确认）、清空档案入口、重新标定、本会话临时记录。
  */
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { identityApi, type ConsentStateResponse } from '@/api'
 import { useContextStore } from '@/stores/context'
@@ -47,7 +47,14 @@ async function loadConsent() {
   }
 }
 
-onMounted(() => void loadConsent())
+// 认证可能晚于页面挂载（直接刷新时 context 未就绪）；同意状态变化后也要重取时间线
+watch(
+  [authenticated, () => contextStore.consentStatus],
+  () => {
+    if (authenticated.value) void loadConsent()
+  },
+  { immediate: true },
+)
 
 const CONSENT_STATUS_LABELS: Record<string, string> = {
   none: '未处理',
@@ -139,7 +146,7 @@ function openClearArchive() {
       <section class="consent-history">
         <h2>同意记录</h2>
         <p v-if="consentLoading">读取中…</p>
-        <ConsentTimeline v-else-if="consentState" :decisions="consentState.decisions" />
+        <ConsentTimeline v-else-if="consentState" :decisions="consentState.timeline" />
         <p v-else class="history-empty">暂时读不到同意记录。</p>
       </section>
 

@@ -14,6 +14,7 @@ dist-ssr/
 coverage/
 *.local
 .venv/
+.zcode/
 
 # OS junk
 .DS_Store
@@ -74,6 +75,7 @@ htmlcov/
 
 # ============ 运行时上传与缓存 ============
 backend/uploads/
+backend/probe_out/
 uploads/
 tmp/
 temp/

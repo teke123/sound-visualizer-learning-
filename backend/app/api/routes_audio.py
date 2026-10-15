@@ -1,6 +1,8 @@
 """音频、标定与检测路由（决策图「音频、标定与检测」表）。"""
 from __future__ import annotations
 
+from typing import Union
+
 import asyncio
 import json
 
@@ -19,12 +21,14 @@ from app.identity import usecases as identity_uc
 from app.platform.envelope import ApiError, envelope
 from app.scoring import usecases as scoring_uc
 
+from app.api.schemas import (AudioUploadResponse, CalibrationFailResult, CalibrationOkResult, Envelope, F0Response, FormantsResponse, PitchCalibrationInfo, RecordingDeleted, RecordingOnly, RecordingWithResult)
+
 router = APIRouter(prefix="/api", tags=["audio-detection"])
 
 
 # ---------------- 上传与特征 ----------------
 
-@router.post("/audio/uploads")
+@router.post("/audio/uploads", response_model=Envelope[AudioUploadResponse])
 async def upload_audio(request: Request, purpose: str = Form(...),
                        file: UploadFile = File(...),
                        actor: Actor = Depends(get_actor)):
@@ -49,7 +53,7 @@ async def audio_file(request: Request, audio_id: str, actor: Actor = Depends(get
                       cache_control="private, no-store")
 
 
-@router.get("/audio/{audio_id}/f0")
+@router.get("/audio/{audio_id}/f0", response_model=Envelope[F0Response])
 async def audio_f0(request: Request, audio_id: str, actor: Actor = Depends(get_actor)):
     actor.rate_limit("feature_read")
     row = acoustics_uc.get_audio_for_read(actor.db, audio_id=audio_id,
@@ -60,7 +64,7 @@ async def audio_f0(request: Request, audio_id: str, actor: Actor = Depends(get_a
     return envelope(request, data)
 
 
-@router.get("/audio/{audio_id}/formants")
+@router.get("/audio/{audio_id}/formants", response_model=Envelope[FormantsResponse])
 async def audio_formants(request: Request, audio_id: str,
                          actor: Actor = Depends(get_actor)):
     actor.rate_limit("feature_read")
@@ -85,9 +89,22 @@ async def audio_formants_png(request: Request, audio_id: str,
     return serve_file(request, path, "image/png", cache_control="private, no-store")
 
 
+@router.get("/audio/{audio_id}/spectrogram.png")
+async def audio_spectrogram_png(request: Request, audio_id: str,
+                                actor: Actor = Depends(get_actor)):
+    actor.rate_limit("feature_read")
+    row = acoustics_uc.get_audio_for_read(actor.db, audio_id=audio_id,
+                                          actor_type=actor.owner_type,
+                                          actor_id=actor.owner_id,
+                                          purposes=("recording",))
+    path = await asyncio.get_running_loop().run_in_executor(
+        None, lambda: acoustics_uc.get_spectrogram_png(actor.db, row))
+    return serve_file(request, path, "image/png", cache_control="private, no-store")
+
+
 # ---------------- 标定 ----------------
 
-@router.get("/pitch-calibration")
+@router.get("/pitch-calibration", response_model=Envelope[PitchCalibrationInfo])
 async def get_calibration(request: Request, actor: Actor = Depends(get_actor)):
     text_row = content_uc.get_active_calibration_text(actor.db)
     if text_row is None:
@@ -112,7 +129,7 @@ class CalibrationBody(BaseModel):
     textVersion: str
 
 
-@router.post("/pitch-calibration")
+@router.post("/pitch-calibration", response_model=Envelope[Union[CalibrationOkResult, CalibrationFailResult]])
 async def post_calibration(request: Request, body: CalibrationBody,
                            actor: Actor = Depends(get_actor)):
     actor.rate_limit("calibration")
@@ -136,7 +153,7 @@ async def post_calibration(request: Request, body: CalibrationBody,
                        headers={"Retry-After": "5"})
     try:
         result = await asyncio.wait_for(asyncio.wrap_future(future),
-                                        timeout=config.HARD_DEADLINE_SECONDS)
+                                        timeout=config.CALIBRATION_TIMEOUT_SECONDS)
     except asyncio.TimeoutError:
         raise ApiError(504, "TIMEOUT", "标定处理超时，请重试") from None
     if not result.get("ok"):
@@ -156,7 +173,8 @@ class RecordingBody(BaseModel):
     submissionId: str
 
 
-@router.post("/recordings")
+@router.post("/recordings", response_model=Envelope[RecordingWithResult],
+             responses={202: {"model": Envelope[RecordingOnly], "description": "PROCESSING"}})
 async def submit_recording(request: Request, body: RecordingBody,
                            actor: Actor = Depends(get_actor)):
     actor.rate_limit("recording_submit")
@@ -174,7 +192,8 @@ async def submit_recording(request: Request, body: RecordingBody,
                     status=202, headers={"Retry-After": str(config.RETRY_AFTER_SECONDS)})
 
 
-@router.get("/recordings/{recording_id}")
+@router.get("/recordings/{recording_id}", response_model=Envelope[RecordingWithResult],
+             responses={202: {"model": Envelope[RecordingOnly], "description": "PROCESSING"}})
 async def get_recording(request: Request, recording_id: str,
                         actor: Actor = Depends(get_actor)):
     outcome = detection_uc.get_recording(actor.db, owner_type=actor.owner_type,
@@ -188,7 +207,7 @@ async def get_recording(request: Request, recording_id: str,
                     status=202, headers={"Retry-After": str(config.RETRY_AFTER_SECONDS)})
 
 
-@router.delete("/recordings/{recording_id}")
+@router.delete("/recordings/{recording_id}", response_model=Envelope[RecordingDeleted])
 async def delete_recording(request: Request, recording_id: str,
                            actor: Actor = Depends(get_actor)):
     from app.detection.models import RecordingRow

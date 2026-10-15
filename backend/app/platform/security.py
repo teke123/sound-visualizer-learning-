@@ -42,20 +42,6 @@ def verify_sid(cookie_value: str | None) -> str | None:
 
 
 # --- 管理员会话 ---
-def issue_admin_session(db: Session) -> str:
-    from app.platform.models import PreviewTokenRow  # noqa: F401
-    from app.security_models import AdminSessionRow  # 延迟导入避免环
-
-    session_id = new_token(24)
-    row = AdminSessionRow(
-        session_id=session_id,
-        expires_at=now() + datetime.timedelta(hours=8),
-    )
-    db.add(row)
-    db.commit()
-    return session_id
-
-
 def check_admin_session(db: Session, cookie_value: str | None) -> str | None:
     """返回有效管理员 session_id；无效返回 None。"""
     if not cookie_value:

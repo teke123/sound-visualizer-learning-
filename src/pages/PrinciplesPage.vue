@@ -13,9 +13,10 @@ const articles = ref<ArticleSummary[]>([])
 const loading = ref(true)
 const error = ref<unknown>(null)
 
-const activeCategory = computed(() =>
-  typeof route.query.category === 'string' ? route.query.category : '',
-)
+const activeCategory = computed(() => {
+  const raw = route.query.category
+  return typeof raw === 'string' && raw !== '' ? raw : ''
+})
 
 async function load() {
   loading.value = true
@@ -37,8 +38,8 @@ async function load() {
 watch(activeCategory, () => void load(), { immediate: true })
 onMounted(() => void load())
 
-function switchCategory(id: string) {
-  void router.push({ path: '/principles', query: id ? { category: id } : {} })
+function switchCategory(name: string) {
+  void router.push({ path: '/principles', query: name ? { category: name } : {} })
 }
 </script>
 
@@ -64,8 +65,8 @@ function switchCategory(id: string) {
           v-for="category in categories"
           :key="category.id"
           type="button"
-          :class="['cat-tab', { active: activeCategory === category.id }]"
-          @click="switchCategory(category.id)"
+          :class="['cat-tab', { active: activeCategory === category.name }]"
+          @click="switchCategory(category.name)"
         >
           {{ category.name }}
         </button>
@@ -76,7 +77,7 @@ function switchCategory(id: string) {
         <li v-for="article in articles" :key="article.slug" class="article-item">
           <RouterLink :to="`/principles/${article.slug}`" class="article-link">
             <strong>{{ article.title }}</strong>
-            <span v-if="article.excerpt" class="article-excerpt">{{ article.excerpt }}</span>
+            <span v-if="article.summary" class="article-excerpt">{{ article.summary }}</span>
           </RouterLink>
         </li>
       </ul>

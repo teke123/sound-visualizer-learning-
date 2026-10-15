@@ -1,9 +1,9 @@
 /** content 模块端点：关卡、搜索、文章、预览（docs/decision-map-backend.md） */
 import { apiRequest } from '../client'
 import type {
-  ArticleCategory,
+  ArticleCategoriesResponse,
   ArticleDetail,
-  ArticleSummary,
+  ArticlesResponse,
   LevelDetail,
   LevelsResponse,
   SearchResponse,
@@ -20,11 +20,11 @@ export const contentApi = {
     return apiRequest<SearchResponse>(`/search?q=${encodeURIComponent(q)}`, { signal: options.signal })
   },
   articleCategories() {
-    return apiRequest<{ categories: ArticleCategory[] }>('/article-categories')
+    return apiRequest<ArticleCategoriesResponse>('/article-categories')
   },
   articles(category?: string) {
     const query = category ? `?category=${encodeURIComponent(category)}` : ''
-    return apiRequest<{ articles: ArticleSummary[] }>(`/articles${query}`)
+    return apiRequest<ArticlesResponse>(`/articles${query}`)
   },
   article(slug: string, options: { signal?: AbortSignal } = {}) {
     return apiRequest<ArticleDetail>(`/articles/${encodeURIComponent(slug)}`, { signal: options.signal })

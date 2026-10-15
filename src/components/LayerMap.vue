@@ -7,11 +7,14 @@
 import { computed } from 'vue'
 import type { LevelSkeleton, LevelSummary } from '@/api'
 
-const props = defineProps<{
-  levels: LevelSummary[]
-  skeletons: LevelSkeleton[]
-  completedIds: ReadonlySet<string>
-}>()
+const props = withDefaults(
+  defineProps<{
+    levels: LevelSummary[]
+    skeletons?: LevelSkeleton[]
+    completedIds?: ReadonlySet<string>
+  }>(),
+  { skeletons: () => [], completedIds: () => new Set<string>() },
+)
 
 interface MapNode {
   id: string
@@ -25,7 +28,7 @@ interface MapNode {
 const LAYERS: Array<{ key: LevelSummary['layer']; name: string; hint: string }> = [
   { key: 'vowel', name: '第一层 · 单韵母', hint: '把六个单韵母的口型摆稳' },
   { key: 'initial', name: '第二层 · 声母', hint: '逐个声母过关，重点区分易混音' },
-  { key: 'fusion', name: '第三层 · 拼读', hint: '把声母和韵母拼起来' },
+  { key: 'syllable', name: '第三层 · 拼读', hint: '把声母和韵母拼起来' },
 ]
 
 const layers = computed(() =>

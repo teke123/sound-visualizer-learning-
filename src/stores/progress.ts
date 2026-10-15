@@ -173,7 +173,7 @@ export const useProgressStore = defineStore('progress', () => {
     if (mode.value === 'guest') writeBucket(GUEST_KEY, guestBucket.value)
     else if (contextStore.context.accountId) {
       writeBucket(
-        accountKey(contextStore.context.accountId, contextStore.context.dataEpoch),
+        accountKey(contextStore.context.accountId, contextStore.context.dataEpoch ?? undefined),
         accountBucket.value,
       )
     }
@@ -199,7 +199,7 @@ export const useProgressStore = defineStore('progress', () => {
     if (mode.value === 'guest') writeBucket(GUEST_KEY, guestBucket.value)
     else if (contextStore.context.accountId) {
       writeBucket(
-        accountKey(contextStore.context.accountId, contextStore.context.dataEpoch),
+        accountKey(contextStore.context.accountId, contextStore.context.dataEpoch ?? undefined),
         accountBucket.value,
       )
     }
@@ -230,9 +230,9 @@ export const useProgressStore = defineStore('progress', () => {
       outbox.bind(null)
       return
     }
-    outbox.bind({ accountId: ctx.accountId, dataEpoch: ctx.dataEpoch })
+    outbox.bind({ accountId: ctx.accountId, dataEpoch: ctx.dataEpoch ?? undefined })
     outbox.clearLegacy(ctx.accountId)
-    accountBucket.value = readBucket(accountKey(ctx.accountId, ctx.dataEpoch))
+    accountBucket.value = readBucket(accountKey(ctx.accountId, ctx.dataEpoch ?? undefined))
   }
 
   /** 登录成功：替换 context 后调用；切换到该账号的本地桶/服务端进度 */
@@ -245,7 +245,7 @@ export const useProgressStore = defineStore('progress', () => {
   /** 授予同意：清除账号桶（不导入，D-16），转服务端进度 */
   function onConsentGranted() {
     if (contextStore.context.accountId) {
-      safeStorage.remove(accountKey(contextStore.context.accountId, contextStore.context.dataEpoch))
+      safeStorage.remove(accountKey(contextStore.context.accountId, contextStore.context.dataEpoch ?? undefined))
     }
     accountBucket.value = {}
     void loadServerProgress()

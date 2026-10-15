@@ -16,6 +16,7 @@ from app.content.models import (
 from app.db import JSONText, now
 from app.ids import new_id
 from app.platform.envelope import ApiError
+from app.pinyin_utils import split_pinyin
 
 LAYER_LABEL = {"vowel": "单韵母", "initial": "声母", "syllable": "拼读"}
 
@@ -116,13 +117,10 @@ def _nav(db: Session, level: LevelRow, content: dict) -> dict:
     return {"prev": prev_id, "next": next_id, "confusables": confusables}
 
 
-def level_detail(db: Session, level_id: str) -> dict:
-    """仅已发布详情；含 contentVersion 与 nav；规则阈值与四步模板不下发。"""
-    level = db.get(LevelRow, level_id)
-    if level is None or level.status != "published" or not level.current_version_id:
-        raise ApiError(404, "NOT_FOUND", "关卡不存在或未发布")
-    version = db.get(LevelVersionRow, level.current_version_id)
-    content = JSONText.load(version.content, {})
+def level_sections(content: dict, *, detection_available: bool) -> dict:
+    """关卡内容 JSON → demos/quizzes/practice/articulation/detection 负载段。
+    发布详情与草稿预览共用同一构造；detection.available 由调用方决定
+    （发布版看检测开关，草稿预览恒 False）。"""
     demos = [
         {"mediaId": d["mediaId"], "speed": d.get("speed", "normal"),
          "voice": d.get("voice"), "text": d.get("text", "")}
@@ -163,8 +161,24 @@ def level_detail(db: Session, level_id: str) -> dict:
         "sampleMediaId": detection_raw.get("sampleMediaId"),
         "allowedMetrics": detection_raw.get("allowedMetrics", []),
         "reliabilityNote": detection_raw.get("reliabilityNote", ""),
-        "available": availability_of(db, level) == "open",
+        "available": detection_available,
     }
+    return {
+        "articulation": articulation,
+        "demos": demos,
+        "quizzes": quizzes,
+        "practice": practice,
+        "detection": detection,
+    }
+
+
+def level_detail(db: Session, level_id: str) -> dict:
+    """仅已发布详情；含 contentVersion 与 nav；规则阈值与四步模板不下发。"""
+    level = db.get(LevelRow, level_id)
+    if level is None or level.status != "published" or not level.current_version_id:
+        raise ApiError(404, "NOT_FOUND", "关卡不存在或未发布")
+    version = db.get(LevelVersionRow, level.current_version_id)
+    content = JSONText.load(version.content, {})
     return {
         "id": level.id,
         "contentVersion": version.version,
@@ -181,13 +195,9 @@ def level_detail(db: Session, level_id: str) -> dict:
         "applicableIssues": content.get("applicableIssues"),
         "tags": content.get("tags") or [],
         "nav": _nav(db, level, content),
-        "articulation": articulation,
-        "demos": demos,
-        "quizzes": quizzes,
-        "practice": practice,
         "misconceptions": content.get("misconceptions") or [],
         "professional": content.get("professional") or {},
-        "detection": detection,
+        **level_sections(content, detection_available=availability_of(db, level) == "open"),
     }
 
 
@@ -254,10 +264,8 @@ def search_levels(db: Session, query: str) -> dict:
 
 def _pinyin_match(query: str, content: dict) -> int:
     """汉字查询 → 拼音声母/韵母映射到关卡（pypinyin）。"""
-    try:
-        from pypinyin import Style, pinyin
-    except ImportError:
-        return 0
+    from pypinyin import Style, pinyin
+
     target = (content.get("targetSound") or "").lower()
     if not target:
         return 0
@@ -266,21 +274,12 @@ def _pinyin_match(query: str, content: dict) -> int:
             continue
         for py in pinyin(ch, style=Style.NORMAL, heteronym=False):
             s = py[0]
-            initial, final = _split_pinyin(s)
+            initial, final = split_pinyin(s)
             if target == initial or target == final:
                 return 60
             if len(target) == 1 and target in s:
                 return 40
     return 0
-
-
-def _split_pinyin(s: str) -> tuple[str, str]:
-    initials = ["zh", "ch", "sh", "b", "p", "m", "f", "d", "t", "n", "l",
-                "g", "k", "h", "j", "q", "x", "r", "z", "c", "s", "y", "w"]
-    for ini in initials:
-        if s.startswith(ini) and len(s) > len(ini):
-            return ini, s[len(ini):]
-    return "", s
 
 
 # ---------------- 文章 ----------------

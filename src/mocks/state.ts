@@ -3,8 +3,10 @@
  */
 import type {
   AssessmentResult,
+  AudioPurpose,
+  CalibrationStatus,
+  ConsentStatus,
   LearningEvent,
-  LevelDetail,
   RecordingDTO,
 } from '@/api'
 import { LEVEL_DETAILS, LEVEL_SUMMARIES } from './fixtures'
@@ -16,9 +18,9 @@ export interface MockUser {
 
 export interface MockSession {
   authenticated: MockUser | null
-  consentStatus: 'none' | 'granted' | 'rejected' | 'revoked'
-  decisions: Array<{ decision: 'granted' | 'rejected' | 'revoked'; consentTextVersion: string; decidedAt: string }>
-  calibration: { status: 'none' | 'session' | 'personal'; expiresAt?: string }
+  consentStatus: ConsentStatus
+  decisions: Array<{ decision: 'granted' | 'rejected' | 'revoked'; consentTextVersion: string; createdAt: string }>
+  calibration: { status: CalibrationStatus; expiresAt?: string }
   dataEpoch: number
 }
 
@@ -40,7 +42,7 @@ export const state = {
     calibration: { status: 'none' },
     dataEpoch: 1,
   } as MockSession,
-  uploads: new Map<string, { purpose: 'recording' | 'calibration'; durationSec: number; expiresAt: string }>(),
+  uploads: new Map<string, { purpose: AudioPurpose; durationSec: number; expiresAt: string }>(),
   recordings: new Map<string, MockRecording>(),
   submissions: new Map<string, string>(),
   learningEvents: [] as LearningEvent[],
@@ -70,15 +72,15 @@ function buildCurve(levelId: string, audioId: string): AssessmentResult['curve']
   const level = LEVEL_DETAILS[levelId]
   const syllable = level?.representativeChar ?? level?.targetSound ?? 'a'
   const points = 12
-  const reference: Array<{ t: number; tone: number }> = []
-  const user: Array<{ t: number; tone: number }> = []
+  const reference: Array<{ t: number; v: number }> = []
+  const user: Array<{ t: number; v: number }> = []
   for (let i = 0; i < points; i += 1) {
     const t = (i / (points - 1)) * 0.6
     const ref = 2.8 + 0.35 * Math.sin((i / points) * Math.PI)
     const drift = ((seed % 40) - 20) / 40 // -0.5 ~ 0.5 的个体差
     const userTone = ref + drift * (0.4 + 0.6 * Math.sin(i * 0.7))
-    reference.push({ t: Number(t.toFixed(3)), tone: Number(ref.toFixed(3)) })
-    user.push({ t: Number(t.toFixed(3)), tone: Number(Math.min(5, Math.max(0, userTone)).toFixed(3)) })
+    reference.push({ t: Number(t.toFixed(3)), v: Number(ref.toFixed(3)) })
+    user.push({ t: Number(t.toFixed(3)), v: Number(Math.min(5, Math.max(0, userTone)).toFixed(3)) })
   }
   return {
     status: 'ok',
@@ -89,15 +91,13 @@ function buildCurve(levelId: string, audioId: string): AssessmentResult['curve']
 }
 
 function buildFormants(): AssessmentResult['formants'] {
-  const center = { f1: 820, f2: 1280 }
-  const points = [
-    { f1: 760, f2: 1330 },
-    { f1: 790, f2: 1300 },
-    { f1: 830, f2: 1260 },
-    { f1: 870, f2: 1230 },
-    { f1: 840, f2: 1290 },
-  ]
-  return { status: 'ok', space: 'normalized', user: center, referenceRegion: { points, center } }
+  return {
+    status: 'ok',
+    space: 'normalized',
+    user: { f1: 0.4, f2: -0.2, raw: { f1Mean: 830, f2Mean: 1250 } },
+    referenceRegion: { center: [0.55, -0.3], radius: 0.9, vowel: 'a' },
+    deviation: 0.42,
+  }
 }
 
 export function buildResult(levelId: string, audioId: string, qualityFail: boolean, archived: boolean): AssessmentResult {
@@ -115,7 +115,13 @@ export function buildResult(levelId: string, audioId: string, qualityFail: boole
       expiresAt: archived ? undefined : new Date(Date.now() + 72 * 3_600_000).toISOString(),
       quality: {
         verdict: 'fail',
-        signal: { volume: '偏轻', noise: '背景有杂音' },
+        signal: {
+          verdict: 'fail',
+          volume: { dbfs: -30.2, pass: false, advice: '音量偏轻，请离麦克风近一些' },
+          noise: { snrDb: 8.5, pass: false, advice: '环境噪声较大，请找安静的地方重录' },
+          clipping: { ratio: 0, pass: true, advice: null },
+          duration: { valueSec: 1.2, expectedSec: 2, pass: false, advice: '录音偏短，请读完整段提示词' },
+        },
         reading: {},
         retakeAdvice: '找一个安静的地方，嘴巴离麦克风约一拳距离，用平常说话的音量再读一遍。',
       },
@@ -132,16 +138,23 @@ export function buildResult(levelId: string, audioId: string, qualityFail: boole
     expiresAt: archived ? undefined : new Date(Date.now() + 72 * 3_600_000).toISOString(),
     quality: {
       verdict: 'pass',
-      signal: { volume: '合适', noise: '可接受' },
-      reading: {},
+      signal: {
+        verdict: 'pass',
+        volume: { dbfs: -22.1, pass: true, advice: null },
+        noise: { snrDb: 21.4, pass: true, advice: null },
+        clipping: { ratio: 0, pass: true, advice: null },
+        duration: { valueSec: 4.2, expectedSec: 2, pass: true, advice: null },
+      },
+      reading: { missing: [], extra: [], repeated: [], replaced: [], disordered: false, advice: null },
       retakeAdvice: '',
     },
     score,
     phenomena: [
       {
-        label: `${level?.targetSound ?? ''} 的音高走向偏平`,
-        position: `「${level?.representativeChar ?? level?.targetSound ?? ''}」整体`,
-        description: '和标准曲线相比，这次录音的音高起伏略小，听起来稍平。',
+        tag: 'tone_flat',
+        syllable: level?.representativeChar ?? level?.targetSound ?? '',
+        position: { syllableIndex: 0, part: 'tone' },
+        description: `「${level?.representativeChar ?? level?.targetSound ?? ''}」的音高走向偏平，起伏比标准曲线小。`,
       },
     ],
     fourSteps: [
@@ -188,8 +201,8 @@ export function deriveProgress(): {
     return {
       levelId: summary.id,
       completed: quizOk && practiceOk,
-      quiz: { passed: summary.completionKeys.quizIds.length, total: summary.completionKeys.quizIds.length },
-      practice: { done: summary.completionKeys.practiceStepIds.length, total: summary.completionKeys.practiceStepIds.length },
+      quiz: { passed: quizPassed.size, total: summary.completionKeys.quizIds.length },
+      practice: { done: practiceDone.size, total: summary.completionKeys.practiceStepIds.length },
     }
   })
   const ordered = [...LEVEL_SUMMARIES].sort((a, b) => a.order - b.order)
@@ -198,8 +211,4 @@ export function deriveProgress(): {
     return !entry?.completed
   })
   return { levels, nextLevelId: next?.id ?? ordered[0]?.id }
-}
-
-export function levelDetailOf(levelId: string): LevelDetail | undefined {
-  return LEVEL_DETAILS[levelId]
 }

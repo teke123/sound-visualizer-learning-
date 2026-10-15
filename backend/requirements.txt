@@ -14,7 +14,7 @@ soundfile>=0.12
 pypinyin>=0.50
 argon2-cffi>=23        # 自研轻量认证密码哈希
 imageio-ffmpeg>=0.4   # ffmpeg 二进制分发（转码 16k 单声道 PCM）
-websockets>=12         # 讯飞评测适配器（可选启用）
+websocket-client>=1.6  # 讯飞评测适配器（官方 Python SDK 同款 WS 客户端）
 
 # 测试
 pytest>=8,<10

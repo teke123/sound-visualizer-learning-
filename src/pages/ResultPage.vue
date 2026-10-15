@@ -135,7 +135,7 @@ const retryable = computed(
       <AcousticDetail v-if="recording.audioId" :audio-id="recording.audioId" />
 
       <!-- 保存状态（§6.4） -->
-      <SaveStatusBanner :storage="assessment.storage" :expires-at="assessment.expiresAt" />
+      <SaveStatusBanner :storage="assessment.storage" :expires-at="assessment.expiresAt ?? undefined" />
 
       <FeedbackWidget mode="rating" :source-page="`/result/${recordingId}`" :recording-id="recordingId" />
       <BoundaryNotice class="result-boundary" />

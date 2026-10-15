@@ -1,5 +1,20 @@
 """异步路径自测：202 回落与轮询、Provider 不可达（PROVIDER_DOWN 503）、
-处理超时（TIMEOUT 504）、同键重试复活。需要服务以对应环境变量启动。"""
+处理超时（TIMEOUT 504）、同键重试复活。三种模式各自要求服务按对应
+环境变量启动（backend 目录下，见 docs/交接文档_后端问题清单.md §5）：
+
+- E2E_MODE=202（默认）：SVS_SYNC_WINDOW=0 py -3.13 main.py。
+  首提应立即回落 202、轮询最终 200。评分缓存键含会话所有者，新会话
+  必为冷缓存，无需清库。（wait_sync_window 曾有超时取消执行器 future
+  的竞态：窗口 0 时管线永不开跑、录音滞留 processing 到硬截止 TIMEOUT，
+  已改为不取消参与者的 asyncio.wait——本组合即其回归验证。）
+- E2E_MODE=down：SVS_MOCK_PROVIDER=fail py -3.13 main.py
+  （mock 模拟不可达；标定不依赖 provider 结果，不受影响）。
+- E2E_MODE=timeout：SVS_MOCK_PROVIDER=slow SVS_MOCK_SLOW_SEC=40
+  py -3.13 main.py（slow 须大于 SVS_HARD_DEADLINE 默认 30，触发 504 TIMEOUT；
+  标定路由等待上限已解耦为 SVS_CALIBRATION_TIMEOUT 默认 45，slow 40 时
+  前置标定可在窗口内完成）。全程约 100 秒；另断言迟到的管线收尾不会
+  把已判 TIMEOUT 的录音复活成 completed。
+"""
 from __future__ import annotations
 
 import io
@@ -55,7 +70,8 @@ def main() -> int:
 
     mode = os.environ.get("E2E_MODE", "202")
 
-    with httpx.Client(base_url=BASE, headers=HEADERS, timeout=40) as c:
+    # 60s：timeout 模式下标定本身要走完 slow 40s + 分析，40s 客户端超时会先到
+    with httpx.Client(base_url=BASE, headers=HEADERS, timeout=60) as c:
         cv = c.get("/api/levels/L30").json()["data"]["contentVersion"]
         calibrate(c)
         audio_id = upload_rec(c)
@@ -68,10 +84,13 @@ def main() -> int:
                   f"{r.status_code}")
             check("retry-after header", r.headers.get("retry-after") is not None)
             rec_id = rec["recordingId"]
-            # 处理中重复提交 → 202
+            # 处理中重复提交（不同 submissionId）→ 202；硬编码 cv 在 L30 非 v1
+            # 时会收到 409 CONTENT_VERSION_CHANGED，让探针静默失去意义
             r2 = c.post("/api/recordings", json={
-                "audioId": audio_id, "levelId": "L30", "contentVersion": 1,
-                "submissionId": rec["recordingId"].replace("rc_", "")})
+                "audioId": audio_id, "levelId": "L30", "contentVersion": cv,
+                "submissionId": f"async-dup-{mode}-{time.time()}"})
+            check("duplicate submit while processing → 202",
+                  r2.status_code == 202, f"{r2.status_code} {r2.text[:150]}")
             # 轮询直到 200
             ok = False
             for _ in range(40):
@@ -109,6 +128,13 @@ def main() -> int:
             check("hard deadline → 504 TIMEOUT",
                   status == 504 and body.json()["code"] == "TIMEOUT",
                   f"{status} {body.text[:150]}")
+            # 管线睡过截止仍会醒来收尾（slow 40s + 分析约 2s）：多等一会
+            # 再查，迟到的完成不得复活已判死的录音
+            time.sleep(15)
+            rr = c.get(f"/api/recordings/{rec['recordingId']}")
+            check("late pipeline cannot resurrect TIMEOUT",
+                  rr.status_code == 504 and rr.json()["code"] == "TIMEOUT",
+                  f"{rr.status_code} {rr.text[:150]}")
 
     failed = [r for r in results if not r[1]]
     print(f"\n==== {len(results) - len(failed)}/{len(results)} passed ====")

@@ -264,6 +264,3 @@ def build_phenomena_and_four_steps(
             "description": "本次整体得分偏低，建议先回本关把示范多听几遍",
         })
     return phenomena, steps, score
-
-
-BOUNDARY_NOTE = config.BOUNDARY_NOTE

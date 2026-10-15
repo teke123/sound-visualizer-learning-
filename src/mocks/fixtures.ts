@@ -11,8 +11,6 @@ import type {
   LevelSummary,
 } from '@/api'
 
-const now = () => new Date().toISOString()
-const hoursFromNow = (h: number) => new Date(Date.now() + h * 3_600_000).toISOString()
 
 /* --------------------------------- 关卡 ---------------------------------- */
 
@@ -105,7 +103,7 @@ const SEEDS: LevelSeed[] = [
   {
     id: 'L30',
     order: 30,
-    layer: 'fusion',
+    layer: 'syllable',
     type: '拼读',
     targetSound: 'm+a',
     pinyin: 'mā',
@@ -133,11 +131,11 @@ export const SKELETONS: LevelSkeleton[] = [
 
 /** 易混对（双方均已发布才展示） */
 export const CONFUSABLE_PAIRS = [
-  { aId: 'L07', bId: 'L08' },
-  { aId: 'L13', bId: 'L14' },
+  { a: 'L07', b: 'L08' },
+  { a: 'L13', b: 'L14' },
 ]
 
-function sagittalFor(seed: LevelSeed): LevelDetail['articulation']['sagittal'] {
+function sagittalFor(seed: LevelSeed): NonNullable<LevelDetail['articulation']>['sagittal'] {
   if (seed.id === 'L01') {
     return {
       keyframes: [
@@ -277,12 +275,13 @@ export const LEVEL_DETAILS: Record<string, LevelDetail> = Object.fromEntries(
         oneLiner: seed.oneLiner,
         goal: seed.goal,
         contentVersion: 1,
+        ruleVersion: 'rules-mock-1',
+        applicableIssues: '适合与易混音分不清的学习者',
         nav: {
-          prevId: prev?.id,
-          nextId: next?.id,
-          confusableIds:
+          prev: prev?.id ?? null,
+          next: next?.id ?? null,
+          confusables:
             seed.id === 'L07' ? ['L08'] : seed.id === 'L08' ? ['L07'] : seed.id === 'L13' ? ['L14'] : seed.id === 'L14' ? ['L13'] : [],
-          relatedIds: seed.id === 'L30' ? ['L01', 'L09'] : [],
         },
         articulation: {
           media: [
@@ -295,11 +294,11 @@ export const LEVEL_DETAILS: Record<string, LevelDetail> = Object.fromEntries(
           description: seed.description,
           sagittal: sagittalFor(seed),
         },
-        demo: [
+        demos: [
           { mediaId: `aud-${seed.id}-demo`, speed: 'normal' as const, voice: 'female' as const, text: seed.promptText.replace('请朗读：', '') },
           { mediaId: `aud-${seed.id}-demo-slow`, speed: 'slow' as const, voice: 'male' as const, text: seed.promptText.replace('请朗读：', '') },
         ],
-        quiz: [
+        quizzes: [
           {
             id: `${seed.id}-q1`,
             stimulusMediaId: `aud-${seed.id}-quiz1`,
@@ -352,21 +351,26 @@ export const LEVEL_DETAILS: Record<string, LevelDetail> = Object.fromEntries(
         ],
         misconceptions: [
           {
-            observable: `别人可能听成与 ${seed.targetSound} 易混的音`,
+            phenomenon: `别人可能把 ${seed.targetSound} 听成与它易混的音`,
             fix: '回到剖面图看清舌位与唇形，再对照示范慢速跟读。',
           },
         ],
-        pro: {
-          content: `${seed.title}：${seed.description} 发音部位与方法的语音学描述以关卡专业资料为准。`,
-          acousticNotes: isVowel
-            ? '参考值：a 的 F1 约 700–1000 Hz、F2 约 1100–1500 Hz（成年发音人，因性别与个体差异浮动）。'
-            : '参考值：塞音 VOT——b 约 0–20 ms（不送气），p 约 60–100 ms（送气）；具体因语速与个体浮动。',
-          references: [
+        professional: {
+          description: `${seed.title}：${seed.description} 发音部位与方法的语音学描述以关卡专业资料为准。`,
+          acousticRefs: isVowel
+            ? [
+                { name: 'F1（第一共振峰）', value: '约 700–1000 Hz', note: '开口度越大 F1 越高，因人而异' },
+                { name: 'F2（第二共振峰）', value: '约 1100–1500 Hz', note: '舌位越前 F2 越高，因人而异' },
+              ]
+            : [
+                { name: 'VOT（嗓音起始时间）', value: '不送气塞音约 0–20 ms，送气约 60–100 ms', note: '因语速与个体浮动' },
+              ],
+          sources: [
             {
               title: '普通话语音学基础资料（示例）',
               source: '教学团队提供',
               license: '仅本站教学使用',
-              scope: '面向大众学习参考，不作为等级认定依据',
+              boundary: '面向大众学习参考，不作为等级认定依据',
             },
           ],
         },
@@ -387,19 +391,20 @@ export const LEVEL_DETAILS: Record<string, LevelDetail> = Object.fromEntries(
 /* --------------------------------- 文章 ---------------------------------- */
 
 export const ARTICLE_CATEGORIES: ArticleCategory[] = [
-  { id: 'air', name: '气：气从哪里来', order: 1, description: '呼吸与气流是声音的起点' },
-  { id: 'voice', name: '声：声音怎么响', order: 2, description: '声带振动让气流动听' },
-  { id: 'mouth', name: '口型：嘴和舌头怎么摆', order: 3, description: '口腔形状决定音色' },
+  { id: 1, name: '气' },
+  { id: 2, name: '声' },
+  { id: 3, name: '口型' },
 ]
 
 export const ARTICLES: ArticleDetail[] = [
   {
     slug: 'where-air-comes-from',
     title: '气从哪里来：说话的动力',
-    category: 'air',
+    category: '气',
+    summary: '说话的声音，起点是一口平稳呼出的气。',
     contentVersion: 1,
-    excerpt: '说话的声音，起点是一口平稳呼出的气。',
-    content: [
+    demo: { mediaId: 'aud-L01-demo', text: '啊' },
+    markdown: [
       '## 一口气，一串音',
       '',
       '说话前，肺里存着一口气；说话时，这口气稳定地流出来。气流就像水流，没有它，再好的口型也发不出声。',
@@ -418,19 +423,23 @@ export const ARTICLES: ArticleDetail[] = [
       '语音学上把这称为呼气动能与声门下压的配合；平稳的声门下压是稳定音高与音量的前提。',
       ':::',
     ].join('\n'),
-    practice: ['坐直慢吸 4 拍，匀速吹气 8 拍', '轻发「嘶——」10 秒保持气流稳定'],
-    references: [
-      { title: '呼吸与发声（示例资料）', source: '教学团队', license: '仅本站教学使用', scope: '大众科普口径' },
+    practice: [
+      { title: '匀速吹气', instruction: '坐直慢吸 4 拍，匀速吹气 8 拍' },
+      { title: '嘶音保持', instruction: '轻发「嘶——」10 秒保持气流稳定' },
     ],
-    levelIds: ['L01'],
+    references: [
+      { title: '呼吸与发声（示例资料）', source: '教学团队', license: '仅本站教学使用', boundary: '大众科普口径' },
+    ],
+    relatedLevels: [{ levelId: 'L01', available: true }],
   },
   {
     slug: 'how-voice-works',
     title: '声音怎么响：喉咙里的小马达',
-    category: 'voice',
+    category: '声',
+    summary: '声带一开一合，气流就变成了带着音高的声音。',
     contentVersion: 1,
-    excerpt: '声带一开一合，气流就变成了带着音高的声音。',
-    content: [
+    demo: { mediaId: 'aud-L07-demo', text: '波' },
+    markdown: [
       '## 摸得到的振动',
       '',
       '把手轻轻放在喉咙上，说「啊——」。手指能感到轻微的抖动：这是声带在一张一合地振动。振得快，音高就高；振得慢，音高就低。',
@@ -446,19 +455,23 @@ export const ARTICLES: ArticleDetail[] = [
       '::: levels ids=L01,L07',
       ':::',
     ].join('\n'),
-    practice: ['手放喉咙发「啊——」，感受振动', '对比发「嘶」（不振动）与「啊」（振动）'],
-    references: [
-      { title: '发声原理（示例资料）', source: '教学团队', license: '仅本站教学使用', scope: '大众科普口径' },
+    practice: [
+      { title: '感受振动', instruction: '手放喉咙发「啊——」，感受振动' },
+      { title: '对比清浊', instruction: '对比发「嘶」（不振动）与「啊」（振动）' },
     ],
-    levelIds: ['L07'],
+    references: [
+      { title: '发声原理（示例资料）', source: '教学团队', license: '仅本站教学使用', boundary: '大众科普口径' },
+    ],
+    relatedLevels: [{ levelId: 'L07', available: true }],
   },
   {
     slug: 'mouth-shapes',
     title: '嘴和舌头怎么摆：声音的调色盘',
-    category: 'mouth',
+    category: '口型',
+    summary: '同样的气流，过不同的口型，就成了不同的音。',
     contentVersion: 1,
-    excerpt: '同样的气流，过不同的口型，就成了不同的音。',
-    content: [
+    demo: { mediaId: 'aud-L13-demo', text: '呢' },
+    markdown: [
       '## 看得见的差别',
       '',
       '嘴巴张大是 a，拢圆是 u；舌尖顶上去是 n、l，舌面抬起来是 j、q、x。口腔形状一变，声音跟着变——这是「看得见的声音」的由来。',
@@ -476,11 +489,18 @@ export const ARTICLES: ArticleDetail[] = [
       '2. 舌尖抵上齿龈发 n，再轻抵发 l，各 5 次',
       ':::',
     ].join('\n'),
-    practice: ['a / u 口型轮换', 'n / l 舌尖位置轮换'],
-    references: [
-      { title: '普通话口型图集（示例）', source: '教学团队', license: '仅本站教学使用', scope: '大众科普口径' },
+    practice: [
+      { title: '口型轮换', instruction: 'a / u 口型来回 5 次' },
+      { title: '舌尖位置', instruction: 'n / l 舌尖位置轮换各 5 次' },
     ],
-    levelIds: ['L01', 'L13', 'L14'],
+    references: [
+      { title: '普通话口型图集（示例）', source: '教学团队', license: '仅本站教学使用', boundary: '大众科普口径' },
+    ],
+    relatedLevels: [
+      { levelId: 'L01', available: true },
+      { levelId: 'L13', available: true },
+      { levelId: 'L14', available: true },
+    ],
   },
 ]
 
@@ -488,7 +508,8 @@ export const ARTICLE_SUMMARIES: ArticleSummary[] = ARTICLES.map((article) => ({
   slug: article.slug,
   title: article.title,
   category: article.category,
-  excerpt: article.excerpt,
+  summary: article.summary,
+  contentVersion: article.contentVersion,
 }))
 
 /* -------------------------------- 标定文本 ------------------------------- */
@@ -498,4 +519,3 @@ export const CALIBRATION_TEXT = {
   textVersion: 'cal-v1',
 }
 
-export { now, hoursFromNow }

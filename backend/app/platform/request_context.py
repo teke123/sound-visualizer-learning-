@@ -19,7 +19,6 @@ logger = logging.getLogger("svs.request")
 
 SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
 JSON_PREFIXES = ("/api",)
-WRITE_EXEMPT_PATHS: set[str] = set()  # 无豁免：所有 /api 与 /admin 写都校验
 
 
 class RequestContextMiddleware(BaseHTTPMiddleware):

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import datetime
 
-from fastapi import Depends, Request, Response
+from fastapi import Depends, Request
 from sqlalchemy.orm import Session
 
 from app import config
@@ -33,10 +33,9 @@ def db_session() -> Session:
 
 
 class Actor:
-    def __init__(self, db: Session, request: Request, response: Response):
+    def __init__(self, db: Session, request: Request):
         self.db = db
         self.request = request
-        self.response = response
         raw = request.cookies.get(SID_COOKIE)
         sid = verify_sid(raw)
         self.sid, issued = identity_uc.ensure_sid(db, sid)
@@ -94,9 +93,9 @@ class Actor:
         self._set_cookie(SID_COOKIE, sign_sid(new_sid), SID_COOKIE_MAX_AGE)
 
 
-def get_actor(request: Request, response: Response,
+def get_actor(request: Request,
               db: Session = Depends(db_session)) -> Actor:
-    return Actor(db, request, response)
+    return Actor(db, request)
 
 
 def require_user(actor: Actor) -> UserRow:

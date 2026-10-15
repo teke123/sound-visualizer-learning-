@@ -10,18 +10,18 @@ import type { Articulation } from '@/api'
 import SagittalView from './SagittalView.vue'
 
 const props = defineProps<{
-  articulation: Articulation
+  articulation: Articulation | null | undefined
   /** mediaId → URL（公开 /api/media 或预览 /api/preview/media） */
   mediaResolver: (mediaId: string) => string
 }>()
 
 type ViewKind = 'media' | 'sagittal' | 'model3d'
 
-const hasMedia = computed(() => props.articulation.media.length > 0)
+const hasMedia = computed(() => (props.articulation?.media ?? []).length > 0)
 const hasSagittal = computed(
-  () => (props.articulation.sagittal?.keyframes.length ?? 0) > 0,
+  () => (props.articulation?.sagittal?.keyframes.length ?? 0) > 0,
 )
-const hasModel3d = computed(() => Boolean(props.articulation.model3dMediaId))
+const hasModel3d = computed(() => Boolean(props.articulation?.model3dMediaId))
 
 const availableViews = computed<Array<{ key: ViewKind; label: string }>>(() => {
   const views: Array<{ key: ViewKind; label: string }> = []
@@ -64,7 +64,7 @@ watch(
 
     <!-- 内容媒体视图：图 / 动画 / 视频 -->
     <div v-if="activeView === 'media' && hasMedia" class="media-view">
-      <figure v-for="item in articulation.media" :key="item.mediaId" class="media-item">
+      <figure v-for="item in articulation?.media ?? []" :key="item.mediaId" class="media-item">
         <video v-if="item.kind === 'video'" controls :src="mediaResolver(item.mediaId)" preload="none"></video>
         <img v-else :src="mediaResolver(item.mediaId)" :alt="item.altText" loading="lazy" />
         <figcaption>{{ item.altText }}</figcaption>
@@ -74,8 +74,8 @@ watch(
     <!-- 声道剖面视图：关键帧参数驱动 -->
     <div v-if="activeView === 'sagittal' && hasSagittal" class="sagittal-wrap">
       <SagittalView
-        :keyframes="articulation.sagittal!.keyframes"
-        :description="articulation.description"
+        :keyframes="articulation?.sagittal?.keyframes ?? []"
+        :description="articulation?.description ?? ''"
       />
     </div>
 

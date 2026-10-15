@@ -18,7 +18,7 @@
 | 模块 | 职责与数据所有权 |
 | ---- | ---- |
 | content | 关卡/文章身份、草稿、不可变公开版本、分类、媒体授权及发布引用、参考发音人与发布时预计算的参考曲线、地图骨架公开标记、搜索索引和导航 |
-| acoustics | 私有上传 audioId、解码与转码规范化、内容哈希、F0/共振峰提取与特征缓存，提供统一的私有音频读取权限判定 |
+| acoustics | 私有上传 audioId、解码与转码规范化、内容哈希、F0/共振峰/频谱图提取与特征缓存，提供统一的私有音频读取权限判定 |
 | scoring | Provider 适配、质量两维（信号维本地、朗读维依赖 Provider）、规则四步、评分结论缓存、标定计算、T 值换算与共振峰归一化 |
 | detection | submissionId 幂等、录音状态机与处理阶段、进程内评分执行器、同步窗口与硬截止、不可变结果快照 |
 | identity | 自研轻量认证（用户名/密码、服务端会话表）、sid 与账号安全绑定、同意决定历史、账号数据代次 dataEpoch、注销与会话失效 |
@@ -123,6 +123,7 @@ CSRF：同源部署，写请求校验 Origin（缺失时校验 Referer）为本�
 | GET /api/audio/{audioId}/f0 | 本人录音音频的原始 F0 序列 {algorithmVersion, hopMs, frames[{t, hz?}], voicedRanges[]}；与 file 相同的归属/失效校验；按需计算并进特征缓存；计入特征计算限流；`private, no-store` |
 | GET /api/audio/{audioId}/formants | 本人录音的原始共振峰 {algorithmVersion, frames[{t, f1?, f2?}], vowelSegments[]}；校验与缓存同上 |
 | GET /api/audio/{audioId}/formants.png | 共振峰散点图片；校验与缓存同上；仅 purpose=recording 的音频可读（标定音频算完即删） |
+| GET /api/audio/{audioId}/spectrogram.png | 频谱图图片（Praat Spectrogram，时间×频率热力图）；校验与缓存同上；仅 purpose=recording 的音频可读 |
 | GET /api/pitch-calibration | {text, textVersion, status: none / session / personal, pitchRange?, vowelSpaceReady, expiresAt?, updatedAt?} |
 | POST /api/pitch-calibration | {audioId, textVersion}；同步处理（受同一计算并发与 30 秒上限约束）；成功 200 返回音域；未得出有效 F0 或六个单韵母不全返回 200 CALIBRATION_FAIL；同意有效写个人音域，否则会话临时音域；标定音频用后即删 |
 | POST /api/recordings | {audioId, levelId, contentVersion, submissionId}；无有效音域 409 CALIBRATION_REQUIRED；窗口内完成 200 返回 {recording, result}；未完成 202 返回 {recording}；版本变化 409；熔断 503 DETECTION_OFF；失败按真实状态码并带 {recordingId, retryable} |
@@ -177,7 +178,7 @@ CSRF：同源部署，写请求校验 Origin（缺失时校验 Referer）为本�
 
 符合条件的录音自动全部转存，无逐条存档操作。修改密码不属于 1.0 范围。
 
-内部或开发诊断端点（生产不对匿名挂载）：音频元数据、`/api/audio/quality`、`/api/asr/*`；`/api/audio/score` 属 2.0 模型对比。F0、共振峰及其图片已作为本人可读的 audioId 资源对外提供（见上表）。后台 `/admin` 是管理界面入口，不是额外网络端口；治理动作不开放通用公开 REST CRUD。
+内部或开发诊断端点（生产不对匿名挂载）：音频元数据、`/api/audio/quality`、`/api/asr/*`；`/api/audio/score` 属 2.0 模型对比。F0、共振峰、频谱图及其图片已作为本人可读的 audioId 资源对外提供（见上表）。后台 `/admin` 是管理界面入口，不是额外网络端口；治理动作不开放通用公开 REST CRUD。
 
 ## 后台治理用例
 
@@ -199,13 +200,13 @@ CSRF：同源部署，写请求校验 Origin（缺失时校验 Referer）为本�
 | # | 决策 | 现行结论 |
 | ---- | ---- | ---- |
 | #1 | 录音资源与学习事件 | /recordings 扁平资源；两步提交；学习事件独立、批量、1.0 不含 mini_quiz；档案集合归 /me，当前会话临时记录归 /session |
-| #2 | 工具接口 | 结果的主对比曲线与共振峰随结果快照下发，前端只渲染；本人录音的音频文件、原始 F0、共振峰及其图片统一按 audioId 对外读取，共用归属/失效校验；质量/ASR 为内部诊断；本地评分 2.0 |
+| #2 | 工具接口 | 结果的主对比曲线与共振峰随结果快照下发，前端只渲染；本人录音的音频文件、原始 F0、共振峰、频谱图及其图片统一按 audioId 对外读取，共用归属/失效校验；质量/ASR 为内部诊断；本地评分 2.0 |
 | #3 | HTTP 语义 | 标准状态码 + JSON envelope + requestId；QUALITY_FAIL 与 CALIBRATION_FAIL 为 200；文件原生响应 |
 | #4 | sid 会话 | 首次按需签发不可猜测、签名 HttpOnly Cookie；上传立即归属；登录绑定而非无条件归档；退出、切换账号与访客重置均轮换 |
 | #5 | 任务读取 | 关卡详情内 detection 与 contentVersion/nav；提交校验展示版本；熔断时学习入口保留、检测明确提示 |
 | #6 | 字段与类型 | JSON camelCase，OpenAPI → 自动生成 TS，CI 检查漂移；数据库内部命名不属于 JSON 契约 |
 | #7 | 音域 | 标定是检测的强制前置：无有效音域（从未标定、临时标定过期、撤回后）时提交返回 409 CALIBRATION_REQUIRED；标定同时得出音高音域与元音空间；受理时固定音域快照；同意后个人音域按「标定基线 + 最近存档合格录音」滚动更新 |
-| #8 | 账号 | 自研轻量认证：argon2 哈希 + 服务端会话表，便于用户名登录、sid 绑定、注销即全部会话失效；不再以 fastapi-users 为前提 |
+| #8 | 账号 | 自研轻量认证：argon2 哈希 + 服务端会话表，便于用户名登录、sid 绑定、注销即全部会话失效 |
 | #9 | CMS 库 | 自研内容治理 + starlette-admin 优先/sqladmin 备选；草稿 CRUD 与发布用例隔离，管理员认证独立配置 |
 | #10 | 整合 | SQLite（WAL）+ SQLAlchemy + Alembic + 文件存储；迁移数据库需评估数据和并发 |
 | #11 | audioId 数据流 | 上传落规范化音频、哈希与归属；私有音频只经 /audio/{id}/file 与内部用例读取；公开示范只经 /media |

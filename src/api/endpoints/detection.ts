@@ -1,11 +1,14 @@
 /** acoustics / scoring / detection 模块端点：上传、标定、录音（docs/decision-map-backend.md） */
 import { apiRequest } from '../client'
 import type {
+  AudioPurpose,
   AudioUploadResponse,
+  CalibrationFailResult,
+  CalibrationPostResult,
   F0Response,
   FormantsResponse,
   PitchCalibrationInfo,
-  PitchRange,
+  RecordingDeleted,
   RecordingSubmitResponse,
   RecordingWithResult,
 } from '../generated/types'
@@ -19,7 +22,7 @@ export interface SubmitRecordingPayload {
 
 export const detectionApi = {
   /** multipart 两步提交第一步：上传得到 audioId（72 小时有效期自此刻起） */
-  uploadAudio(file: Blob, purpose: 'recording' | 'calibration', filename: string) {
+  uploadAudio(file: Blob, purpose: AudioPurpose, filename: string) {
     const formData = new FormData()
     formData.append('purpose', purpose)
     formData.append('file', file, filename)
@@ -38,7 +41,10 @@ export const detectionApi = {
   },
   /** 标定：同步处理；未得出有效音域时 HTTP 200 + code=CALIBRATION_FAIL（带重录指引） */
   submitCalibration(payload: { audioId: string; textVersion: string }) {
-    return apiRequest<PitchRange>('/pitch-calibration', { method: 'POST', body: payload })
+    return apiRequest<CalibrationPostResult | CalibrationFailResult>('/pitch-calibration', {
+      method: 'POST',
+      body: payload,
+    })
   },
 
   /** 两步提交第二步：窗口内完成 200；未完成 202；版本/幂等/标定冲突 409 */
@@ -49,6 +55,6 @@ export const detectionApi = {
     return apiRequest<RecordingWithResult>(`/recordings/${encodeURIComponent(id)}`, { signal: options.signal })
   },
   deleteRecording(id: string) {
-    return apiRequest<{ deleted: boolean }>(`/recordings/${encodeURIComponent(id)}`, { method: 'DELETE' })
+    return apiRequest<RecordingDeleted>(`/recordings/${encodeURIComponent(id)}`, { method: 'DELETE' })
   },
 }

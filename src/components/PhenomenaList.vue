@@ -2,6 +2,20 @@
 /** PhenomenaList：可观察现象（FR-1004）：仅使用已检测维度，通俗表述来自后端 */
 import type { Phenomenon } from '@/api'
 
+const POSITION_LABELS: Record<string, string> = {
+  overall: '整体',
+  initial: '声母',
+  final: '韵母',
+  tone: '声调',
+}
+
+function positionText(item: Phenomenon): string {
+  const part = item.position?.part
+  if (!part) return item.syllable ?? ''
+  const label = POSITION_LABELS[part] ?? part
+  return item.syllable ? `「${item.syllable}」的${label}` : label
+}
+
 defineProps<{ phenomena: Phenomenon[] }>()
 </script>
 
@@ -10,9 +24,9 @@ defineProps<{ phenomena: Phenomenon[] }>()
     <h2>听到了什么</h2>
     <p v-if="phenomena.length === 0" class="phen-empty">本次没有检出明显问题，继续保持！</p>
     <ul v-else class="phen-list">
-      <li v-for="(item, index) in phenomena" :key="index" class="phen-item">
-        <span class="phen-label">{{ item.label }}</span>
-        <span v-if="item.position" class="phen-position">{{ item.position }}</span>
+      <li v-for="(item, index) in phenomena" :key="`${item.tag}-${index}`" class="phen-item">
+        <span class="phen-label">{{ item.tag }}</span>
+        <span v-if="positionText(item)" class="phen-position">{{ positionText(item) }}</span>
         <p class="phen-desc">{{ item.description }}</p>
       </li>
     </ul>

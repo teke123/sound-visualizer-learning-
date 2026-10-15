@@ -31,7 +31,8 @@ LEVELS = [
         "articulation": {
             "description": "发 a 时，下巴放松地往下打开，像打哈欠的前半段；嘴角自然向两边摊开，舌头平放在口腔底部。嘴开得越大，声音越亮、越通畅。口型保持不动，a 就能稳稳地延长。",
             "media": [],
-            "sagittalKeyframes": [
+            "sagittal": {
+                "keyframes": [
                 {
                     "label": "张口发 a（可延长）",
                     "holdMs": 700,
@@ -43,7 +44,8 @@ LEVELS = [
                     "airflow": "oral",
                     "voicing": True,
                 },
-            ],
+                ]
+            },
         },
         "demos": [
             {"ref": "L01_demo_normal_male", "speed": "normal", "voice": "male", "text": "啊"},
@@ -126,7 +128,8 @@ LEVELS = [
         "articulation": {
             "description": "发 o 时，嘴巴半开，嘴唇向中间收拢成一个圆圆的小孔，像含着一根粗吸管；舌头后半部分微微抬起，舌位不前不后。发音全程嘴唇保持圆形不变，声音就圆润稳定。",
             "media": [],
-            "sagittalKeyframes": [
+            "sagittal": {
+                "keyframes": [
                 {
                     "label": "圆唇发 o（可延长）",
                     "holdMs": 700,
@@ -138,7 +141,8 @@ LEVELS = [
                     "airflow": "oral",
                     "voicing": True,
                 },
-            ],
+                ]
+            },
         },
         "demos": [
             {"ref": "L02_demo_normal_male", "speed": "normal", "voice": "male", "text": "噢"},
@@ -221,7 +225,8 @@ LEVELS = [
         "articulation": {
             "description": "发 e 时，嘴巴半开，嘴角轻轻向两边展开，像浅浅微笑；舌头往后缩一点点，后半部分微微抬起。嘴唇全程保持展开不圆，声音自然地从喉咙送出来。",
             "media": [],
-            "sagittalKeyframes": [
+            "sagittal": {
+                "keyframes": [
                 {
                     "label": "展唇发 e（可延长）",
                     "holdMs": 700,
@@ -233,7 +238,8 @@ LEVELS = [
                     "airflow": "oral",
                     "voicing": True,
                 },
-            ],
+                ]
+            },
         },
         "demos": [
             {"ref": "L03_demo_normal_male", "speed": "normal", "voice": "male", "text": "鹅"},
@@ -316,7 +322,8 @@ LEVELS = [
         "articulation": {
             "description": "发 i 时，嘴巴开得很小，嘴角向两边咧开像微笑；舌头前部明显抬高，靠近上腭但不贴住，舌尖轻轻待在下面。声音又细又亮，像一根细线。",
             "media": [],
-            "sagittalKeyframes": [
+            "sagittal": {
+                "keyframes": [
                 {
                     "label": "展唇高舌发 i（可延长）",
                     "holdMs": 700,
@@ -328,7 +335,8 @@ LEVELS = [
                     "airflow": "oral",
                     "voicing": True,
                 },
-            ],
+                ]
+            },
         },
         "demos": [
             {"ref": "L04_demo_normal_male", "speed": "normal", "voice": "male", "text": "一"},
@@ -411,7 +419,8 @@ LEVELS = [
         "articulation": {
             "description": "发 u 时，嘴唇向前突出，撮成一个留有小孔的圆圈；舌头整体往后上方缩，嘴巴开口很小。声音低而浑圆，像小火车“呜呜”叫。",
             "media": [],
-            "sagittalKeyframes": [
+            "sagittal": {
+                "keyframes": [
                 {
                     "label": "圆唇后舌发 u（可延长）",
                     "holdMs": 700,
@@ -423,7 +432,8 @@ LEVELS = [
                     "airflow": "oral",
                     "voicing": True,
                 },
-            ],
+                ]
+            },
         },
         "demos": [
             {"ref": "L05_demo_normal_male", "speed": "normal", "voice": "male", "text": "乌"},
@@ -506,7 +516,8 @@ LEVELS = [
         "articulation": {
             "description": "发 ü 时，先把嘴咧开发个 i，舌头保持不动；再把嘴唇慢慢撮圆，声音就变成了 ü。舌头在前、嘴唇是圆的，这就是 ü 的诀窍，就像说“鱼”时开头的音。",
             "media": [],
-            "sagittalKeyframes": [
+            "sagittal": {
+                "keyframes": [
                 {
                     "label": "撮唇前舌发 ü（可延长）",
                     "holdMs": 700,
@@ -518,7 +529,8 @@ LEVELS = [
                     "airflow": "oral",
                     "voicing": True,
                 },
-            ],
+                ]
+            },
         },
         "demos": [
             {"ref": "L06_demo_normal_male", "speed": "normal", "voice": "male", "text": "迂"},
@@ -601,12 +613,13 @@ LEVELS = [
         "articulation": {
             "description": "先把上下嘴唇轻轻闭拢，挡住气流，同时喉咙里憋一小口气；然后嘴唇突然打开，气一下冲出来，就是 b。b 送出的气很少，手放在嘴前几乎感觉不到风。",
             "media": [],
-            "sagittalKeyframes": [
+            "sagittal": {
+                "keyframes": [
                 {
                     "label": "双唇闭合蓄气（成阻）",
                     "holdMs": 140,
                     "jaw": 0.05,
-                    "lips": {"aperture": 0.0, "rounding": 0.0, "contact": "closed"},
+                    "lips": {"aperture": 0.0, "rounding": 0.0, "contact": "bilabial"},
                     "tongueTip": {"place": "rest", "stricture": "open"},
                     "tongueBody": {"height": 0.4, "backness": 0.4, "stricture": "open"},
                     "velum": "raised",
@@ -624,7 +637,8 @@ LEVELS = [
                     "airflow": "burst",
                     "voicing": False,
                 },
-            ],
+                ]
+            },
         },
         "demos": [
             {"ref": "L07_demo_normal_male", "speed": "normal", "voice": "male", "text": "波"},
@@ -707,12 +721,13 @@ LEVELS = [
         "articulation": {
             "description": "动作的前半段和 b 一样：双唇闭拢，把气挡住。不同的是松开时要用力送气，像吹掉纸上的灰尘，跟出来一股明显的风。手背放在嘴前能明显感到气流。",
             "media": [],
-            "sagittalKeyframes": [
+            "sagittal": {
+                "keyframes": [
                 {
                     "label": "双唇闭合蓄气（成阻）",
                     "holdMs": 140,
                     "jaw": 0.05,
-                    "lips": {"aperture": 0.0, "rounding": 0.0, "contact": "closed"},
+                    "lips": {"aperture": 0.0, "rounding": 0.0, "contact": "bilabial"},
                     "tongueTip": {"place": "rest", "stricture": "open"},
                     "tongueBody": {"height": 0.4, "backness": 0.4, "stricture": "open"},
                     "velum": "raised",
@@ -730,7 +745,8 @@ LEVELS = [
                     "airflow": "aspirated_burst",
                     "voicing": False,
                 },
-            ],
+                ]
+            },
         },
         "demos": [
             {"ref": "L08_demo_normal_male", "speed": "normal", "voice": "male", "text": "坡"},
@@ -813,19 +829,21 @@ LEVELS = [
         "articulation": {
             "description": "把上下嘴唇闭拢，喉咙后部的小门（软腭）放下来，让气从鼻子里出来，同时嗓子发声，就哼出了 m。嘴一直闭着，声音却嗡嗡响，鼻翼会有轻微震动。",
             "media": [],
-            "sagittalKeyframes": [
+            "sagittal": {
+                "keyframes": [
                 {
                     "label": "闭唇鼻音 m（可延长）",
                     "holdMs": 500,
                     "jaw": 0.05,
-                    "lips": {"aperture": 0.0, "rounding": 0.0, "contact": "closed"},
+                    "lips": {"aperture": 0.0, "rounding": 0.0, "contact": "bilabial"},
                     "tongueTip": {"place": "rest", "stricture": "open"},
                     "tongueBody": {"height": 0.35, "backness": 0.4, "stricture": "open"},
                     "velum": "lowered",
                     "airflow": "nasal",
                     "voicing": True,
                 },
-            ],
+                ]
+            },
         },
         "demos": [
             {"ref": "L09_demo_normal_male", "speed": "normal", "voice": "male", "text": "摸"},
@@ -908,7 +926,8 @@ LEVELS = [
         "articulation": {
             "description": "把上牙齿轻轻搭在下嘴唇的内侧边缘，留一条细缝；气从这条缝里挤出去，发出“夫——”一样的摩擦声。接触要轻，用力咬死声音反而不出来。",
             "media": [],
-            "sagittalKeyframes": [
+            "sagittal": {
+                "keyframes": [
                 {
                     "label": "唇齿缝隙摩擦 f（可延长）",
                     "holdMs": 450,
@@ -920,7 +939,8 @@ LEVELS = [
                     "airflow": "friction",
                     "voicing": False,
                 },
-            ],
+                ]
+            },
         },
         "demos": [
             {"ref": "L10_demo_normal_male", "speed": "normal", "voice": "male", "text": "佛"},
@@ -1003,7 +1023,8 @@ LEVELS = [
         "articulation": {
             "description": "舌尖抵住上牙后面隆起的牙床，把气挡住；憋一小口气后舌尖猛然弹开，气冲出来就是 d。d 的气流很弱，干脆利落，像用指尖轻敲一下门。",
             "media": [],
-            "sagittalKeyframes": [
+            "sagittal": {
+                "keyframes": [
                 {
                     "label": "舌尖抵齿龈蓄气（成阻）",
                     "holdMs": 130,
@@ -1026,7 +1047,8 @@ LEVELS = [
                     "airflow": "burst",
                     "voicing": False,
                 },
-            ],
+                ]
+            },
         },
         "demos": [
             {"ref": "L11_demo_normal_male", "speed": "normal", "voice": "male", "text": "得"},
@@ -1109,7 +1131,8 @@ LEVELS = [
         "articulation": {
             "description": "前半段和 d 一样：舌尖抵住上牙后面的牙床，把气挡住。不同的是弹开时要用劲送气，像轻轻吹灭生日蜡烛，跟出一股明显的风。手背能清楚感到气流。",
             "media": [],
-            "sagittalKeyframes": [
+            "sagittal": {
+                "keyframes": [
                 {
                     "label": "舌尖抵齿龈蓄气（成阻）",
                     "holdMs": 130,
@@ -1132,7 +1155,8 @@ LEVELS = [
                     "airflow": "aspirated_burst",
                     "voicing": False,
                 },
-            ],
+                ]
+            },
         },
         "demos": [
             {"ref": "L12_demo_normal_male", "speed": "normal", "voice": "male", "text": "特"},
@@ -1215,7 +1239,8 @@ LEVELS = [
         "articulation": {
             "description": "舌尖抵住上牙后面的牙床，嘴巴微微张开；软腭放下来，让气从鼻子里出来，同时嗓子发声，就得到 n。捏住鼻子就发不出 n，这是检验它的好办法。",
             "media": [],
-            "sagittalKeyframes": [
+            "sagittal": {
+                "keyframes": [
                 {
                     "label": "舌尖抵齿龈鼻音 n（可延长）",
                     "holdMs": 500,
@@ -1227,7 +1252,8 @@ LEVELS = [
                     "airflow": "nasal",
                     "voicing": True,
                 },
-            ],
+                ]
+            },
         },
         "demos": [
             {"ref": "L13_demo_normal_male", "speed": "normal", "voice": "male", "text": "讷"},
@@ -1310,7 +1336,8 @@ LEVELS = [
         "articulation": {
             "description": "舌尖轻轻顶住上牙后面的牙床，但这次气不走鼻子，而是从舌头的两边绕出去，同时嗓子出声，就是 l。读 l 时捏住鼻子照样能读，声音清亮、不嗡嗡。",
             "media": [],
-            "sagittalKeyframes": [
+            "sagittal": {
+                "keyframes": [
                 {
                     "label": "舌尖抵齿龈边音 l（可延长）",
                     "holdMs": 500,
@@ -1322,7 +1349,8 @@ LEVELS = [
                     "airflow": "oral",
                     "voicing": True,
                 },
-            ],
+                ]
+            },
         },
         "demos": [
             {"ref": "L14_demo_normal_male", "speed": "normal", "voice": "male", "text": "勒"},
@@ -1405,7 +1433,8 @@ LEVELS = [
         "articulation": {
             "description": "舌头后半部分（舌根）向上顶住口腔上壁最靠喉咙的地方（软腭），把气挡住；然后舌根突然放下，气冲出来就是 g。全程舌尖放松，嘴巴自然微张。",
             "media": [],
-            "sagittalKeyframes": [
+            "sagittal": {
+                "keyframes": [
                 {
                     "label": "舌根抵软腭蓄气（成阻）",
                     "holdMs": 130,
@@ -1428,7 +1457,8 @@ LEVELS = [
                     "airflow": "burst",
                     "voicing": False,
                 },
-            ],
+                ]
+            },
         },
         "demos": [
             {"ref": "L15_demo_normal_male", "speed": "normal", "voice": "male", "text": "哥"},
@@ -1511,7 +1541,8 @@ LEVELS = [
         "articulation": {
             "description": "前半段和 g 一样：舌根顶住软腭，把气挡住。不同的是舌根放开时要送出一股明显的气，像轻轻咳一声的风。手背放在嘴前能感到明显的气流。",
             "media": [],
-            "sagittalKeyframes": [
+            "sagittal": {
+                "keyframes": [
                 {
                     "label": "舌根抵软腭蓄气（成阻）",
                     "holdMs": 130,
@@ -1534,7 +1565,8 @@ LEVELS = [
                     "airflow": "aspirated_burst",
                     "voicing": False,
                 },
-            ],
+                ]
+            },
         },
         "demos": [
             {"ref": "L16_demo_normal_male", "speed": "normal", "voice": "male", "text": "科"},
@@ -1617,7 +1649,8 @@ LEVELS = [
         "articulation": {
             "description": "像给眼镜片哈气一样：舌根抬起来靠近软腭，但不要贴住，中间留一条缝；气从缝里挤出去，擦出“喝”的声音。嘴巴自然张开，喉咙放松，风是宽宽暖暖的。",
             "media": [],
-            "sagittalKeyframes": [
+            "sagittal": {
+                "keyframes": [
                 {
                     "label": "舌根近软腭摩擦 h（可延长）",
                     "holdMs": 450,
@@ -1629,7 +1662,8 @@ LEVELS = [
                     "airflow": "friction",
                     "voicing": False,
                 },
-            ],
+                ]
+            },
         },
         "demos": [
             {"ref": "L17_demo_normal_male", "speed": "normal", "voice": "male", "text": "喝"},
@@ -1712,7 +1746,8 @@ LEVELS = [
         "articulation": {
             "description": "舌头中间偏前的部分（舌面）大面积贴到硬腭前部，先把气挡住；然后稍微松开一条细缝，气挤出去擦出声音，就是 j。嘴角略向两边展开，舌尖自然下垂不翘。",
             "media": [],
-            "sagittalKeyframes": [
+            "sagittal": {
+                "keyframes": [
                 {
                     "label": "舌面抵前腭蓄气（成阻）",
                     "holdMs": 130,
@@ -1735,7 +1770,8 @@ LEVELS = [
                     "airflow": "affricate",
                     "voicing": False,
                 },
-            ],
+                ]
+            },
         },
         "demos": [
             {"ref": "L18_demo_normal_male", "speed": "normal", "voice": "male", "text": "鸡"},
@@ -1818,7 +1854,8 @@ LEVELS = [
         "articulation": {
             "description": "动作前半段和 j 一样：舌面贴住硬腭前部，把气挡住。不同的是松开细缝时要用劲送气，擦出的声音后面跟一股明显的风。手背放在嘴前能清楚感到气流。",
             "media": [],
-            "sagittalKeyframes": [
+            "sagittal": {
+                "keyframes": [
                 {
                     "label": "舌面抵前腭蓄气（成阻）",
                     "holdMs": 130,
@@ -1841,7 +1878,8 @@ LEVELS = [
                     "airflow": "affricate",
                     "voicing": False,
                 },
-            ],
+                ]
+            },
         },
         "demos": [
             {"ref": "L19_demo_normal_male", "speed": "normal", "voice": "male", "text": "七"},
@@ -1924,7 +1962,8 @@ LEVELS = [
         "articulation": {
             "description": "舌面抬起来靠近硬腭前部，中间留一条扁扁的缝；气从缝里匀匀挤出，擦出像水壶冒气一样“西——”的细声。舌尖放松下垂，嘴角略向两边展开。",
             "media": [],
-            "sagittalKeyframes": [
+            "sagittal": {
+                "keyframes": [
                 {
                     "label": "舌面近前腭摩擦 x（可延长）",
                     "holdMs": 450,
@@ -1936,7 +1975,8 @@ LEVELS = [
                     "airflow": "friction",
                     "voicing": False,
                 },
-            ],
+                ]
+            },
         },
         "demos": [
             {"ref": "L20_demo_normal_male", "speed": "normal", "voice": "male", "text": "西"},
@@ -2019,7 +2059,8 @@ LEVELS = [
         "articulation": {
             "description": "把舌尖卷起来一点，翘向硬腭前部（上牙床再往里一点的位置）顶住；挡气后松出一条缝挤出去，就是 zh。嘴唇略撮，舌头中间微微凹陷，像个小勺子。",
             "media": [],
-            "sagittalKeyframes": [
+            "sagittal": {
+                "keyframes": [
                 {
                     "label": "舌尖翘抵前腭蓄气（成阻）",
                     "holdMs": 130,
@@ -2042,7 +2083,8 @@ LEVELS = [
                     "airflow": "affricate",
                     "voicing": False,
                 },
-            ],
+                ]
+            },
         },
         "demos": [
             {"ref": "L21_demo_normal_male", "speed": "normal", "voice": "male", "text": "知"},
@@ -2125,7 +2167,8 @@ LEVELS = [
         "articulation": {
             "description": "位置和 zh 一样：舌尖翘向硬腭前部顶住，把气挡住。不同的是松开细缝时用劲送气，像“呲——”地喷出一股风。手背放在嘴前能明显感到气流。",
             "media": [],
-            "sagittalKeyframes": [
+            "sagittal": {
+                "keyframes": [
                 {
                     "label": "舌尖翘抵前腭蓄气（成阻）",
                     "holdMs": 130,
@@ -2148,7 +2191,8 @@ LEVELS = [
                     "airflow": "affricate",
                     "voicing": False,
                 },
-            ],
+                ]
+            },
         },
         "demos": [
             {"ref": "L22_demo_normal_male", "speed": "normal", "voice": "male", "text": "吃"},
@@ -2231,7 +2275,8 @@ LEVELS = [
         "articulation": {
             "description": "舌尖翘向硬腭前部，但不顶住，留一条缝；气从缝里匀匀挤出，擦出“诗——”一样宽厚的风声。和 zh 的区别是：sh 全程不闭合，只有缝。",
             "media": [],
-            "sagittalKeyframes": [
+            "sagittal": {
+                "keyframes": [
                 {
                     "label": "舌尖翘近前腭摩擦 sh（可延长）",
                     "holdMs": 450,
@@ -2243,7 +2288,8 @@ LEVELS = [
                     "airflow": "friction",
                     "voicing": False,
                 },
-            ],
+                ]
+            },
         },
         "demos": [
             {"ref": "L23_demo_normal_male", "speed": "normal", "voice": "male", "text": "诗"},
@@ -2326,7 +2372,8 @@ LEVELS = [
         "articulation": {
             "description": "位置和 sh 差不多：舌尖翘向硬腭前部，留条缝。不同的是发 r 时嗓子要一起出声，手摸喉咙能感到震动，听起来比 sh“嗡”一些、暖一些。",
             "media": [],
-            "sagittalKeyframes": [
+            "sagittal": {
+                "keyframes": [
                 {
                     "label": "翘舌带嗓摩擦 r（可延长）",
                     "holdMs": 450,
@@ -2338,7 +2385,8 @@ LEVELS = [
                     "airflow": "friction",
                     "voicing": True,
                 },
-            ],
+                ]
+            },
         },
         "demos": [
             {"ref": "L24_demo_normal_male", "speed": "normal", "voice": "male", "text": "日"},
@@ -2421,7 +2469,8 @@ LEVELS = [
         "articulation": {
             "description": "舌尖平平地伸出来，轻抵上牙齿的背面，把气挡住；然后松开一条细缝，气挤出去擦出尖细的声音，就是 z。舌尖全程不翘，牙齿微微对齐。",
             "media": [],
-            "sagittalKeyframes": [
+            "sagittal": {
+                "keyframes": [
                 {
                     "label": "舌尖平抵齿背蓄气（成阻）",
                     "holdMs": 130,
@@ -2444,7 +2493,8 @@ LEVELS = [
                     "airflow": "affricate",
                     "voicing": False,
                 },
-            ],
+                ]
+            },
         },
         "demos": [
             {"ref": "L25_demo_normal_male", "speed": "normal", "voice": "male", "text": "资"},
@@ -2527,7 +2577,8 @@ LEVELS = [
         "articulation": {
             "description": "位置和 z 一样：舌尖平抵上齿背。不同的是松开细缝时用劲送气，像轻轻“呲”一下，跟出一股明显的风。声音比 z 更响、风更大。",
             "media": [],
-            "sagittalKeyframes": [
+            "sagittal": {
+                "keyframes": [
                 {
                     "label": "舌尖平抵齿背蓄气（成阻）",
                     "holdMs": 130,
@@ -2550,7 +2601,8 @@ LEVELS = [
                     "airflow": "affricate",
                     "voicing": False,
                 },
-            ],
+                ]
+            },
         },
         "demos": [
             {"ref": "L26_demo_normal_male", "speed": "normal", "voice": "male", "text": "次"},
@@ -2633,7 +2685,8 @@ LEVELS = [
         "articulation": {
             "description": "舌尖平平伸向上牙背面，但不顶住，留一条细缝；气从缝里匀匀挤出去，像轻轻漏气一样“嘶——”。和 z 的区别是：s 全程不闭合，只有缝。",
             "media": [],
-            "sagittalKeyframes": [
+            "sagittal": {
+                "keyframes": [
                 {
                     "label": "舌尖平伸齿背摩擦 s（可延长）",
                     "holdMs": 450,
@@ -2645,7 +2698,8 @@ LEVELS = [
                     "airflow": "friction",
                     "voicing": False,
                 },
-            ],
+                ]
+            },
         },
         "demos": [
             {"ref": "L27_demo_normal_male", "speed": "normal", "voice": "male", "text": "思"},
@@ -2728,7 +2782,8 @@ LEVELS = [
         "articulation": {
             "description": "y 的位置和 i 一样：嘴角展开，舌头前部抬高。区别是 y 只在开头轻轻一带，像滑梯的坡，很快滑到后面的韵母上。单独拉长 y，听起来就是“衣——”。",
             "media": [],
-            "sagittalKeyframes": [
+            "sagittal": {
+                "keyframes": [
                 {
                     "label": "展唇高舌起音 y（滑向韵母）",
                     "holdMs": 450,
@@ -2740,7 +2795,8 @@ LEVELS = [
                     "airflow": "oral",
                     "voicing": True,
                 },
-            ],
+                ]
+            },
         },
         "demos": [
             {"ref": "L28_demo_normal_male", "speed": "normal", "voice": "male", "text": "医"},
@@ -2823,7 +2879,8 @@ LEVELS = [
         "articulation": {
             "description": "w 的位置和 u 一样：嘴唇撮圆前突，舌头后缩抬高。它只在开头轻轻一带，很快滑到后面的韵母。单独拉长 w，听起来就是“乌——”。注意别让上牙碰到下唇。",
             "media": [],
-            "sagittalKeyframes": [
+            "sagittal": {
+                "keyframes": [
                 {
                     "label": "圆唇后舌起音 w（滑向韵母）",
                     "holdMs": 450,
@@ -2835,7 +2892,8 @@ LEVELS = [
                     "airflow": "oral",
                     "voicing": True,
                 },
-            ],
+                ]
+            },
         },
         "demos": [
             {"ref": "L29_demo_normal_male", "speed": "normal", "voice": "male", "text": "乌"},
@@ -2918,12 +2976,13 @@ LEVELS = [
         "articulation": {
             "description": "先像发 m 一样闭住嘴轻轻哼一声，紧接着张开嘴发 a，中间不停顿，就拼出了“妈”。同一个 ma，音高走法不同就是不同的字：高又平的是妈，往上升的是麻，先降后升的是马，从高落下的是骂。",
             "media": [],
-            "sagittalKeyframes": [
+            "sagittal": {
+                "keyframes": [
                 {
                     "label": "闭唇鼻音 m 起音",
                     "holdMs": 250,
                     "jaw": 0.05,
-                    "lips": {"aperture": 0.0, "rounding": 0.0, "contact": "closed"},
+                    "lips": {"aperture": 0.0, "rounding": 0.0, "contact": "bilabial"},
                     "tongueTip": {"place": "rest", "stricture": "open"},
                     "tongueBody": {"height": 0.3, "backness": 0.4, "stricture": "open"},
                     "velum": "lowered",
@@ -2941,7 +3000,8 @@ LEVELS = [
                     "airflow": "oral",
                     "voicing": True,
                 },
-            ],
+                ]
+            },
         },
         "demos": [
             {"ref": "L30_demo_normal_male", "speed": "normal", "voice": "male", "text": "妈麻马骂"},

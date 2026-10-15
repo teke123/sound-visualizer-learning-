@@ -10,18 +10,20 @@ from app.api.files import serve_file
 from app.archive import usecases as archive_uc
 from app.content import usecases as content_uc
 from app.identity import usecases as identity_uc
+from app.api.schemas import (ArticleCategoriesResponse, ArticleDetail, ArticlesResponse, Envelope, HealthData, LevelsResponse, LevelDetail, MeContext, SearchResponse)
 from app.platform.envelope import envelope
 from app.scoring import usecases as scoring_uc
 
 router = APIRouter(prefix="/api", tags=["platform-content"])
 
 
-@router.get("/health")
+@router.get("/health", response_model=HealthData)
 async def health():
+    # 唯一不走 envelope 的端点：健康检查直返裸形状，response_model 按真实行为标注
     return {"status": "ok", "service": "svs-backend", "env": config.ENV}
 
 
-@router.get("/me/context")
+@router.get("/me/context", response_model=Envelope[MeContext])
 async def me_context(request: Request, actor: Actor = Depends(get_actor)):
     db = actor.db
     data: dict = {"authenticated": actor.user is not None}
@@ -58,34 +60,34 @@ async def me_context(request: Request, actor: Actor = Depends(get_actor)):
     return envelope(request, data)
 
 
-@router.get("/levels")
+@router.get("/levels", response_model=Envelope[LevelsResponse])
 async def levels(request: Request, db: Session = Depends(db_session)):
     return envelope(request, content_uc.levels_response(db))
 
 
-@router.get("/levels/{level_id}")
+@router.get("/levels/{level_id}", response_model=Envelope[LevelDetail])
 async def level_detail(request: Request, level_id: str,
                        db: Session = Depends(db_session)):
     return envelope(request, content_uc.level_detail(db, level_id))
 
 
-@router.get("/search")
+@router.get("/search", response_model=Envelope[SearchResponse])
 async def search(request: Request, q: str = "", db: Session = Depends(db_session)):
     return envelope(request, content_uc.search_levels(db, q))
 
 
-@router.get("/article-categories")
+@router.get("/article-categories", response_model=Envelope[ArticleCategoriesResponse])
 async def article_categories(request: Request, db: Session = Depends(db_session)):
     return envelope(request, {"categories": content_uc.article_categories(db)})
 
 
-@router.get("/articles")
+@router.get("/articles", response_model=Envelope[ArticlesResponse])
 async def articles(request: Request, category: str | None = None,
                    db: Session = Depends(db_session)):
     return envelope(request, content_uc.articles_list(db, category))
 
 
-@router.get("/articles/{slug}")
+@router.get("/articles/{slug}", response_model=Envelope[ArticleDetail])
 async def article_detail(request: Request, slug: str,
                          db: Session = Depends(db_session)):
     return envelope(request, content_uc.article_detail(db, slug))

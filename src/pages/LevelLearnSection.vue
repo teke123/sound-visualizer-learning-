@@ -40,7 +40,7 @@ const compare = useComparePanel()
 const compareOpen = computed(() => compare.pair.value !== null)
 const calibrating = computed(() => flow.state.value === 'calibrating')
 
-const canAssess = computed(() => props.level.detection.available !== false)
+const canAssess = computed(() => props.level.detection?.available !== false)
 const quizDoneIds = computed(() => new Set(quiz.passedIds.value))
 
 function openPair(aId: string, bId: string) {
@@ -48,11 +48,11 @@ function openPair(aId: string, bId: string) {
 }
 
 const confusablePairsHere = computed(() =>
-  levelsStore.confusablePairs.filter((pair) => pair.aId === props.level.id || pair.bId === props.level.id),
+  levelsStore.confusablePairs.filter((pair) => pair.a === props.level.id || pair.b === props.level.id),
 )
 
-function otherId(pair: { aId: string; bId: string }): string {
-  return pair.aId === props.level.id ? pair.bId : pair.aId
+function otherId(pair: { a: string; b: string }): string {
+  return pair.a === props.level.id ? pair.b : pair.a
 }
 
 onBeforeUnmount(() => recorder.release())
@@ -94,9 +94,9 @@ onBeforeUnmount(() => recorder.release())
             @submit="flow.submit"
           />
           <p class="task-prompt">
-            朗读内容：<strong>{{ level.detection.promptText }}</strong>
+            朗读内容：<strong>{{ level.detection?.promptText }}</strong>
           </p>
-          <p v-if="level.detection.reliabilityNote" class="task-note">{{ level.detection.reliabilityNote }}</p>
+          <p v-if="level.detection?.reliabilityNote" class="task-note">{{ level.detection?.reliabilityNote }}</p>
         </template>
       </template>
     </LevelView>
@@ -106,10 +106,10 @@ onBeforeUnmount(() => recorder.release())
     <section v-if="confusablePairsHere.length > 0" class="confusable-entry" aria-label="易混关比较入口">
       <button
         v-for="pair in confusablePairsHere"
-        :key="`${pair.aId}-${pair.bId}`"
+        :key="`${pair.a}-${pair.b}`"
         type="button"
         class="compare-open"
-        @click="openPair(pair.aId, pair.bId)"
+        @click="openPair(pair.a, pair.b)"
       >
         和「{{ levelsStore.byId.get(otherId(pair))?.title ?? otherId(pair) }}」并排比较 →
       </button>

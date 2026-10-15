@@ -3,12 +3,7 @@
  * 本关当前公开版本的全部听辨题各至少答对一次，
  * 且全部练习步骤各至少标记完成一次；录音不计入。
  */
-import type { CompletionKeys, LevelSummary, MeProgress } from '@/api'
-
-export interface LevelProgressState {
-  quizPassed: ReadonlySet<string>
-  practiceDone: ReadonlySet<string>
-}
+import type { CompletionKeys, LevelSummary } from '@/api'
 
 export function isLevelCompleted(
   keys: CompletionKeys,
@@ -31,9 +26,4 @@ export function computeNextLevelId(
   if (next) return next.id
   const fallback = ordered.find((level) => level.id === 'L01') ?? ordered[0]
   return fallback?.id ?? null
-}
-
-/** 服务端 me/progress → 快速查询表 */
-export function progressIndex(progress: MeProgress): Map<string, boolean> {
-  return new Map(progress.levels.map((item) => [item.levelId, item.completed]))
 }

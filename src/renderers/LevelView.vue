@@ -45,20 +45,20 @@ const emit = defineEmits<{
     <section id="figure" class="level-section" aria-label="构形">
       <h2>看得见的构形</h2>
       <ArticulationFigure :articulation="level.articulation" :media-resolver="mediaResolver" />
-      <p class="section-note">{{ level.articulation.description }}</p>
+      <p class="section-note">{{ level.articulation?.description }}</p>
     </section>
 
     <!-- 示范音（FR-604） -->
     <section id="demo" class="level-section" aria-label="示范">
       <h2>听示范</h2>
-      <DemoPlayer :items="level.demo" :media-resolver="mediaResolver" />
+      <DemoPlayer :items="level.demos ?? []" :media-resolver="mediaResolver" />
     </section>
 
     <!-- 听辨（FR-606） -->
     <section id="quiz" class="level-section" aria-label="听辨练习">
       <h2>听辨练习</h2>
       <QuizPanel
-        :questions="level.quiz"
+        :questions="level.quizzes ?? []"
         :media-resolver="mediaResolver"
         :interactive="interactive"
         @answer="(payload) => emit('quiz-answer', { questionId: payload.question.id, choiceIndex: payload.choiceIndex, correct: payload.correct })"
@@ -69,7 +69,7 @@ const emit = defineEmits<{
     <section id="practice" class="level-section" aria-label="跟着练">
       <h2>跟着练</h2>
       <PracticeStepper
-        :steps="level.practice"
+        :steps="level.practice ?? []"
         :done-ids="practiceDoneIds"
         :media-resolver="mediaResolver"
         :interactive="interactive"
@@ -81,7 +81,7 @@ const emit = defineEmits<{
     <!-- 误区（FR-608） -->
     <section id="misconception" class="level-section" aria-label="常见误区">
       <h2>可能出现的误区</h2>
-      <MisconceptionList :items="level.misconceptions" />
+      <MisconceptionList :items="level.misconceptions ?? []" />
     </section>
 
     <!-- 本关录音（FR-609）：由页面挂载 assessment 区 -->
@@ -92,7 +92,7 @@ const emit = defineEmits<{
 
     <!-- 专业折叠（FR-610） -->
     <section class="level-section" aria-label="专业说明">
-      <ProFold :pro="level.pro" />
+      <ProFold :pro="level.professional" />
     </section>
   </article>
 </template>

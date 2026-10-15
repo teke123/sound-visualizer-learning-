@@ -15,6 +15,8 @@ from pathlib import Path
 
 import numpy as np
 
+from app.pinyin_utils import expected_syllables, main_vowel, split_pinyin
+
 SR = 16000
 
 VOWEL_FORMANTS = {
@@ -83,23 +85,6 @@ def _noise(dur: float, center: float | None, bw: float = 1500.0) -> np.ndarray:
     return x
 
 
-def _split_pinyin(plain: str) -> tuple[str, str]:
-    initials = ["zh", "ch", "sh", "b", "p", "m", "f", "d", "t", "n", "l",
-                "g", "k", "h", "j", "q", "x", "r", "z", "c", "s", "y", "w"]
-    for ini in initials:
-        if plain.startswith(ini) and len(plain) > len(ini):
-            return ini, plain[len(ini):]
-    return "", plain
-
-
-def _main_vowel_of(final: str) -> str:
-    f = final.replace("v", "ü")
-    for v in ("a", "o", "e", "i", "u", "ü"):
-        if v in f:
-            return v
-    return "a"
-
-
 CONSONANT_KINDS = {
     # 声母 → (类型, 参数)
     "b": ("stop", 0), "d": ("stop", 0), "g": ("stop", 0),
@@ -117,23 +102,13 @@ CONSONANT_KINDS = {
 def synthesize_text(text: str, voice: str = "male", *, syllable_dur: float = 0.32,
                     pause: float = 0.10) -> np.ndarray:
     """汉字串 → 声道模型合成音频（16k float [-1,1]）。"""
-    from pypinyin import Style, pinyin
-
     base = VOICE_BASE_F0.get(voice, 150.0)
     chunks: list[np.ndarray] = []
     silence = np.zeros(int(pause * SR))
-    for ch in text:
-        if not ("\u4e00" <= ch <= "\u9fff"):
-            continue
-        py = pinyin(ch, style=Style.TONE3, heteronym=False)[0][0]
-        tone = None
-        for c in py:
-            if c.isdigit():
-                tone = int(c)
-                break
-        plain = "".join(c for c in py if not c.isdigit())
-        initial, final = _split_pinyin(plain)
-        vowel = _main_vowel_of(final)
+    for e in expected_syllables(text):
+        plain, tone = e["plain"], e["tone"]
+        initial, final = split_pinyin(plain)
+        vowel = main_vowel(final, "a")
         formants = VOWEL_FORMANTS.get(vowel, VOWEL_FORMANTS["a"])
 
         # 声母段

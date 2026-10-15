@@ -19,8 +19,8 @@ onMounted(() => {
 
 const compareOpen = computed(() => compare.pair.value !== null)
 
-function openPair(pair: { aId: string; bId: string }) {
-  void compare.open(pair.aId, pair.bId)
+function openPair(pair: { a: string; b: string }) {
+  void compare.open(pair.a, pair.b)
 }
 </script>
 

@@ -28,6 +28,9 @@ class ProviderResult:
     initial_score: float | None = None
     final_score: float | None = None
     tone_score: float | None = None
+    # 全维度分（诊断用）：讯飞 accuracy/fluency/integrity/phone/emotion 等
+    # 原样保留，命名与 Provider 上报一致；mock 不填
+    scores: dict = field(default_factory=dict)
     # 朗读维检错（FR-1301 维度二）：漏读/增读/回读/替换/乱读
     reading: dict = field(default_factory=lambda: {
         "missing": [],        # 漏读音节文本

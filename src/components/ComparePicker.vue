@@ -23,7 +23,7 @@ function compare() {
 
 function label(item: ArchiveRecordingSummary): string {
   const score = typeof item.score === 'number' ? ` · ${Math.round(item.score)}分` : ''
-  return `${formatDateTime(item.createdAt)}${score}`
+  return `${formatDateTime(item.createdAt ?? undefined)}${score}`
 }
 </script>
 

@@ -57,8 +57,6 @@ def envelope(request: Request, data: Any = None, *, code: str = "OK",
 
 
 def register_exception_handlers(app) -> None:  # noqa: ANN001
-    from fastapi.responses import ORJSONResponse  # noqa: F401  可用时换 ORJSON
-
     @app.exception_handler(ApiError)
     async def _api_error(request: Request, exc: ApiError):
         return envelope(

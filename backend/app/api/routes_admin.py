@@ -557,13 +557,13 @@ async def admin_set_calibration(request: Request, body: CalibrationTextBody,
                                 db: Session = Depends(db_session)):
     """标定文本配置：须覆盖六个单韵母（FR/CMS 首版范围）。"""
     actor = _admin(request, db)
-    from app.scoring.usecases import _main_vowel, _expected_syllables
+    from app.pinyin_utils import expected_syllables, main_vowel
 
     found = set()
     for syl in body.syllables:
-        exp = _expected_syllables(syl)
+        exp = expected_syllables(syl)
         if exp:
-            v = _main_vowel(exp[0].get("plain", ""))
+            v = main_vowel(exp[0].get("plain", ""))
             if v:
                 found.add(v)
     missing = {"a", "o", "e", "i", "u", "ü"} - found

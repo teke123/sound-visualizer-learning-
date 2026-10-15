@@ -34,20 +34,20 @@ const option = computed(() => {
   const referencePoints: Array<[number, number] | null> = []
   const markLines: Array<{ xAxis: number; label: { formatter: string } }> = []
   let cursor = 0
-  for (const segment of props.curve.segments) {
+  for (const segment of props.curve.segments ?? []) {
     if (cursor > 0) {
       userPoints.push(null)
       referencePoints.push(null)
     }
     const span = Math.max(
-      segment.user.at(-1)?.t ?? 0,
-      segment.reference.at(-1)?.t ?? 0,
+      segment.user?.at(-1)?.t ?? 0,
+      segment.reference?.at(-1)?.t ?? 0,
       0.2,
     )
-    for (const point of segment.user) userPoints.push([cursor + point.t, point.tone])
-    for (const point of segment.reference) referencePoints.push([cursor + point.t, point.tone])
+    for (const point of segment.user ?? []) userPoints.push([cursor + point.t, point.v])
+    for (const point of segment.reference ?? []) referencePoints.push([cursor + point.t, point.v])
     cursor += span
-    markLines.push({ xAxis: cursor, label: { formatter: segment.syllable } })
+    markLines.push({ xAxis: cursor, label: { formatter: segment.syllable ?? ''} })
   }
   return {
     animationDuration: 200,
@@ -116,7 +116,7 @@ const fallback = ref<HTMLElement | null>(null)
   <div class="tone-curve-chart">
     <div v-if="unavailable" class="curve-unavailable">
       <p>本次没有可用的音高曲线。</p>
-      <p class="reason">{{ curve.notAvailableReason ?? '这条录音未能提取有效音高，不做伪造展示。' }}</p>
+      <p class="reason">{{ curve.note ?? '这条录音未能提取有效音高，不做伪造展示。' }}</p>
     </div>
     <VChart v-else :option="option" :style="{ height: chartHeight, width: '100%' }" autoresize />
   </div>

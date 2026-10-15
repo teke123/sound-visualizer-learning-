@@ -12,7 +12,10 @@
     "type-check": "vue-tsc --build",
     "test:unit": "vitest run",
     "backend": "cd backend && python main.py",
-    "dev:all": "run-p dev backend"
+    "dev:all": "run-p dev backend",
+    "api:dump": "curl -s http://127.0.0.1:8000/openapi.json -o src/api/generated/openapi.json",
+    "api:types": "openapi-typescript src/api/generated/openapi.json -o src/api/generated/schema.d.ts",
+    "api:check": "openapi-typescript src/api/generated/openapi.json -o src/api/generated/schema.check.d.ts && node -e \"const fs=require('fs');const a=fs.readFileSync('src/api/generated/schema.d.ts','utf8');const b=fs.readFileSync('src/api/generated/schema.check.d.ts','utf8');if(a!==b){console.error('API 契约漂移：请重新生成（npm run api:dump && npm run api:types）');process.exit(1)}fs.unlinkSync('src/api/generated/schema.check.d.ts')\""
   },
   "dependencies": {
     "@quasar/extras": "^2.1.0",
@@ -33,9 +36,11 @@
     "@types/node": "^24.13.3",
     "@types/three": "^0.185.4",
     "@vitejs/plugin-vue": "^6.0.8",
+    "@vue/devtools-api": "^8.2.1",
     "@vue/tsconfig": "^0.9.1",
     "msw": "^3.0.3",
     "npm-run-all2": "^9.0.2",
+    "openapi-typescript": "^7.13.0",
     "sass": "^1.105.1",
     "typescript": "~6.0.0",
     "vite": "^8.1.5",

@@ -24,7 +24,7 @@ const groups = computed(() =>
   [...archive.byLevel.value.entries()].map(([levelId, items]) => ({
     levelId,
     title: archive.levelTitle(levelId),
-    items: [...items].sort((x, y) => new Date(y.createdAt).getTime() - new Date(x.createdAt).getTime()),
+    items: [...items].sort((x, y) => new Date(y.createdAt ?? 0).getTime() - new Date(x.createdAt ?? 0).getTime()),
   })),
 )
 
@@ -57,7 +57,7 @@ function play(item: ArchiveRecordingSummary) {
       <ul class="al-items">
         <li v-for="item in group.items" :key="item.recordingId" class="al-item">
           <div class="al-main">
-            <span class="al-date">{{ formatDateTime(item.createdAt) }}</span>
+            <span class="al-date">{{ formatDateTime(item.createdAt ?? undefined) }}</span>
             <span :class="['al-verdict', item.verdict]">{{ item.verdict === 'pass' ? '可评' : '本次不能评' }}</span>
             <span v-if="typeof item.score === 'number'" class="al-score">{{ Math.round(item.score) }} 分</span>
             <span class="al-version">v{{ item.contentVersion }}</span>
