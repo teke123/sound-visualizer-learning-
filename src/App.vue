@@ -1,123 +1,81 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { NAV_PAGES } from '@/data/pages'
+/**
+ * App 外壳（docs/architecture/04 §6.1 启动 / §6.5 学习事件 / §6.9 新鲜度）：
+ * 1. 并行请求 /api/me/context 与 /api/levels；context 失败以访客态渲染公开内容。
+ * 2. 已同意 → 拉取 me/progress 并尝试上传 outbox；否则本地桶计算进度。
+ * 3. 窗口重新可见 / 路由切换 / 联网：后台校验 levels、刷新 context、flush outbox。
+ * 4. 全局 ConsentDialog 与转存提示。
+ */
+import { computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+import { useEventListener } from '@vueuse/core'
+import AppShell from '@/components/AppShell.vue'
+import ConsentDialog from '@/components/ConsentDialog.vue'
+import TransferNotice from '@/components/TransferNotice.vue'
+import { useContextStore } from '@/stores/context'
+import { useLevelsStore } from '@/stores/levels'
+import { useProgressStore } from '@/stores/progress'
+import { useOutboxStore } from '@/stores/outbox'
+import { useConsent } from '@/features/consent'
+import { useRouter } from 'vue-router'
 
 const route = useRoute()
 const router = useRouter()
-const isCollapsed = ref(false)
-const mobileOpen = ref(false)
 
-/**
- * 一级导航（口径：docs/srs/02 4.2）
- * ---------------------------------------------------------------------------
- * 来源：src/data/pages.ts 的 NAV_PAGES；结果页（P09）为流程页、后台（ADMIN）
- * 为 CMS 入口，均不进入一级导航。
- */
-const menuItems = NAV_PAGES.map(p => ({
-  path: p.paths[0],
-  icon: p.icon,
-  title: p.title,
-  desc: p.code,
-  code: p.code,
-}))
+const contextStore = useContextStore()
+const levelsStore = useLevelsStore()
+const progressStore = useProgressStore()
+const outbox = useOutboxStore()
+const consent = useConsent()
 
-const currentTitle = computed(() => {
-  const byMeta = route.meta.title as string | undefined
-  if (byMeta) return byMeta
-  return '看得见的声音'
+const isBare = computed(() => route.meta.bare === true)
+
+async function bootstrap() {
+  // 1. 并行请求 context 与 levels
+  const [contextRes] = await Promise.allSettled([contextStore.refresh(), levelsStore.refresh()])
+  // 2. 校验本地存储（dataEpoch / 账号不符即清理）；已同意拉服务端进度并上传 outbox
+  progressStore.syncIdentity()
+  if (contextStore.consentGranted) {
+    void progressStore.loadServerProgress()
+    void outbox.flush()
+  }
+  // 3. 未处理同意的账号（如会话保持的登录）不自动弹窗——仅登录动作触发（FD-07）
+  void contextRes
+}
+
+onMounted(() => {
+  void bootstrap()
 })
 
-const currentPageCode = computed(() => (route.meta.pageCode as string | undefined) ?? '')
+/* 窗口重新可见：后台校验 levels + 刷新 context + flush outbox（§5/§6.9） */
+useEventListener(window, 'visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    void contextStore.refresh()
+    void levelsStore.refresh({ background: true })
+    if (contextStore.consentGranted) {
+      void progressStore.loadServerProgress()
+      void outbox.flush()
+    }
+  }
+})
 
-function handleMenuClick(path: string) {
-  router.push(path)
-  mobileOpen.value = false
-}
+/* 网络恢复：重试 outbox */
+useEventListener(window, 'online', () => {
+  if (contextStore.consentGranted) void outbox.flush()
+})
+
+/* 路由切换：outbox 上传 + levels 后台校验（§6.5 / §6.9） */
+router.afterEach(() => {
+  void levelsStore.refresh({ background: true })
+  if (contextStore.consentGranted) void outbox.flush()
+})
 </script>
 
 <template>
-  <div class="app-container">
-    <button class="mobile-toggle" @click="mobileOpen = !mobileOpen" aria-label="菜单">
-      <el-icon :size="22"><Menu /></el-icon>
-    </button>
-
-    <aside class="sidebar" :class="{ collapsed: isCollapsed, open: mobileOpen }">
-      <div class="sidebar-header">
-        <div class="logo-section" @click="router.push('/')">
-          <el-icon :size="28" color="#409eff"><Microphone /></el-icon>
-          <div v-if="!isCollapsed" class="logo-text">
-            <h1>看得见的声音</h1>
-            <p>智能发音学习平台</p>
-          </div>
-        </div>
-        <el-button :icon="isCollapsed ? 'ArrowRight' : 'ArrowLeft'" text @click="isCollapsed = !isCollapsed" class="collapse-btn hide-mobile" />
-      </div>
-
-      <el-menu :default-active="route.path" :collapse="isCollapsed" class="sidebar-menu" @select="handleMenuClick">
-        <el-menu-item v-for="item in menuItems" :key="item.path" :index="item.path">
-          <el-icon><component :is="item.icon" /></el-icon>
-          <template #title>
-            <div class="menu-item-content">
-              <span>{{ item.title }}</span>
-              <small v-if="!isCollapsed">{{ item.desc }}</small>
-            </div>
-          </template>
-        </el-menu-item>
-      </el-menu>
-    </aside>
-
-    <main class="main-content">
-      <header class="top-header">
-        <div class="header-left">
-          <h2>
-            {{ currentTitle }}
-            <span v-if="currentPageCode" class="page-code">{{ currentPageCode }}</span>
-          </h2>
-          <el-breadcrumb separator="/">
-            <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
-            <el-breadcrumb-item>{{ currentTitle }}</el-breadcrumb-item>
-          </el-breadcrumb>
-        </div>
-        <div class="header-right">
-          <el-button type="primary" :icon="'Search'" @click="router.push('/search')">搜索</el-button>
-          <el-button :icon="'Microphone'" @click="router.push('/test')">检测中心</el-button>
-        </div>
-      </header>
-      <div class="page-content">
-        <router-view />
-      </div>
-    </main>
-  </div>
+  <AppShell v-if="!isBare">
+    <RouterView :key="route.path" />
+  </AppShell>
+  <RouterView v-else :key="route.path" />
+  <ConsentDialog v-if="!isBare" />
+  <TransferNotice v-if="!isBare" />
 </template>
-
-<style scoped>
-.app-container { display: flex; height: 100vh; overflow: hidden; position: relative; }
-.mobile-toggle { display: none; position: fixed; top: 12px; left: 12px; z-index: 100; background: #fff; border: 1px solid #dcdfe6; border-radius: 8px; padding: 8px; cursor: pointer; }
-.sidebar { width: 240px; background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%); color: white; display: flex; flex-direction: column; transition: width 0.3s ease; flex-shrink: 0; z-index: 90; }
-.sidebar.collapsed { width: 64px; }
-.sidebar-header { padding: 20px 16px; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: space-between; }
-.logo-section { display: flex; align-items: center; gap: 12px; cursor: pointer; }
-.logo-text h1 { font-size: 16px; margin: 0; white-space: nowrap; }
-.logo-text p { font-size: 11px; color: rgba(255,255,255,0.6); margin: 2px 0 0; }
-.collapse-btn { color: rgba(255,255,255,0.6); }
-.sidebar-menu { flex: 1; border-right: none; background: transparent; }
-:deep(.el-menu-item) { color: rgba(255,255,255,0.8); height: 56px; margin: 4px 8px; border-radius: 8px; }
-:deep(.el-menu-item:hover), :deep(.el-menu-item.is-active) { background: rgba(64,158,255,0.2); color: #409eff; }
-.menu-item-content { display: flex; flex-direction: column; line-height: 1.4; }
-.menu-item-content small { font-size: 11px; color: rgba(255,255,255,0.4); }
-.main-content { flex: 1; display: flex; flex-direction: column; background: #f5f7fa; overflow: hidden; min-width: 0; }
-.top-header { background: white; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 1px 4px rgba(0,0,0,0.08); z-index: 10; flex-wrap: wrap; gap: 12px; }
-.header-left h2 { margin: 0 0 4px; font-size: 18px; color: #303133; }
-.page-code { margin-left: 6px; font-size: 11px; font-weight: 400; color: #909399; background: #f2f3f5; border-radius: 4px; padding: 1px 6px; vertical-align: middle; }
-.header-right { display: flex; gap: 8px; flex-wrap: wrap; }
-.page-content { flex: 1; overflow-y: auto; padding: 16px; }
-@media (max-width: 768px) {
-  .mobile-toggle { display: block; }
-  .hide-mobile { display: none; }
-  .sidebar { position: fixed; left: 0; top: 0; height: 100%; transform: translateX(-100%); }
-  .sidebar.open { transform: translateX(0); width: 240px !important; }
-  .main-content { width: 100%; }
-  .top-header { padding-left: 56px; }
-}
-</style>

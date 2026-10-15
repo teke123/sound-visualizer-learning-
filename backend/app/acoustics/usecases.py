@@ -1,0 +1,190 @@
+"""acoustics 用例：私有上传、统一私有音频读取权限判定、按 audioId 的
+F0/共振峰/共振峰图片读取（决策图 #2/#11，模块边界表）。"""
+from __future__ import annotations
+
+import datetime
+from pathlib import Path
+
+from sqlalchemy.orm import Session
+
+from app import config
+from app.acoustics import analysis, transcode
+from app.acoustics.models import AudioRow, FeatureCacheRow
+from app.db import JSONText, now
+from app.ids import new_id
+from app.platform.envelope import ApiError
+
+TEMP_TTL = datetime.timedelta(hours=config.TEMP_DATA_TTL_HOURS)
+
+
+def register_upload(db: Session, *, owner_type: str, owner_id: str, purpose: str,
+                    filename: str | None, mime: str | None, raw_bytes: bytes) -> dict:
+    """multipart 上传 → 转码规范化 → 落盘 + 登记 72 小时（不依赖请求事务时长，
+    转码完成后再开事务写行）。"""
+    if len(raw_bytes) > config.MAX_UPLOAD_BYTES:
+        raise ApiError(413, "FILE_TOO_LARGE",
+                       f"文件过大（上限 {config.MAX_UPLOAD_BYTES // (1024 * 1024)} MB）")
+    if purpose not in ("recording", "calibration"):
+        raise ApiError(422, "VALIDATION_ERROR", "purpose 必须是 recording 或 calibration")
+
+    audio_id = new_id("au_")
+    dest_dir = config.PRIVATE_DIR / audio_id[:4]
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    src_path = dest_dir / f"{audio_id}.src"
+    wav_path = dest_dir / f"{audio_id}.wav"
+    src_path.write_bytes(raw_bytes)
+    try:
+        normalized = transcode.normalize_to_wav(src_path, wav_path)
+    finally:
+        try:
+            src_path.unlink()
+        except OSError:
+            pass
+
+    if normalized.duration_sec > config.MAX_AUDIO_DURATION_SECONDS:
+        wav_path.unlink(missing_ok=True)
+        raise ApiError(422, "VALIDATION_ERROR",
+                       f"音频时长超过 {int(config.MAX_AUDIO_DURATION_SECONDS)} 秒上限")
+
+    expires_at = now() + TEMP_TTL
+    row = AudioRow(
+        id=audio_id,
+        owner_type=owner_type,
+        owner_id=owner_id,
+        purpose=purpose,
+        original_filename=filename,
+        original_mime=mime,
+        storage_path=str(wav_path.relative_to(config.DATA_DIR)),
+        duration_sec=normalized.duration_sec,
+        pcm_sha256=normalized.pcm_sha256,
+        first_uploaded_at=now(),
+        expires_at=expires_at,
+        deleted_at=None,
+    )
+    db.add(row)
+    db.commit()
+    return {
+        "audioId": audio_id,
+        "duration": normalized.duration_sec,
+        "format": "pcm16k16mono",
+        "expiresAt": expires_at.isoformat(),
+    }
+
+
+def get_audio_for_read(db: Session, *, audio_id: str, actor_type: str, actor_id: str,
+                       purposes: tuple[str, ...] | None = None) -> AudioRow:
+    """统一私有读取守卫：归属 + 未删除 + 未过期（统一 404，防枚举）。"""
+    row = db.get(AudioRow, audio_id)
+    if row is None or row.deleted_at is not None or row.expires_at < now():
+        raise ApiError(404, "NOT_FOUND", "音频不存在或已过期")
+    if row.owner_type != actor_type or row.owner_id != actor_id:
+        raise ApiError(404, "NOT_FOUND", "音频不存在或已过期")
+    if purposes and row.purpose not in purposes:
+        raise ApiError(404, "NOT_FOUND", "音频不存在或已过期")
+    return row
+
+
+def audio_path(row: AudioRow) -> Path:
+    return config.DATA_DIR / row.storage_path
+
+
+def mark_deleted(db: Session, row: AudioRow) -> None:
+    """立即逻辑失效；文件/缓存进删除日志，由清理任务物理删除（≤24h）。"""
+    from app.platform.audit import deletion_log
+
+    if row.deleted_at is not None:
+        return
+    row.deleted_at = now()
+    deletion_log.append(kind="file", key=row.storage_path)
+    for fc in db.query(FeatureCacheRow).filter(FeatureCacheRow.audio_id == row.id).all():
+        deletion_log.append(kind="feature_cache", key=f"{fc.audio_id}:{fc.kind}:{fc.algorithm_version}")
+    db.flush()
+
+
+# ---------------- 特征读取（按需计算 + 缓存） ----------------
+
+def _load_or_compute(db: Session, row: AudioRow, kind: str, compute) -> dict:
+    cached = (
+        db.query(FeatureCacheRow)
+        .filter(FeatureCacheRow.audio_id == row.id, FeatureCacheRow.kind == kind,
+                FeatureCacheRow.algorithm_version == analysis.ALGORITHM_VERSION)
+        .one_or_none()
+    )
+    if cached is not None:
+        payload = JSONText.load(cached.payload, {})
+        # 图片缓存存的是文件路径；文件被清理则重算
+        if kind != "formants_png" or (config.DATA_DIR / payload.get("path", "?")).exists():
+            return payload
+    payload = compute()
+    db.add(FeatureCacheRow(audio_id=row.id, kind=kind,
+                           algorithm_version=analysis.ALGORITHM_VERSION,
+                           payload=JSONText.dump(payload), created_at=now()))
+    db.commit()
+    return payload
+
+
+def get_f0(db: Session, row: AudioRow) -> dict:
+    def compute() -> dict:
+        res = analysis.extract_f0(audio_path(row))
+        return {
+            "algorithmVersion": analysis.ALGORITHM_VERSION,
+            "hopMs": int(analysis.F0_HOP_MS),
+            "frames": res.frames,
+            "voicedRanges": res.voiced_ranges,
+            "voicedRatio": round(res.voiced_ratio, 3),
+        }
+
+    return _load_or_compute(db, row, "f0", compute)
+
+
+def get_formants(db: Session, row: AudioRow) -> dict:
+    def compute() -> dict:
+        res = analysis.extract_formants(audio_path(row))
+        return {
+            "algorithmVersion": analysis.ALGORITHM_VERSION,
+            "frames": res.frames,
+            "vowelSegments": res.vowel_segments,
+        }
+
+    return _load_or_compute(db, row, "formants", compute)
+
+
+def get_formants_png(db: Session, row: AudioRow) -> Path:
+    if row.purpose != "recording":
+        # 标定音频算完即删，不提供图片
+        raise ApiError(404, "NOT_FOUND", "资源不存在")
+
+    def compute() -> dict:
+        data = get_formants(db, row)
+        return {"path": str(_render_formants_png(row.id, data).relative_to(config.DATA_DIR))}
+
+    payload = _load_or_compute(db, row, "formants_png", compute)
+    return config.DATA_DIR / payload["path"]
+
+
+def _render_formants_png(audio_id: str, formants: dict) -> Path:
+    """F2(反向 x)–F1(y) 元音散点图（matplotlib Agg）。"""
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    xs, ys = [], []
+    for fr in formants.get("frames", []):
+        if "f1" in fr and "f2" in fr:
+            xs.append(fr["f2"])
+            ys.append(fr["f1"])
+    fig, ax = plt.subplots(figsize=(5, 4), dpi=110)
+    if xs:
+        ax.scatter(xs, ys, s=8, alpha=0.35, c="#3b82f6")
+    ax.set_xlim(3200, 400)
+    ax.set_ylim(1200, 0)
+    ax.set_xlabel("F2 (Hz)")
+    ax.set_ylabel("F1 (Hz)")
+    ax.set_title("共振峰分布")
+    out_dir = config.PRIVATE_DIR / "features"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out = out_dir / f"{audio_id}_formants.png"
+    fig.savefig(out)
+    plt.close(fig)
+    return out

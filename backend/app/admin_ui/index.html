@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>看得见的声音 · 管理后台</title>
+<style>
+  :root { --bg:#f5f6f8; --card:#fff; --line:#e3e6ea; --ink:#1f2329; --sub:#6b7280; --brand:#2563eb; --ok:#16a34a; --warn:#d97706; --bad:#dc2626; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:14px/1.6 system-ui,"Microsoft YaHei",sans-serif; background:var(--bg); color:var(--ink); }
+  header { background:#111827; color:#fff; padding:10px 20px; display:flex; align-items:center; gap:16px; }
+  header h1 { font-size:16px; margin:0; font-weight:600; }
+  header .who { margin-left:auto; font-size:12px; color:#9ca3af; }
+  nav { display:flex; gap:4px; background:#fff; border-bottom:1px solid var(--line); padding:0 12px; }
+  nav button { border:0; background:none; padding:10px 14px; cursor:pointer; font-size:14px; color:var(--sub); border-bottom:2px solid transparent; }
+  nav button.on { color:var(--brand); border-bottom-color:var(--brand); font-weight:600; }
+  main { padding:16px 20px; max-width:1200px; margin:0 auto; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:14px 16px; margin-bottom:14px; }
+  .card h3 { margin:0 0 10px; font-size:14px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th,td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--sub); font-weight:500; white-space:nowrap; }
+  .btn { border:1px solid var(--brand); color:var(--brand); background:#fff; border-radius:6px; padding:4px 10px; cursor:pointer; font-size:13px; }
+  .btn.danger { border-color:var(--bad); color:var(--bad); }
+  .btn.ok { border-color:var(--ok); color:var(--ok); }
+  .btn:disabled { opacity:.4; cursor:default; }
+  input,select,textarea { font:inherit; border:1px solid var(--line); border-radius:6px; padding:6px 8px; width:100%; }
+  textarea.code { font-family:Consolas,monospace; font-size:12px; min-height:320px; white-space:pre; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:8px; }
+  .row > * { flex:0 0 auto; }
+  .tag { display:inline-block; padding:1px 8px; border-radius:10px; font-size:12px; }
+  .tag.pub { background:#dcfce7; color:#166534; }
+  .tag.draft { background:#f1f5f9; color:#475569; }
+  .tag.off { background:#fee2e2; color:#991b1b; }
+  .tag.pend { background:#fef3c7; color:#92400e; }
+  #login { max-width:360px; margin:80px auto; }
+  .muted { color:var(--sub); font-size:12px; }
+  pre { background:#0b1021; color:#d7e0ff; padding:10px; border-radius:6px; overflow:auto; font-size:12px; max-height:420px; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  @media (max-width:800px){ .grid2 { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>看得见的声音 · 管理后台</h1>
+  <span class="who" id="who"></span>
+</header>
+<div id="login" class="card" style="display:none">
+  <h3>管理员登录（独立凭据，与学习账号无关）</h3>
+  <div class="row"><input id="lu" placeholder="用户名"></div>
+  <div class="row"><input id="lp" type="password" placeholder="密码"></div>
+  <button class="btn" onclick="doLogin()">登录</button>
+</div>
+<nav id="nav" style="display:none">
+  <button data-t="overview" class="on">总览</button>
+  <button data-t="levels">关卡</button>
+  <button data-t="articles">文章</button>
+  <button data-t="media">媒体</button>
+  <button data-t="detect">检测治理</button>
+  <button data-t="feedback">反馈</button>
+  <button data-t="audit">审计</button>
+</nav>
+<main id="main" style="display:none"></main>
+
+<script>
+const $ = (s)=>document.querySelector(s);
+const esc = (s)=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+async function api(path, opts={}){
+  const r = await fetch(path, Object.assign({headers:{'Content-Type':'application/json'}}, opts));
+  const j = await r.json().catch(()=>({code:'PARSE',message:'无响应'}));
+  if(!r.ok && j.code!=='CALIBRATION_FAIL') alert(`${j.code||r.status}: ${j.message||''}`);
+  return j;
+}
+async function doLogin(){
+  const j = await api('/api/admin/login',{method:'POST',body:JSON.stringify({username:$('#lu').value,password:$('#lp').value})});
+  if(j.code==='OK'){ location.reload(); }
+}
+async function boot(){
+  const ov = await api('/api/admin/overview');
+  if(ov.code!=='OK'){ $('#login').style.display='block'; return; }
+  $('#login').style.display='none'; $('#nav').style.display='flex'; $('#main').style.display='block';
+  $('#who').textContent = '已登录';
+  render();
+}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); render();
+});
+const tab = ()=>document.querySelector('nav button.on').dataset.t;
+
+async function render(){
+  const m = $('#main'); const t = tab();
+  if(t==='overview'){
+    const j = await api('/api/admin/overview'); const d=j.data;
+    m.innerHTML = `<div class="grid2">
+      <div class="card"><h3>内容</h3><table>
+        <tr><th>已发布关卡</th><td>${d.levels.published} / ${d.levels.total}</td></tr>
+        <tr><th>已发布文章</th><td>${d.articles.published} / ${d.articles.total}</td></tr>
+        <tr><th>学习用户</th><td>${d.users}</td></tr>
+      </table></div>
+      <div class="card"><h3>运行</h3><table>
+        <tr><th>录音总数</th><td>${d.recordings}</td></tr>
+        <tr><th>执行器</th><td>${JSON.stringify(d.executor)}</td></tr>
+        <tr><th>清理积压</th><td>${d.cleanupBacklog}</td></tr>
+        <tr><th>待处理反馈/希望</th><td>${d.pendingFeedback} / ${d.pendingWishes}</td></tr>
+      </table></div></div>`;
+  }
+  if(t==='levels') await renderLevels();
+  if(t==='articles') await renderArticles();
+  if(t==='media') await renderMedia();
+  if(t==='detect') await renderDetect();
+  if(t==='feedback') await renderFeedback();
+  if(t==='audit') await renderAudit();
+}
+
+async function renderLevels(){
+  const m=$('#main');
+  const j = await api('/api/admin/levels');
+  const rows = j.data.levels.map(l=>`<tr>
+    <td><b>${l.id}</b></td><td>${esc(l.title||'')}</td><td>${esc(l.targetSound||'')}</td>
+    <td><span class="tag ${l.status==='published'?'pub':(l.status==='unpublished'?'off':'draft')}">${l.status}</span></td>
+    <td>${l.currentVersion??'—'}</td><td>${l.draftRevision??'—'}</td>
+    <td>
+      <button class="btn" onclick="editLevel('${l.id}')">草稿</button>
+      <button class="btn ok" onclick="op('publish','${l.id}')">发布</button>
+      <button class="btn" onclick="op('unpublish','${l.id}')">下架</button>
+      <button class="btn" onclick="op('rollback','${l.id}')">回退</button>
+      <button class="btn" onclick="previewToken('level','${l.id}')">预览</button>
+    </td></tr>`).join('');
+  m.innerHTML = `<div class="card"><h3>关卡（三态发布 / 下架 / 回退 / 预览）</h3>
+    <table><tr><th>ID</th><th>标题</th><th>目标音</th><th>状态</th><th>公开版本</th><th>草稿修订</th><th>操作</th></tr>${rows}</table>
+    <p class="muted">发布前请先在前置检查通过；发布后用户端立即可见，下架即时更新。</p></div>
+    <div class="card" id="editor" style="display:none"><h3 id="ed-title"></h3><div id="ed-body"></div></div>`;
+}
+async function editLevel(id){
+  const j = await api(`/api/admin/levels/${id}`); const d=j.data;
+  $('#editor').style.display='block';
+  $('#ed-title').textContent = `${id} 草稿（修订 ${d.draft.revision}）`;
+  $('#ed-body').innerHTML = `
+    <div class="row"><button class="btn" onclick="saveDraft('${id}')">保存草稿</button>
+      <button class="btn" onclick="precheck('${id}')">前置检查</button>
+      <button class="btn" onclick="diffDraft('${id}')">与公开版本对比</button></div>
+    <textarea class="code" id="draft-json">${esc(JSON.stringify(d.draft.content,null,2))}</textarea>
+    <div id="ed-result"></div>`;
+  window._draft=d.draft.content;
+}
+async function saveDraft(id){
+  let content; try{ content=JSON.parse($('#draft-json').value); }catch(e){ alert('JSON 解析失败：'+e.message); return; }
+  const j = await api(`/api/admin/levels/${id}/draft`,{method:'PUT',body:JSON.stringify({content})});
+  if(j.code==='OK') $('#ed-result').innerHTML=`<p class="muted">已保存，修订号 ${j.data.revision}</p>`;
+}
+async function precheck(id){
+  const j=await api(`/api/admin/levels/${id}/precheck`);
+  const d=j.data;
+  $('#ed-result').innerHTML = d.ok ? '<p style="color:var(--ok)">前置检查通过，可发布。</p>'
+    : `<p style="color:var(--bad)">缺失：<br>${d.missing.map(esc).join('<br>')}</p>`;
+}
+async function diffDraft(id){
+  const j=await api(`/api/admin/levels/${id}/diff`);
+  $('#ed-result').innerHTML = `<pre>${esc(JSON.stringify(j.data.changes.slice(0,30),null,2))}</pre>`;
+}
+async function op(action,id){
+  let body={};
+  if(action==='publish'){ body.changeNote=prompt('发布说明（可选）','')||''; }
+  if(action==='unpublish'){ body.reason=prompt('下架原因（必填）',''); if(!body.reason) return; }
+  const j=await api(`/api/admin/levels/${id}/${action}`,{method:'POST',body:JSON.stringify(body)});
+  if(j.code==='OK'){ alert('完成'); render(); }
+}
+async function previewToken(kind,id){
+  const j=await api('/api/preview/tokens',{method:'POST',body:JSON.stringify({kind,id})});
+  if(j.code==='OK') window.open(j.data.url,'_blank');
+}
+
+async function renderArticles(){
+  const m=$('#main');
+  const j=await api('/api/admin/articles'); const cats=await api('/api/admin/categories');
+  const rows=j.data.articles.map(a=>`<tr><td>${a.slug}</td><td>${esc(a.title||'')}</td><td>${esc(a.category||'')}</td>
+    <td><span class="tag ${a.status==='published'?'pub':'draft'}">${a.status}</span></td><td>${a.draftRevision??'—'}</td>
+    <td><button class="btn" onclick="editArticle('${a.slug}')">草稿</button>
+      <button class="btn ok" onclick="artOp('publish','${a.slug}')">发布</button>
+      <button class="btn" onclick="artOp('unpublish','${a.slug}')">下架</button>
+      <button class="btn" onclick="artOp('rollback','${a.slug}')">回退</button>
+      <button class="btn" onclick="previewToken('article','${a.slug}')">预览</button></td></tr>`).join('');
+  const catRows=cats.data.categories.map(c=>`<tr><td>${esc(c.name)}</td><td>
+      <button class="btn" onclick="renameCat(${c.id},'${esc(c.name)}')">改名</button>
+      <button class="btn danger" onclick="delCat(${c.id},'${esc(c.name)}')">删除(迁移)</button></td></tr>`).join('');
+  m.innerHTML=`<div class="card"><h3>原理文章</h3>
+    <table><tr><th>slug</th><th>标题</th><th>分类</th><th>状态</th><th>修订</th><th>操作</th></tr>${rows}</table>
+    <div class="row" style="margin-top:10px"><input id="new-slug" placeholder="新文章 slug（英文）" style="max-width:220px">
+      <button class="btn" onclick="createArticle()">新建草稿</button></div></div>
+    <div class="card"><h3>分类（改名不穿透公开；删除前迁移）</h3>
+      <table><tr><th>名称</th><th>操作</th></tr>${catRows}</table>
+      <div class="row" style="margin-top:10px"><input id="new-cat" placeholder="新分类名" style="max-width:160px">
+        <button class="btn" onclick="addCat()">新建分类</button></div></div>
+    <div class="card" id="art-editor" style="display:none"><h3 id="art-title"></h3><div id="art-body"></div></div>`;
+}
+async function createArticle(){
+  const slug=$('#new-slug').value.trim(); if(!slug) return;
+  const j=await api('/api/admin/articles',{method:'POST',body:JSON.stringify({content:{slug,title:'新文章',category:'气',summary:'',markdown:'',demoMediaId:null,demoText:'',practice:[],references:[],relatedLevelIds:[]}})});
+  if(j.code==='OK') render();
+}
+async function editArticle(slug){
+  const j=await api(`/api/admin/articles/${slug}`); const d=j.data;
+  $('#art-editor').style.display='block'; $('#art-title').textContent=slug+' 草稿';
+  $('#art-body').innerHTML=`<button class="btn" onclick="saveArticle('${slug}')">保存草稿</button>
+    <textarea class="code" id="art-json">${esc(JSON.stringify(d.draft.content,null,2))}</textarea>`;
+}
+async function saveArticle(slug){
+  let c; try{ c=JSON.parse($('#art-json').value);}catch(e){ alert('JSON 解析失败'); return; }
+  const j=await api(`/api/admin/articles/${slug}/draft`,{method:'PUT',body:JSON.stringify({content:c})});
+  if(j.code==='OK') alert('已保存');
+}
+async function artOp(a,slug){
+  let body={};
+  if(a==='unpublish'){ body.reason=prompt('下架原因（必填）',''); if(!body.reason) return; }
+  const j=await api(`/api/admin/articles/${slug}/${a}`,{method:'POST',body:JSON.stringify(body)});
+  if(j.code==='OK'){ alert('完成'); render(); }
+}
+async function addCat(){ const n=$('#new-cat').value.trim(); if(!n)return;
+  await api('/api/admin/categories',{method:'POST',body:JSON.stringify({name:n})}); render(); }
+async function renameCat(id,old){ const n=prompt('新名称',old); if(!n||n===old)return;
+  await api(`/api/admin/categories/${id}`,{method:'PUT',body:JSON.stringify({name:n})}); render(); }
+async function delCat(id,name){ const to=prompt(`把「${name}」下的文章迁移到哪个分类？`,''); if(!to)return;
+  const j=await api(`/api/admin/categories/${id}?to_category=${encodeURIComponent(to)}`,{method:'DELETE'});
+  if(j.code==='OK') render(); }
+
+async function renderMedia(){
+  const m=$('#main'); const j=await api('/api/admin/media');
+  const rows=j.data.media.map(x=>`<tr><td title="${x.id}">${x.id.slice(0,10)}…</td><td>${x.kind}</td>
+    <td>${esc(x.filename)}</td><td>${(x.sizeBytes/1024).toFixed(0)}KB</td><td>${x.refCount}</td>
+    <td>${esc(x.licenseNote||'')}</td>
+    <td><button class="btn danger" onclick="delMedia('${x.id}')">删除</button></td></tr>`).join('');
+  m.innerHTML=`<div class="card"><h3>媒体（上传登记用途与授权；发布引用 &gt;0 不可删）</h3>
+    <div class="row">
+      <input type="file" id="mf" style="max-width:260px">
+      <select id="mk" style="max-width:120px"><option>audio</option><option>image</option><option>animation</option><option>video</option><option>subtitle</option><option>model</option></select>
+      <input id="mp" placeholder="用途：content/demo/quiz/article" style="max-width:200px">
+      <input id="ml" placeholder="授权说明" style="max-width:200px">
+      <input id="mt" placeholder="音频对应文字" style="max-width:160px">
+      <button class="btn" onclick="upMedia()">上传</button></div>
+    <table><tr><th>ID</th><th>类型</th><th>文件名</th><th>大小</th><th>发布引用</th><th>授权</th><th>操作</th></tr>${rows}</table></div>`;
+}
+async function upMedia(){
+  const f=$('#mf').files[0]; if(!f) return;
+  const fd=new FormData(); fd.append('file',f); fd.append('kind',$('#mk').value);
+  fd.append('purpose',$('#mp').value||'content'); fd.append('licenseNote',$('#ml').value); fd.append('text',$('#mt').value);
+  const r=await fetch('/api/admin/media',{method:'POST',body:fd});
+  const j=await r.json(); if(j.code==='OK'){ alert('已上传：'+j.data.mediaId); render(); } else alert(j.message);
+}
+async function delMedia(id){ if(!confirm('确认删除该媒体？'))return;
+  const j=await api(`/api/admin/media/${id}`,{method:'DELETE'}); if(j.code==='OK') render(); else alert(j.message); }
+
+async function renderDetect(){
+  const m=$('#main');
+  const sw=await api('/api/admin/detection-switches');
+  const cal=await api('/api/admin/calibration-text');
+  const spk=await api('/api/admin/reference-speakers');
+  const swRows=sw.data.switches.map(s=>`<tr><td>${s.levelId||'全局'}</td><td>${s.enabled?'开':'<b style="color:var(--bad)">熔断</b>'}</td><td>${esc(s.reason||'')}</td></tr>`).join('');
+  const spkRows=spk.data.speakers.map(s=>`<tr><td>${esc(s.name)}</td><td>${s.gender}</td><td>${s.fLo}–${s.fHi} Hz</td><td>${s.id}</td></tr>`).join('');
+  m.innerHTML=`<div class="grid2">
+    <div class="card"><h3>应急熔断（单关或全局，须填原因）</h3>
+      <table><tr><th>对象</th><th>状态</th><th>原因</th></tr>${swRows||'<tr><td colspan=3 class="muted">无熔断</td></tr>'}</table>
+      <div class="row" style="margin-top:8px">
+        <select id="sw-level" style="max-width:160px"><option value="">全局</option></select>
+        <select id="sw-on" style="max-width:100px"><option value="0">熔断</option><option value="1">恢复</option></select>
+        <input id="sw-reason" placeholder="原因（必填）" style="max-width:220px">
+        <button class="btn" onclick="setSwitch()">执行</button></div></div>
+    <div class="card"><h3>标定文本（须覆盖六个单韵母）</h3>
+      <p>当前版本 <b>${cal.data.textVersion||'未配置'}</b>：${esc(cal.data.text||'')}</p>
+      <textarea id="cal-text" placeholder="新标定文本">${esc(cal.data.text||'')}</textarea>
+      <div class="row"><input id="cal-ver" placeholder="版本号，如 v2" style="max-width:120px">
+        <button class="btn" onclick="setCal()">保存</button></div></div>
+    <div class="card"><h3>参考发音人（上传其朗读标定文本的音频后登记）</h3>
+      <table><tr><th>姓名</th><th>性别</th><th>音域</th><th>ID</th></tr>${spkRows}</table>
+      <div class="row" style="margin-top:8px">
+        <input id="spk-name" placeholder="姓名" style="max-width:120px">
+        <select id="spk-g" style="max-width:90px"><option>male</option><option>female</option></select>
+        <input id="spk-media" placeholder="媒体ID（先在媒体页上传wav）" style="max-width:260px">
+        <button class="btn" onclick="addSpeaker()">登记</button></div></div></div>`;
+  const lv=await api('/api/admin/levels');
+  $('#sw-level').innerHTML='<option value="">全局</option>'+lv.data.levels.map(l=>`<option value="${l.id}">${l.id}</option>`).join('');
+}
+async function setSwitch(){
+  const body={levelId:$('#sw-level').value||null, enabled:$('#sw-on').value==='1', reason:$('#sw-reason').value};
+  if(!body.reason){ alert('必须填原因'); return; }
+  const j=await api('/api/admin/detection-switches',{method:'POST',body:JSON.stringify(body)});
+  if(j.code==='OK') render();
+}
+async function setCal(){
+  const text=$('#cal-text').value.trim();
+  const syllables=[...text].filter(c=>/[\u4e00-\u9fff]/.test(c));
+  const j=await api('/api/admin/calibration-text',{method:'PUT',body:JSON.stringify({textVersion:$('#cal-ver').value,text,syllables})});
+  if(j.code==='OK') alert('已保存'); else alert(j.message);
+}
+async function addSpeaker(){
+  const j=await api('/api/admin/reference-speakers',{method:'POST',body:JSON.stringify({
+    name:$('#spk-name').value, gender:$('#spk-g').value, mediaId:$('#spk-media').value})});
+  if(j.code==='OK') render(); else alert(j.message);
+}
+async function renderFeedback(){
+  const m=$('#main');
+  const fb=await api('/api/admin/feedback?status=');
+  const wi=await api('/api/admin/wishes');
+  const fbRows=fb.data.feedback.map(f=>`<tr><td>${f.createdAt.slice(0,10)}</td><td>${f.sourcePage}</td><td>${f.type}</td>
+    <td>${esc(f.content||'')}</td><td>${f.rating??''}</td><td><span class="tag pend">${f.status}</span></td>
+    <td>${f.status==='pending'?`<button class="btn ok" onclick="handleFb('${f.id}','adopted')">采纳</button>
+      <button class="btn" onclick="handleFb('${f.id}','rejected')">暂不</button>`:''}</td></tr>`).join('');
+  const wiRows=wi.data.wishes.map(w=>`<tr><td>${w.createdAt.slice(0,10)}</td><td>${esc(w.content)}</td><td>${esc(w.searchQuery||'')}</td>
+    <td>${w.status==='pending'?`<button class="btn ok" onclick="handleWish('${w.id}','adopted')">采纳</button>
+      <button class="btn" onclick="handleWish('${w.id}','rejected')">暂不</button>`:w.status}</td></tr>`).join('');
+  m.innerHTML=`<div class="card"><h3>用户反馈（处理视图只见文字与版本骨架）</h3>
+    <table><tr><th>日期</th><th>来源页</th><th>类型</th><th>内容</th><th>评分</th><th>状态</th><th>操作</th></tr>${fbRows}</table></div>
+    <div class="card"><h3>希望增加</h3>
+    <table><tr><th>日期</th><th>内容</th><th>搜索词</th><th>操作</th></tr>${wiRows}</table></div>`;
+}
+async function handleFb(id,st){ await api(`/api/admin/feedback/${id}`,{method:'PUT',body:JSON.stringify({status:st})}); render(); }
+async function handleWish(id,st){ await api(`/api/admin/wishes/${id}`,{method:'PUT',body:JSON.stringify({status:st})}); render(); }
+async function renderAudit(){
+  const m=$('#main');
+  const j=await api('/api/admin/audit?limit=200');
+  const rows=j.data.entries.map(a=>`<tr><td>${a.createdAt.slice(0,19)}</td><td>${a.actorType}</td>
+    <td>${a.action}</td><td>${a.objectType}:${esc(a.objectId||'')}</td><td>${esc(a.reason||'')}</td><td>${a.requestId||''}</td></tr>`).join('');
+  m.innerHTML=`<div class="card"><h3>审计（发布/下架/回退/熔断/同意/撤回/删除/转存…）</h3>
+    <table><tr><th>时间</th><th>操作者</th><th>动作</th><th>对象</th><th>原因</th><th>requestId</th></tr>${rows}</table></div>`;
+}
+boot();
+</script>
+</body>
+</html>

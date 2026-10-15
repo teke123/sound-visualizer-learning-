@@ -1,97 +1,104 @@
 <script setup lang="ts">
 /**
- * 页面状态块
- * ---------------------------------------------------------------------------
- * 页面的「加载中 / 空 / 出错 / 未开放」四种状态统一走这个组件，
- * 文案一律取自 src/data/pages.ts 的文案位，页面不再散写提示语。
- *
- * 与 SRS 的关系（07 章 UI 状态）：
- *   - 「未开放」是内容未发布 / 检测未开放时的正式状态，不是错误，
- *     也不写「敬请期待」凑数；
- *   - 「空」是页面可用但确实还没有内容；
- *   - 「出错」必须说清是后端没连上，而不是让人误判成「搜不到」。
+ * PageState：加载 / 空 / 错误 / 无权限 / 不可见 状态统一展示；
+ * 错误显示 requestId（NFR-19）与「下一步能做什么」（usePageCopy）。
  */
 import { computed } from 'vue'
-import type { PageCopySlots } from '@/data/pages'
+import { errorCopy, requestIdOf, PAGE_STATE_COPY } from '@/copy/usePageCopy'
 
-export type PageStateKind = 'loading' | 'empty' | 'error' | 'unopened'
+export type PageStateKind = 'loading' | 'empty' | 'error' | 'forbidden' | 'not-visible'
 
-const props = withDefaults(
-  defineProps<{
-    /** 要渲染的状态；为 null 时不渲染任何东西（页面自己渲染内容） */
-    state: PageStateKind | null
-    /** 页号对应的文案位（usePageCopy(code).copy） */
-    copy: PageCopySlots
-    /** 补充说明，例如后端返回的原始错误信息 */
-    detail?: string
-    /** 是否显示主按钮（默认错误态与空态显示） */
-    showAction?: boolean
-    /** 覆盖主按钮文案；默认取 copy.cta */
-    actionText?: string
-    /** 紧凑模式（用于卡片内部） */
-    compact?: boolean
-  }>(),
-  { compact: false },
-)
+const props = defineProps<{
+  state: PageStateKind
+  error?: unknown
+  /** 覆盖默认文案 */
+  text?: string
+}>()
 
-const emit = defineEmits<{ (e: 'action'): void }>()
+const emit = defineEmits<{ (e: 'retry'): void }>()
 
-const text = computed(() => {
+const title = computed(() => {
+  if (props.text) return props.text
   switch (props.state) {
     case 'loading':
-      return props.copy.loading
+      return PAGE_STATE_COPY.loading
     case 'empty':
-      return props.copy.empty
+      return PAGE_STATE_COPY.empty
     case 'error':
-      return props.copy.error
-    case 'unopened':
-      return props.copy.unopened
+      return errorCopy(props.error).title
+    case 'forbidden':
+      return PAGE_STATE_COPY.forbidden
+    case 'not-visible':
+      return PAGE_STATE_COPY.notVisible
     default:
-      return ''
+      return PAGE_STATE_COPY.empty
   }
 })
 
-const withAction = computed(() =>
-  props.showAction === undefined
-    ? props.state === 'error' || props.state === 'empty'
-    : props.showAction,
-)
-
-const actionLabel = computed(() => props.actionText || props.copy.cta)
+const hint = computed(() => (props.state === 'error' ? errorCopy(props.error).hint : ''))
+const requestId = computed(() => (props.state === 'error' ? requestIdOf(props.error) : undefined))
 </script>
 
 <template>
-  <div v-if="state" class="page-state" :class="{ compact }">
-    <!-- 加载中：骨架屏，避免空白页被误认为「没有内容」 -->
-    <template v-if="state === 'loading'">
-      <p class="state-text">{{ text }}</p>
-      <el-skeleton :rows="compact ? 2 : 4" animated />
-    </template>
-
-    <!-- 出错：红色告警，明确指向后端 -->
-    <template v-else-if="state === 'error'">
-      <el-alert type="error" show-icon :closable="false" :title="text" :description="detail" />
-      <el-button v-if="withAction" type="primary" class="state-action" @click="emit('action')">
-        {{ actionLabel }}
-      </el-button>
-    </template>
-
-    <!-- 空 / 未开放：都走 el-empty，但文案与语义分开 -->
-    <template v-else>
-      <el-empty :description="text" :image-size="compact ? 60 : 100">
-        <el-button v-if="withAction" type="primary" @click="emit('action')">
-          {{ actionLabel }}
-        </el-button>
-      </el-empty>
-      <p v-if="detail" class="state-detail">{{ detail }}</p>
-    </template>
+  <div class="page-state" :class="`state-${state}`" role="status">
+    <span v-if="state === 'loading'" class="spinner" aria-hidden="true"></span>
+    <span v-else-if="state === 'error'" class="state-icon" aria-hidden="true">⚠</span>
+    <span v-else-if="state === 'not-visible'" class="state-icon" aria-hidden="true">🚫</span>
+    <span v-else-if="state === 'forbidden'" class="state-icon" aria-hidden="true">🔒</span>
+    <span v-else class="state-icon" aria-hidden="true">📭</span>
+    <p class="state-title">{{ title }}</p>
+    <p v-if="hint" class="state-hint">{{ hint }}</p>
+    <p v-if="requestId" class="state-request-id">requestId：{{ requestId }}</p>
+    <button v-if="state === 'error'" type="button" class="retry-btn" @click="emit('retry')">重试</button>
   </div>
 </template>
 
-<style scoped>
-.page-state { padding: 8px 0; }
-.page-state.compact { padding: 4px 0; }
-.state-text { margin: 0 0 8px; font-size: 13px; color: #909399; }
-.state-action { margin-top: 12px; }
-.state-detail { margin: 4px 0 0; font-size: 12px; color: #c0c4cc; text-align: center; }
+<style scoped lang="sass">
+.page-state
+  display: flex
+  flex-direction: column
+  align-items: center
+  gap: 8px
+  padding: 48px 16px
+  color: #546e7a
+
+.state-title
+  margin: 0
+  font-size: 16px
+
+.state-hint
+  margin: 0
+  font-size: 14px
+  color: #78909c
+  text-align: center
+
+.state-request-id
+  margin: 0
+  font-size: 12px
+  color: #b0bec5
+
+.state-icon
+  font-size: 30px
+
+.spinner
+  width: 28px
+  height: 28px
+  border: 3px solid #cfd8dc
+  border-top-color: #00897b
+  border-radius: 50%
+  animation: spin 0.8s linear infinite
+
+@keyframes spin
+  to
+    transform: rotate(360deg)
+
+.retry-btn
+  min-height: 44px
+  margin-top: 8px
+  padding: 6px 24px
+  border-radius: 8px
+  border: 1px solid #00897b
+  background: #e0f2f1
+  color: #00695c
+  cursor: pointer
 </style>

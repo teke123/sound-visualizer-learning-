@@ -7,8 +7,8 @@
 得到录音质量结论、曲线对比、分数、可观察现象和规则引擎四步反馈。
 
 > 需求口径：`docs/srs/`（软件需求规格说明书，需求 ID 全局唯一）。
-> 当前仓库处于**重构骨架状态**：前后端实现均已按 SRS 重新对齐清空，
-> 各文件保留了意图注释作为恢复实现的设计稿；架构建议见 `docs/architecture/`。
+> API 契约：`docs/decision-map-backend.md`（OpenAPI 为真源，`/docs` 可交互查看）。
+> 架构：`docs/architecture/`（后端实施方案见 03 篇）。
 
 ## 快速开始
 
@@ -25,19 +25,25 @@ npm run dev
 
 ### 3. 安装后端依赖
 
-使用 Python 3.10 或 3.11。Python 依赖统一在 `backend/requirements.txt`。
+使用 Python 3.11+（开发环境 3.13 实测通过）。Python 依赖统一在 `backend/requirements.txt`。
 
 ```bash
 cd backend
 pip install -r requirements.txt
 ```
 
-### 4. 启动后端服务器
+### 4. 初始化内容并启动后端服务器
 ```bash
+cd backend
+python seed.py          # 首次运行：30 关种子内容 + 合成示范音频 + 发布
 env -u PYTHONPATH python3 main.py
 ```
 
-后端将在 http://localhost:8000 启动
+后端将在 http://localhost:8000 启动（API 文档 `/docs`，管理后台 `/admin`，
+默认管理员 admin / admin12345，可用环境变量 `SVS_ADMIN_USERNAME` / `SVS_ADMIN_PASSWORD` 覆盖）。
+评分 Provider 默认为进程内测试替身（`SVS_PROVIDER=mock`）；接入讯飞评测须
+配置 `XFYUN_APP_ID / XFYUN_API_KEY / XFYUN_API_SECRET` 并先完成
+docs/architecture/03 的 M0 实测验证。
 
 ### 5. 一键启动前后端
 ```bash
@@ -76,11 +82,20 @@ env -u PYTHONPATH python3 main.py
 │   ├── utils/            # 工具（声调曲线处理意图）
 │   └── views/            # 页面组件（与上表一一对应）
 ├── backend/
-│   ├── main.py           # FastAPI 组装与 501 意图端点
-│   ├── cms_routes.py     # CMS：三态发布 / 检测开关 / 审计
-│   ├── database.py       # 数据访问层（含一致性不变量）
-│   ├── audio/            # 解码 / 声学特征 / 质量（维度一） / 评分 / 反馈
-│   ├── routes/           # asr / audio 路由
+│   ├── main.py           # FastAPI 组装（/api、/admin、调度任务、启动恢复）
+│   ├── seed.py           # 种子脚本：30 关内容/文章/标定文本/合成音频/发布
+│   ├── e2e_test.py       # 端到端闭环自测（访客/账号/后台）
+│   ├── app/
+│   │   ├── platform/     # requestId/envelope/错误映射、CSRF、限流、执行器、调度、审计、删除日志
+│   │   ├── content/      # 关卡/文章/版本/发布/下架/回退、媒体授权、搜索、标准曲线
+│   │   ├── acoustics/    # 上传/转码(16k PCM)/哈希、信号质检、F0/共振峰（含 tone_py 内核）
+│   │   ├── scoring/      # Provider 协议+Mock+讯飞适配、朗读维判定、规则四步、标定/T值、评分缓存
+│   │   ├── detection/    # 录音状态机、两步提交幂等、202 回落、30s 硬截止、结果快照
+│   │   ├── identity/     # 注册/登录/sid 绑定/同意决定/dataEpoch/注销
+│   │   ├── archive/      # 自动转存、个人音域滚动更新、档案与比较、学习事件与 D-24 进度
+│   │   ├── feedback/     # 反馈与希望增加
+│   │   ├── api/          # 路由层（校验→用例→响应映射）
+│   │   └── admin_ui/     # 自建轻量管理台单页（调用同一用例）
 │   └── requirements.txt
 ├── docs/
 │   ├── srs/              # 软件需求规格说明书（当前需求口径）

@@ -1,55 +1,109 @@
-import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { PAGE_CODE_BY_ROUTE_NAME } from '@/data/pages'
-
 /**
- * P01–P11 路由表（口径：docs/srs/02 4.1 页面清单）
- * ---------------------------------------------------------------------------
- * 页号登记处：src/data/pages.ts；每条路由的 meta.pageCode 由
- * PAGE_CODE_BY_ROUTE_NAME 自动写入，页面/验收清单不要再手写页号，
- * 避免「文档一套、代码一套」。
+ * 路由表与守卫（docs/decision-map-frontend「页面与路由」）：
+ * - history 模式、路由级懒加载（首屏只含 P01）
+ * - /learn → /library；登录/注册在已登录时转 /account
+ * - /preview/* 为管理员预览（meta.bare：不渲染 AppShell 账号入口）
+ * - 锚点 #quiz/#practice/#record/#step-{id} 滚动
  */
-function meta(name: string, title: string, extra: Record<string, unknown> = {}) {
-  return { title, pageCode: PAGE_CODE_BY_ROUTE_NAME[name] ?? '', ...extra }
+import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
+import { useContextStore } from '@/stores/context'
+
+declare module 'vue-router' {
+  interface RouteMeta {
+    /** 页面编号（P01–P11）；preview 与 NotFound 为空 */
+    pageCode?: string
+    /** 预览等不套 AppShell 的页面 */
+    bare?: boolean
+    title?: string
+  }
 }
 
 const routes: RouteRecordRaw[] = [
-  { path: '/', name: 'home', component: () => import('@/views/HomeView.vue'), meta: meta('home', '首页') },
-  { path: '/search', name: 'search', component: () => import('@/views/SearchResultsView.vue'), meta: meta('search', '搜索结果') },
-  { path: '/map', name: 'map', component: () => import('@/views/PronunciationMap.vue'), meta: meta('map', '发音地图') },
-  { path: '/principles', name: 'principles', component: () => import('@/views/PronunciationPrinciples.vue'), meta: meta('principles', '发音原理') },
-  { path: '/library', name: 'library', component: () => import('@/views/PronunciationLibrary.vue'), meta: meta('library', '发音库') },
-  { path: '/materials', name: 'materials', component: () => import('@/views/ProfessionalMaterials.vue'), meta: meta('materials', '专业资料') },
-  { path: '/test', name: 'test', component: () => import('@/views/TestCenterView.vue'), meta: meta('test', '检测中心') },
-  // P05 关卡页：/learn 为 30 关总览骨架，/learn/:id 为单关骨架（同一页号）
-  { path: '/learn', name: 'levels', component: () => import('@/views/LearningView.vue'), meta: meta('levels', '关卡页') },
-  { path: '/learn/:id', name: 'level', component: () => import('@/views/LearningView.vue'), meta: meta('level', '关卡页') },
-  { path: '/feedback/:id', name: 'feedback', component: () => import('@/views/FeedbackView.vue'), meta: meta('feedback', '检测结果') },
-  { path: '/archive', name: 'archive', component: () => import('@/views/HistoryView.vue'), meta: meta('archive', '声音档案') },
-  { path: '/account', name: 'account', component: () => import('@/views/AccountView.vue'), meta: meta('account', '账号') },
-  // 后台（CMS）：不属于 P01–P11 页面
-  { path: '/admin', name: 'admin', component: () => import('@/views/AdminView.vue'), meta: meta('admin', '后台管理') },
+  // P01 首页：首屏包（静态导入）
+  { path: '/', name: 'home', component: () => import('@/pages/HomePage.vue'), meta: { pageCode: 'P01', title: '首页' } },
+
+  // P02 搜索：q 写入 URL，可刷新、可后退
+  { path: '/search', name: 'search', component: () => import('@/pages/SearchPage.vue'), meta: { pageCode: 'P02', title: '搜索' } },
+
+  // P03 发音地图：?compare= 打开比较
+  { path: '/map', name: 'map', component: () => import('@/pages/MapPage.vue'), meta: { pageCode: 'P03', title: '发音地图' } },
+
+  // P04 原理子站：目录 + 文章
+  { path: '/principles', name: 'principles', component: () => import('@/pages/PrinciplesPage.vue'), meta: { pageCode: 'P04', title: '发音原理' } },
+  { path: '/principles/:slug', name: 'article', component: () => import('@/pages/ArticlePage.vue'), meta: { pageCode: 'P04', title: '文章' } },
+
+  // P05 关卡页：/learn 重定向 /library；#record 等锚点由页面处理
+  { path: '/learn', redirect: '/library' },
+  { path: '/learn/:id', name: 'level', component: () => import('@/pages/LevelPage.vue'), meta: { pageCode: 'P05', title: '关卡' } },
+
+  // P06 发音库
+  { path: '/library', name: 'library', component: () => import('@/pages/LibraryPage.vue'), meta: { pageCode: 'P06', title: '发音库' } },
+
+  // P08 检测中心：无 levelId 先选关
+  { path: '/test', name: 'test', component: () => import('@/pages/TestPage.vue'), meta: { pageCode: 'P08', title: '检测中心' } },
+  { path: '/test/:levelId', name: 'test-task', component: () => import('@/pages/TestPage.vue'), meta: { pageCode: 'P08', title: '录音检测' } },
+
+  // P09 结果
+  { path: '/result/:id', name: 'result', component: () => import('@/pages/ResultPage.vue'), meta: { pageCode: 'P09', title: '检测结果' } },
+
+  // P10 声音档案 + 同关比较
+  { path: '/archive', name: 'archive', component: () => import('@/pages/ArchivePage.vue'), meta: { pageCode: 'P10', title: '声音档案' } },
+  { path: '/archive/compare', name: 'archive-compare', component: () => import('@/pages/ArchiveComparePage.vue'), meta: { pageCode: 'P10', title: '同关比较' } },
+
+  // P11 账号：已登录访问 login/register 转到 /account
+  { path: '/account', name: 'account', component: () => import('@/pages/AccountPage.vue'), meta: { pageCode: 'P11', title: '账号' } },
+  {
+    path: '/account/login',
+    name: 'account-login',
+    component: () => import('@/pages/AccountLoginPage.vue'),
+    meta: { pageCode: 'P11', title: '登录' },
+  },
+  {
+    path: '/account/register',
+    name: 'account-register',
+    component: () => import('@/pages/AccountRegisterPage.vue'),
+    meta: { pageCode: 'P11', title: '注册' },
+  },
+
+  // 管理员草稿预览（不计入大众端页面；meta.bare 不渲染 AppShell）
+  {
+    path: '/preview/levels/:id',
+    name: 'preview-level',
+    component: () => import('@/pages/PreviewLevelPage.vue'),
+    meta: { bare: true, title: '草稿预览' },
+  },
+  {
+    path: '/preview/articles/:slug',
+    name: 'preview-article',
+    component: () => import('@/pages/PreviewArticlePage.vue'),
+    meta: { bare: true, title: '文章草稿预览' },
+  },
+
+  // 其余路径统一 NotFound
+  { path: '/:pathMatch(.*)*', name: 'not-found', component: () => import('@/pages/NotFoundPage.vue'), meta: { title: '页面不存在' } },
 ]
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes,
-  scrollBehavior: () => ({ top: 0 }),
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) return savedPosition
+    if (to.hash) return { el: to.hash, behavior: 'smooth', top: 80 }
+    return { top: 0 }
+  },
 })
 
-/**
- * 路由组件是按需下载的。如果前端开发服务器（npm run dev）停了 / 崩了，点击菜单或按钮
- * 会出现「点了没反应」——因为代码下载失败，vue-router 会取消跳转，地址栏都不变。
- * 这类失败必须显性化，否则会被误判成页面 bug（2026-09-29 实测踩过一次）。
- */
-router.onError((error, to) => {
-  const message = String((error as Error)?.message ?? error)
-  console.error('[router] 跳转失败：', to?.fullPath, error)
-  if (/dynamically imported module|Importing a module script failed|Failed to fetch/i.test(message)) {
-    ElMessage.error('页面代码没加载出来：前端开发服务器可能已停止，请重新运行 npm run dev:all 后刷新页面')
-  } else {
-    ElMessage.error(`页面打开失败：${message}`)
+router.beforeEach((to) => {
+  if (to.name === 'account-login' || to.name === 'account-register') {
+    const context = useContextStore()
+    if (context.isAuthenticated) return { name: 'account', replace: true }
   }
+  return true
+})
+
+router.afterEach((to) => {
+  const title = to.meta.title ? `${to.meta.title} · 看得见的声音` : '看得见的声音 · 普通话发音学习'
+  document.title = title
 })
 
 export default router

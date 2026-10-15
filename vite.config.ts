@@ -1,13 +1,16 @@
+/// <reference types="vitest/config" />
 import { fileURLToPath, URL } from 'node:url'
 
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
+import { quasar, transformAssetUrls } from '@quasar/vite-plugin'
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
-    vue(),
+    vue({ template: { transformAssetUrls } }),
+    quasar(),
     vueDevTools(),
   ],
   /**
@@ -25,12 +28,20 @@ export default defineConfig({
     host: '127.0.0.1',
     port: 5173,
     strictPort: true,
+    proxy: {
+      // 开发态将 /api 代理到本地后端（docs/architecture/04 第 1 节）；
+      // 后端未就绪时可用 `npm run dev:mock` 走 MSW 模拟（不经代理）。
+      '/api': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+      },
+    },
     watch: {
       /**
        * 忽略「原子写入」留下的临时目录（第 5 周 D 修复）
        * -----------------------------------------------------------------
        * 有些编辑器/工具保存文件时会先在源文件旁建一个
-       *   .<文件名>.<pid>.<guid>.tmpdir\<文件名>.tmp
+       *   .<文件名>.<pid>.<guid>.<文件名>.tmp
        * 再改名覆盖。chokidar 监听到这个目录被删除的瞬间会抛
        *   Error: EBUSY: resource busy or locked, watch '...tmpdir\...tmp'
        * 而且这个异常会直接终止整个 Vite 进程（不是只打印一条警告）。
@@ -44,5 +55,9 @@ export default defineConfig({
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
+  },
+  test: {
+    environment: 'node',
+    include: ['src/**/*.spec.ts'],
   },
 })

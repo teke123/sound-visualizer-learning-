@@ -1,36 +1,79 @@
 /**
- * 关卡 store（重构占位）
- * ---------------------------------------------------------------------------
- * 意图：关卡 = CMS 已发布单元 + 分级开放规则：
- *  - 未发布 -> 未开放（不渲染检测入口、不出现分数）；
- *  - 已发布未开放检测(verified=false) -> 只学不测；
- *  - 已发布且开放检测 -> 才有「录音 -> 结果」闭环。
+ * levels store：公开关卡摘要、骨架、易混对、availability（带新鲜度校验，NFR-11）。
+ * 路由切换与窗口可见时后台重新校验；先用缓存渲染，不阻塞（§6.9）。
  */
+import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
-
-/** 关卡在大众端的可用状态 */
-export type LevelAvailability = 'open' | 'learn_only' | 'unopened'
-
-/** 关卡视图：内容服务数据 + 分级开放状态（字段随新契约定稿） */
-export interface LevelView {
-  code: string
-  char: string
-  availability: LevelAvailability
-  /** 目标音（如 a / zh / mā），拼音展示用；由内容服务提供 */
-  target?: string
-  pinyin?: string
-}
+import { contentApi, type ConfusablePair, type LevelSkeleton, type LevelSummary } from '@/api'
 
 export const useLevelsStore = defineStore('levels', () => {
-  const levels = ref<LevelView[]>([])
-  const levelGroups = ref<Array<{ key: string; label: string; items: LevelView[] }>>([])
-  const loading = ref(false)
+  const levels = ref<LevelSummary[]>([])
+  const skeletons = ref<LevelSkeleton[]>([])
+  const confusablePairs = ref<ConfusablePair[]>([])
   const loaded = ref(false)
-  const error = ref('')
+  const loading = ref(false)
+  const error = ref<unknown>(null)
+  let lastFetchAt = 0
 
-  async function fetchLevels(_force = false): Promise<void> {
-    // TODO(重构): 从内容服务拉取关卡（CMS 已发布单元派生），维护 loading/error/loaded
+  const byId = computed(() => {
+    const map = new Map<string, LevelSummary>()
+    levels.value.forEach((level) => map.set(level.id, level))
+    return map
+  })
+
+  /** 按公开顺序排列的已发布关（P01/P02/P06/P08 一律使用，过滤骨架） */
+  const published = computed(() =>
+    [...levels.value].sort((a, b) => a.order - b.order).filter((l) => l.availability !== 'closed'),
+  )
+
+  const firstPublishedId = computed(() => published.value[0]?.id ?? null)
+
+  function apply(data: { levels: LevelSummary[]; skeletons: LevelSkeleton[]; confusablePairs: ConfusablePair[] }) {
+    levels.value = data.levels
+    skeletons.value = data.skeletons
+    confusablePairs.value = data.confusablePairs
+    loaded.value = true
+    error.value = null
+    lastFetchAt = Date.now()
   }
-  return { levels, levelGroups, loading, loaded, error, fetchLevels }
+
+  async function refresh(options: { background?: boolean } = {}): Promise<void> {
+    if (loading.value) return
+    if (options.background && Date.now() - lastFetchAt < 15_000) return
+    loading.value = true
+    try {
+      const res = await contentApi.levels()
+      apply(res.data)
+    } catch (err) {
+      if (!options.background) error.value = err
+      // 后台校验失败：保持缓存继续渲染
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /** 详情/媒体 404 时立即刷新（LEVEL_NOT_PUBLISHED / 下架同步） */
+  function invalidate() {
+    lastFetchAt = 0
+  }
+
+  function getSummary(levelId: string): LevelSummary | undefined {
+    return byId.value.get(levelId)
+  }
+
+  return {
+    levels,
+    skeletons,
+    confusablePairs,
+    loaded,
+    loading,
+    error,
+    byId,
+    published,
+    firstPublishedId,
+    apply,
+    refresh,
+    invalidate,
+    getSummary,
+  }
 })

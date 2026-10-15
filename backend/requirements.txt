@@ -1,21 +1,21 @@
-fastapi==0.104.1
-uvicorn==0.24.0
-python-multipart==0.0.6
-librosa==0.10.2.post1
-numpy==1.24.3
-scipy==1.11.4
-torch==2.1.1
-torchaudio==2.1.1
-transformers==4.35.2
-soundfile==0.12.1
-praat-parselmouth==0.4.7
-pydantic==2.5.2
-websockets==12.0
-aiofiles==23.2.1
-# 拼音诊断与音频解码
+# 看得见的声音 · 后端依赖（Python 3.11+；开发环境 3.13 实测通过）
+fastapi>=0.110
+uvicorn>=0.27
+python-multipart>=0.0.9
+sqlalchemy>=2.0
+pydantic>=2.5
+aiofiles>=23
+numpy>=1.24
+scipy>=1.10
+pandas>=1.5            # tone_py（vendored）依赖
+matplotlib>=3.7        # 共振峰图片渲染（Agg）
+praat-parselmouth>=0.4.3
+soundfile>=0.12
 pypinyin>=0.50
-imageio-ffmpeg>=0.4
+argon2-cffi>=23        # 自研轻量认证密码哈希
+imageio-ffmpeg>=0.4   # ffmpeg 二进制分发（转码 16k 单声道 PCM）
+websockets>=12         # 讯飞评测适配器（可选启用）
 
-# 测试与评估工具（重构后按需恢复）
+# 测试
 pytest>=8,<10
-httpx>=0.25,<0.28
+httpx>=0.25,<0.29

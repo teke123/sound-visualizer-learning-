@@ -1,0 +1,207 @@
+"""音频、标定与检测路由（决策图「音频、标定与检测」表）。"""
+from __future__ import annotations
+
+import asyncio
+import json
+
+from fastapi import APIRouter, Depends, Request, UploadFile, File, Form
+from fastapi.responses import Response
+from pydantic import BaseModel
+
+from app import config
+from app.acoustics import usecases as acoustics_uc
+from app.api.deps import Actor, get_actor
+from app.api.files import serve_file
+from app.archive import usecases as archive_uc
+from app.content import usecases as content_uc
+from app.detection import usecases as detection_uc
+from app.identity import usecases as identity_uc
+from app.platform.envelope import ApiError, envelope
+from app.scoring import usecases as scoring_uc
+
+router = APIRouter(prefix="/api", tags=["audio-detection"])
+
+
+# ---------------- 上传与特征 ----------------
+
+@router.post("/audio/uploads")
+async def upload_audio(request: Request, purpose: str = Form(...),
+                       file: UploadFile = File(...),
+                       actor: Actor = Depends(get_actor)):
+    actor.rate_limit("upload")
+    raw = await file.read()
+    if not raw:
+        raise ApiError(400, "DECODE_FAILED", "没有收到音频内容，请重试")
+    result = await asyncio.get_running_loop().run_in_executor(
+        None, lambda: acoustics_uc.register_upload(
+            actor.db, owner_type=actor.owner_type, owner_id=actor.owner_id,
+            purpose=purpose, filename=file.filename, mime=file.content_type,
+            raw_bytes=raw))
+    return envelope(request, result)
+
+
+@router.get("/audio/{audio_id}/file")
+async def audio_file(request: Request, audio_id: str, actor: Actor = Depends(get_actor)):
+    row = acoustics_uc.get_audio_for_read(actor.db, audio_id=audio_id,
+                                          actor_type=actor.owner_type,
+                                          actor_id=actor.owner_id)
+    return serve_file(request, acoustics_uc.audio_path(row), "audio/wav",
+                      cache_control="private, no-store")
+
+
+@router.get("/audio/{audio_id}/f0")
+async def audio_f0(request: Request, audio_id: str, actor: Actor = Depends(get_actor)):
+    actor.rate_limit("feature_read")
+    row = acoustics_uc.get_audio_for_read(actor.db, audio_id=audio_id,
+                                          actor_type=actor.owner_type,
+                                          actor_id=actor.owner_id)
+    data = await asyncio.get_running_loop().run_in_executor(
+        None, lambda: acoustics_uc.get_f0(actor.db, row))
+    return envelope(request, data)
+
+
+@router.get("/audio/{audio_id}/formants")
+async def audio_formants(request: Request, audio_id: str,
+                         actor: Actor = Depends(get_actor)):
+    actor.rate_limit("feature_read")
+    row = acoustics_uc.get_audio_for_read(actor.db, audio_id=audio_id,
+                                          actor_type=actor.owner_type,
+                                          actor_id=actor.owner_id)
+    data = await asyncio.get_running_loop().run_in_executor(
+        None, lambda: acoustics_uc.get_formants(actor.db, row))
+    return envelope(request, data)
+
+
+@router.get("/audio/{audio_id}/formants.png")
+async def audio_formants_png(request: Request, audio_id: str,
+                             actor: Actor = Depends(get_actor)):
+    actor.rate_limit("feature_read")
+    row = acoustics_uc.get_audio_for_read(actor.db, audio_id=audio_id,
+                                          actor_type=actor.owner_type,
+                                          actor_id=actor.owner_id,
+                                          purposes=("recording",))
+    path = await asyncio.get_running_loop().run_in_executor(
+        None, lambda: acoustics_uc.get_formants_png(actor.db, row))
+    return serve_file(request, path, "image/png", cache_control="private, no-store")
+
+
+# ---------------- 标定 ----------------
+
+@router.get("/pitch-calibration")
+async def get_calibration(request: Request, actor: Actor = Depends(get_actor)):
+    text_row = content_uc.get_active_calibration_text(actor.db)
+    if text_row is None:
+        raise ApiError(500, "INTERNAL_ERROR", "标定文本未配置，请联系管理员")
+    effective = scoring_uc.get_effective_range(actor.db, owner_type=actor.owner_type,
+                                               owner_id=actor.owner_id)
+    data = {
+        "text": text_row.text,
+        "textVersion": text_row.text_version,
+        "status": effective["status"] if effective else "none",
+        "vowelSpaceReady": bool(effective and effective.get("vowelSpace")),
+    }
+    if effective:
+        data["pitchRange"] = {"fLo": effective["fLo"], "fHi": effective["fHi"]}
+        data["expiresAt"] = effective.get("expiresAt")
+        data["updatedAt"] = effective.get("updatedAt")
+    return envelope(request, data)
+
+
+class CalibrationBody(BaseModel):
+    audioId: str
+    textVersion: str
+
+
+@router.post("/pitch-calibration")
+async def post_calibration(request: Request, body: CalibrationBody,
+                           actor: Actor = Depends(get_actor)):
+    actor.rate_limit("calibration")
+    text_row = content_uc.get_active_calibration_text(actor.db)
+    if text_row is None or body.textVersion != text_row.text_version:
+        raise ApiError(409, "CONTENT_VERSION_CHANGED", "标定文本已更新，请刷新后重试")
+    audio = acoustics_uc.get_audio_for_read(
+        actor.db, audio_id=body.audioId, actor_type=actor.owner_type,
+        actor_id=actor.owner_id, purposes=("calibration",))
+    consent_valid = (actor.user is not None
+                     and identity_uc.consent_granted(actor.db, actor.user))
+    from app.platform.executor import executor
+
+    future = executor.try_submit(
+        scoring_uc.compute_calibration, actor.db, audio=audio,
+        syllables=json.loads(text_row.syllables),
+        owner_type=actor.owner_type, owner_id=actor.owner_id,
+        consent_valid=consent_valid)
+    if future is None:
+        raise ApiError(503, "SERVER_BUSY", "当前处理排队已满，请稍后重试",
+                       headers={"Retry-After": "5"})
+    try:
+        result = await asyncio.wait_for(asyncio.wrap_future(future),
+                                        timeout=config.HARD_DEADLINE_SECONDS)
+    except asyncio.TimeoutError:
+        raise ApiError(504, "TIMEOUT", "标定处理超时，请重试") from None
+    if not result.get("ok"):
+        return envelope(request, {"reason": result["reason"],
+                                  "signal": result.get("signal")},
+                        code="CALIBRATION_FAIL",
+                        message=result["reason"], status=200)
+    return envelope(request, result)
+
+
+# ---------------- 检测提交与查询 ----------------
+
+class RecordingBody(BaseModel):
+    audioId: str
+    levelId: str
+    contentVersion: int
+    submissionId: str
+
+
+@router.post("/recordings")
+async def submit_recording(request: Request, body: RecordingBody,
+                           actor: Actor = Depends(get_actor)):
+    actor.rate_limit("recording_submit")
+    outcome = detection_uc.submit_recording(
+        actor.db, owner_type=actor.owner_type, owner_id=actor.owner_id,
+        user=actor.user, audio_id=body.audioId, level_id=body.levelId,
+        content_version=body.contentVersion, submission_id=body.submissionId,
+        request_id=actor.request_id)
+    outcome = await detection_uc.wait_sync_window(outcome)
+    if outcome.status == 200:
+        return envelope(request, {"recording": detection_uc.recording_view(outcome.recording),
+                                  "result": outcome.result})
+    return envelope(request, {"recording": detection_uc.recording_view(outcome.recording)},
+                    code="PROCESSING", message="评分处理中，请稍后查询",
+                    status=202, headers={"Retry-After": str(config.RETRY_AFTER_SECONDS)})
+
+
+@router.get("/recordings/{recording_id}")
+async def get_recording(request: Request, recording_id: str,
+                        actor: Actor = Depends(get_actor)):
+    outcome = detection_uc.get_recording(actor.db, owner_type=actor.owner_type,
+                                         owner_id=actor.owner_id,
+                                         recording_id=recording_id)
+    if outcome.status == 200:
+        return envelope(request, {"recording": detection_uc.recording_view(outcome.recording),
+                                  "result": outcome.result})
+    return envelope(request, {"recording": detection_uc.recording_view(outcome.recording)},
+                    code="PROCESSING", message="评分处理中，请稍后查询",
+                    status=202, headers={"Retry-After": str(config.RETRY_AFTER_SECONDS)})
+
+
+@router.delete("/recordings/{recording_id}")
+async def delete_recording(request: Request, recording_id: str,
+                           actor: Actor = Depends(get_actor)):
+    from app.detection.models import RecordingRow
+
+    rec = actor.db.query(RecordingRow).filter(
+        RecordingRow.id == recording_id,
+        RecordingRow.owner_type == actor.owner_type,
+        RecordingRow.owner_id == actor.owner_id).one_or_none()
+    if rec is None:
+        raise ApiError(404, "NOT_FOUND", "录音不存在或不可见")
+    already = rec.deleted_at is not None
+    if not already:
+        archive_uc.delete_recording(actor.db, rec, request_id=actor.request_id,
+                                    reason="user_delete")
+        actor.db.commit()
+    return envelope(request, {"deleted": True, "alreadyDeleted": already})

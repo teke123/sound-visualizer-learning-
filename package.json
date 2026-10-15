@@ -5,38 +5,50 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:mock": "vite --mode mock",
     "build": "run-p type-check \"build-only {@}\" --",
     "preview": "vite preview",
     "build-only": "vite build",
     "type-check": "vue-tsc --build",
+    "test:unit": "vitest run",
     "backend": "cd backend && python main.py",
     "dev:all": "run-p dev backend"
   },
   "dependencies": {
-    "@element-plus/icons-vue": "^2.3.2",
+    "@quasar/extras": "^2.1.0",
     "@vueuse/core": "^14.4.0",
     "echarts": "^6.1.0",
-    "element-plus": "^2.14.4",
+    "markdown-it": "^15.0.2",
     "pinia": "^4.0.2",
-    "pitchy": "^4.1.0",
+    "quasar": "^2.35.1",
     "three": "^0.185.1",
     "vue": "^3.5.40",
     "vue-echarts": "^8.1.0",
     "vue-router": "^4.6.4"
   },
   "devDependencies": {
+    "@quasar/vite-plugin": "^2.0.2",
     "@tsconfig/node24": "^24.0.4",
+    "@types/markdown-it": "^14.2.0",
     "@types/node": "^24.13.3",
     "@types/three": "^0.185.4",
     "@vitejs/plugin-vue": "^6.0.8",
     "@vue/tsconfig": "^0.9.1",
+    "msw": "^3.0.3",
     "npm-run-all2": "^9.0.2",
+    "sass": "^1.105.1",
     "typescript": "~6.0.0",
     "vite": "^8.1.5",
     "vite-plugin-vue-devtools": "^8.1.5",
+    "vitest": "^5.0.4",
     "vue-tsc": "^3.3.7"
   },
   "engines": {
     "node": "^22.18.0 || >=24.12.0"
+  },
+  "msw": {
+    "workerDirectory": [
+      "public"
+    ]
   }
 }

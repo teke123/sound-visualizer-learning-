@@ -80,3 +80,5 @@ temp/
 *.cache
 
 openwiki/
+# 后端运行数据（SQLite/音频/密钥/删除日志）
+backend/data/
