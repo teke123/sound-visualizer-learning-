@@ -83,6 +83,14 @@ export interface AudioAnalysisResult {
   //新增：
   voiced_flag?: boolean[]
   voiced_probs?: number[]
+
+  /**
+   * 逐帧时间戳（秒）。
+   * 契约来源：A（2026-10-11）——时间戳「我还没做」，将来会「按帧返回时间戳」，
+   * 并且明确「分析的时候的帧率可能会变」。
+   * 所以：横轴有它就用它；没有就退化为帧序号，**不要写死帧长**。
+   */
+  timestamps?: number[]
   
   // 深度学习分析结果
   recognizedText: string // Wav2Vec2 识别出的拼音文本

@@ -40,6 +40,13 @@ function mapAssessment(data: any): PronunciationAssessment {
           feedback: p.feedback,
         })),
         standardF0: audioRaw.standard_f0 || [],
+        // 逐帧时间戳：后端尚未提供（A 2026-10-11），先按约定占位，拿到即用
+        timestamps: audioRaw.timestamps || [],
+        // 有声标记：原先漏映射，导致「有声/无声」与 voiced_prob 永远显示不出来。
+        // 注意后端目前把字段名拼成了 voiecd_flag（backend/main.py:92），
+        // 那边修好之前这里恒为空数组，前端已有 f0>0 的回退，不会出错。
+        voiced_flag: audioRaw.voiced_flag || [],
+        voiced_probs: audioRaw.voiced_probs || [],
       }
     : null
 

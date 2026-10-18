@@ -12,6 +12,7 @@ import PageState from '@/components/PageState.vue'
 import { usePageCopy } from '@/composables/usePageCopy'
 import { useUserStore } from '@/stores/user'
 import { learningRecordApi } from '@/api'
+import { maskByVoiced, smoothSeries } from '@/utils/toneCurve'
 import { ElMessage } from 'element-plus'
 import type { LearningRecord } from '@/types'
 
@@ -23,6 +24,34 @@ const { copy } = usePageCopy('P09')
 
 const unitId = computed(() => route.params.id as string)
 const assessment = computed(() => recordingStore.assessment)
+
+/**
+ * 后端有没有给标准声调曲线。
+ * 没有就不画、图例也不留，并在图下显式说明原因 —— 不能编一条再标「标准发音」。
+ * 现状：L01–L30 不在后端 UNIT_REFERENCE 白名单里，所以正式关卡拿不到 standardF0。
+ */
+const toneStandardMissing = computed(() => {
+  const a = assessment.value?.audioAnalysis
+  if (!a) return false
+  const std = a.standardF0 || []
+  return !(std.length > 0 && std.some(v => typeof v === 'number' && v > 0))
+})
+
+/**
+ * 声谱图有没有可用数据。
+ * 没有就不能画 —— 原先是把 80×100 个像素全涂成 rgb(0,0,255)，
+ * 看上去像"图坏了"，既不是空态也不诚实。
+ */
+const hasSpectrogramData = computed(() => {
+  const m = assessment.value?.audioAnalysis?.mfcc
+  return !!m && m.length > 0 && (m[0]?.length ?? 0) > 0
+})
+
+/** 能量图有没有可用数据 */
+const hasEnergyData = computed(() => {
+  const e = assessment.value?.audioAnalysis?.energy
+  return !!e && e.length > 0 && e.some(v => typeof v === 'number' && v > 0)
+})
 
 // =============================================
 // 刷新 / 直开本页时的结果恢复
@@ -111,6 +140,52 @@ const threeContainerRef = ref<HTMLDivElement | null>(null)
 const spectrogramRef = ref<HTMLCanvasElement | null>(null)
 const formantChartRef = ref<HTMLDivElement | null>(null)
 const energyChartRef = ref<HTMLDivElement | null>(null)
+
+// ---------------------------------------------------------------------------
+// 3D 演示环境预检（第 7 周任务）
+// three 0.185 只接受 WebGL2；创建失败时它会抛未捕获异常，界面上只剩一个空框。
+// 所以初始化前先探测能力，失败就给看得懂的兜底文案，而不是白屏。
+// ---------------------------------------------------------------------------
+type ThreeState = 'idle' | 'ready' | 'unsupported' | 'error'
+const threeState = ref<ThreeState>('idle')
+/** 3D 是否已确定不可用（用于模板在「画布」与「兜底说明」之间切换） */
+const threeFailed = computed(
+  () => threeState.value === 'unsupported' || threeState.value === 'error',
+)
+
+/** 能否创建 WebGL2 上下文（探测完立即丢弃，不占上下文名额） */
+function supportsWebGL2(): boolean {
+  try {
+    if (typeof WebGL2RenderingContext === 'undefined') return false
+    const c = document.createElement('canvas')
+    const ctx = c.getContext('webgl2')
+    if (!ctx) return false
+    // 主动释放探测用的上下文
+    ;(ctx as WebGL2RenderingContext).getExtension('WEBGL_lose_context')?.loseContext()
+    return true
+  } catch {
+    return false
+  }
+}
+
+// ---------------------------------------------------------------------------
+// ECharts 实例登记：容器挂在 v-if 上，容器被摘掉后 getInstanceByDom 再也找不到
+// 旧实例，会变成永久孤儿。用一张 Set 记住所有活着的实例，卸载时统一 dispose。
+// ---------------------------------------------------------------------------
+const liveCharts = new Set<echarts.ECharts>()
+
+/** 取（或重建）某个容器上的 ECharts 实例，并登记到 liveCharts */
+function trackChart(el: HTMLDivElement | null): echarts.ECharts | null {
+  if (!el) return null
+  const old = echarts.getInstanceByDom(el)
+  if (old) {
+    liveCharts.delete(old)
+    old.dispose()
+  }
+  const chart = echarts.init(el)
+  liveCharts.add(chart)
+  return chart
+}
 
 // =============================================
 // 发音特征解析：根据拼音推导口腔各部位姿态
@@ -273,7 +348,26 @@ const currentPose = computed(() => getArticulationPose(unitId.value))
 // =============================================
 // 精细 3D 口腔模型：上颚/软腭/上下颌/舌头/牙齿/嘴唇/声带/气流
 // =============================================
-function initThreeScene() {
+/** 3D 场景初始化（带 WebGL2 能力检测与异常兜底） */
+function initThreeScene(): (() => void) | null {
+  if (!threeContainerRef.value) return null
+  if (!supportsWebGL2()) {
+    threeState.value = 'unsupported'
+    console.warn('[3D] 当前环境无法创建 WebGL2 上下文，已降级为文字说明')
+    return null
+  }
+  try {
+    const dispose = initThreeSceneInner()
+    threeState.value = dispose ? 'ready' : 'error'
+    return dispose ?? null
+  } catch (e) {
+    threeState.value = 'error'
+    console.error('[3D] 场景初始化失败', e)
+    return null
+  }
+}
+
+function initThreeSceneInner(): (() => void) | undefined {
   if (!threeContainerRef.value) return
   const container = threeContainerRef.value
   const scene = new THREE.Scene()
@@ -629,8 +723,23 @@ function initThreeScene() {
   }
   animate()
 
+  // 窗口缩放 / 侧栏折叠都会改变容器宽度：用 ResizeObserver 跟随。
+  // 原先尺寸与相机 aspect 只在初始化时算一次，折叠侧栏或改窗口后 3D 会与卡片错位。
+  const applySize = () => {
+    const w = container.clientWidth
+    const h = container.clientHeight
+    if (!w || !h) return
+    camera.aspect = w / h
+    camera.updateProjectionMatrix()
+    renderer.setSize(w, h)
+    labelRenderer.setSize(w, h)
+  }
+  const ro = new ResizeObserver(applySize)
+  ro.observe(container)
+
   // 返回清理函数（组件卸载时释放资源）
   return () => {
+    ro.disconnect()
     cancelAnimationFrame(rafId)
     renderer.dispose()
     controls.dispose()
@@ -643,132 +752,180 @@ function initThreeScene() {
   }
 }
 
-// 声调曲线对比图（标准曲线由后端生成）
-//改动1 -- > 使用voiced_flag决定是否保留f0：有声保留，无声设为null断线
-function initToneChart() {
-  if (!toneChartRef.value) return
-  const existing = echarts.getInstanceByDom(toneChartRef.value)
-  if (existing) existing.dispose()
-  const chart = echarts.init(toneChartRef.value)
+// 声调曲线对比图
+// ---------------------------------------------------------------------------
+// 三条硬约束（都有来由，改之前先看）：
+//
+//   1) 标准曲线**只能来自后端**。拿不到就不画、图例也一起去掉，并显式说明原因。
+//      前端按 detectedTone 现编一条再标「标准发音」= 假分，违反 SRS「禁止假分」。
+//
+//   2) 横轴优先用后端**逐帧时间戳**。A（2026-10-11）说时间戳「我还没做」，
+//      将来会按帧返回；并且明确「分析的时候的帧率可能会变」。
+//      所以**不能写死帧长**——512/16000 = 32ms 只是标称值，实际帧距可能不匀。
+//      没有时间戳时退化为帧序号并如实标注，不把帧序号冒充「时间」。
+//
+//   3) 屏蔽静音 + 数据平滑走 src/utils/toneCurve.ts（第 6 周工具）。
+//      注意：ECharts 的 series.smooth 只是**渲染**平滑、数值不变，不能替代数据平滑。
 
-  const rawF0: number[] = assessment.value?.audioAnalysis?.f0 || []
-  const voiced: (boolean | undefined)[] = assessment.value?.audioAnalysis?.voiced_flag || []
-  const voicedProbs: number[] = assessment.value?.audioAnalysis?.voiced_probs || []
-
-  // 用 voiced_flag 掩码：unvoiced -> null（ECharts 遇到 null 会断线）
-  const userF0 = rawF0.map((v, i) => {
-    const vf = voiced[i]
-    if (typeof vf === 'boolean') {
-      return vf ? v : null
+/** 声调图横轴：时间戳 → 平均帧距 → 帧序号，依次退化，并如实给出轴名与单位 */
+function buildToneAxis(
+  frameCount: number,
+  timestamps: number[] | undefined,
+  duration: number,
+): { labels: number[]; axisName: string; unit: 's' | '帧' } {
+  // ① 后端给了逐帧时间戳 —— 最优，直接用它
+  if (Array.isArray(timestamps) && frameCount > 0 && timestamps.length === frameCount) {
+    return { labels: timestamps, axisName: '时间 (s)', unit: 's' }
+  }
+  // ② 没有时间戳但有总时长 —— 按平均帧距近似，轴名如实写「按平均帧距」
+  if (duration > 0 && frameCount > 1) {
+    const step = duration / frameCount
+    return {
+      labels: Array.from({ length: frameCount }, (_, i) => Number((i * step).toFixed(2))),
+      axisName: '时间 (s · 按平均帧距)',
+      unit: 's',
     }
-    // 回退：若没有 voiced_flag 字段，则以 f0>0 判定（保持向后兼容）
-    return (typeof v === 'number' && v > 0) ? v : null
-  })
+  }
+  // ③ 都没有 —— 帧序号，不是时间，不冒充
+  return {
+    labels: Array.from({ length: frameCount }, (_, i) => i),
+    axisName: '帧序号',
+    unit: '帧',
+  }
+}
 
-  // 标准曲线：优先后端提供的 standardF0，否则按识别声调生成兜底并确保与 rawF0 等长
-  let standardF0: number[] = assessment.value?.audioAnalysis?.standardF0 || []
-  if ((!standardF0 || standardF0.length === 0) && rawF0.length > 0) {
-    const tone = assessment.value?.audioAnalysis?.detectedTone || 1
-    standardF0 = rawF0.map((_, i) => {
-      const t = i / rawF0.length
-      if (tone === 2) return 120 + t * 80
-      if (tone === 3) return 150 - t * 40 + (t > 0.5 ? (t - 0.5) * 120 : 0)
-      if (tone === 4) return 220 - t * 80
-      return 200 + Math.sin(t * Math.PI) * 5
+function initToneChart() {
+  const chart = trackChart(toneChartRef.value)
+  if (!chart) return
+
+  const audio = assessment.value?.audioAnalysis
+  const rawF0: number[] = audio?.f0 || []
+  const voiced: boolean[] | undefined = audio?.voiced_flag
+  const voicedProbs: number[] = audio?.voiced_probs || []
+
+  // 屏蔽静音 → null（ECharts 遇 null 断线），再在连续有声段内做数据平滑。
+  // 走第 6 周工具；顺序不可颠倒（先平滑，再谈归一化）。
+  const userF0 = smoothSeries(maskByVoiced(rawF0, voiced))
+
+  // 标准曲线：只认真实数据。拿不到就什么都不画 —— 不再按 detectedTone 现编一条
+  const standardRaw: number[] = audio?.standardF0 || []
+  const hasStandard =
+    standardRaw.length > 0 && standardRaw.some(v => typeof v === 'number' && v > 0)
+
+  const { labels, axisName, unit } = buildToneAxis(
+    rawF0.length,
+    audio?.timestamps,
+    audio?.duration || 0,
+  )
+
+  // 系列：用户曲线必有；标准曲线只在后端真的给了才画（禁止假分）
+  const series: any[] = [
+    {
+      name: '您的发音',
+      type: 'line',
+      data: userF0,
+      connectNulls: false, // 静音处断线
+      smooth: true,
+      lineStyle: { color: '#409eff', width: 3 },
+      itemStyle: { color: '#409eff' },
+      symbol: 'circle',
+      symbolSize: 6,
+    },
+  ]
+  if (hasStandard) {
+    // 长度不同时按公共长度截断，不做最近邻重排那种「伪对齐」
+    series.push({
+      name: '标准发音',
+      type: 'line',
+      data: smoothSeries(maskByVoiced(standardRaw)).slice(0, labels.length),
+      connectNulls: false,
+      smooth: true,
+      lineStyle: { color: '#67c23a', width: 3, type: 'dashed' },
+      itemStyle: { color: '#67c23a' },
+      symbol: 'none',
     })
   }
-
-  // 若 standardF0 长度与 rawF0 不一致，简单重采样到 rawF0.length（保证对齐）
-  if (standardF0.length !== rawF0.length) {
-    const n = Math.max(1, rawF0.length || standardF0.length)
-    const src = standardF0.length ? standardF0 : new Array(n).fill(null)
-    standardF0 = new Array(n).fill(null).map((_, i) => {
-      const idx = Math.floor(i / n * src.length)
-      return src[idx] ?? null
-    })
-  }
-
-  const labels = rawF0.map((_, i) => i)
 
   chart.setOption({
     title: { text: '声调曲线对比', left: 'center', textStyle: { fontSize: 14 } },
     tooltip: {
       trigger: 'axis',
-      // tooltip 显示：频率 + 是否有声 + voiced_prob（若有）
+      // 显示：横轴值（时间/帧）+ 频率 + 有声标记 + voiced_prob（若有）
       formatter: (params: any) => {
         // params 为数组：0=您的发音,1=标准发音（视图序列顺序）
         const p = Array.isArray(params) ? params[0] : params
         const idx = p?.dataIndex ?? 0
         const val = p?.data ?? null
-        const isVoiced = voiced[idx]
+        const isVoiced = voiced?.[idx]
         const prob = voicedProbs[idx]
         const voicedTxt = typeof isVoiced === 'boolean' ? (isVoiced ? '有声' : '无声') : ''
         const probTxt = (typeof prob === 'number') ? `<br/>voiced_prob: ${prob.toFixed(2)}` : ''
-        return `时间: ${idx}<br/>频率: ${val === null ? '—' : (val.toFixed ? val.toFixed(1) + ' Hz' : val)}<br/>${voicedTxt}${probTxt}`
+        const head = unit === 's' ? `时间: ${labels[idx]} s` : `第 ${idx} 帧`
+        const freqTxt = typeof val === 'number' ? `${val.toFixed(1)} Hz` : '—'
+        return `${head}<br/>频率: ${freqTxt}<br/>${voicedTxt}${probTxt}`
       }
     },
-    legend: { data: ['您的发音', '标准发音'], bottom: 0 },
-    xAxis: { type: 'category', data: labels, name: '时间' },
+    // 没有标准曲线时图例也不留它：不能让图例承诺一条不存在的线
+    legend: { data: hasStandard ? ['您的发音', '标准发音'] : ['您的发音'], bottom: 0 },
+    xAxis: { type: 'category', data: labels, name: axisName },
     yAxis: { type: 'value', name: '频率 (Hz)' },
-    series: [
-      {
-        name: '您的发音',
-        type: 'line',
-        data: userF0,
-        connectNulls: false, // 断线
-        smooth: true,
-        lineStyle: { color: '#409eff', width: 3 },
-        itemStyle: { color: '#409eff' },
-        symbol: 'circle',
-        symbolSize: 6,
-        // 通过 emphasis 或 tooltip 显示 voiced_prob（已经在 tooltip formatter 中处理）
-      },
-      {
-        name: '标准发音',
-        type: 'line',
-        data: standardF0,
-        smooth: true,
-        lineStyle: { color: '#67c23a', width: 3, type: 'dashed' },
-        itemStyle: { color: '#67c23a' },
-        symbol: 'none',
-      },
-    ],
+    series,
     grid: { left: 60, right: 30, top: 40, bottom: 40 },
   })
 }
 
-// 声谱图（语谱图）
+// 声谱图（基于后端 MFCC 的倒谱强度图）
+// ⚠️ 这里画的**不是**「某频率在某时刻的能量」：
+//    后端给的是 librosa 的 MFCC（倒谱系数），不是 STFT 幅度谱。
+//    所以纵轴是「倒谱系数序号」，文案也改准了；真要画声谱图需要后端补 STFT。
+//    另外用整幅数据的峰值做归一化 —— 系数直接 clamp 到 1 会让整片过饱和发白。
 function initSpectrogram() {
   if (!spectrogramRef.value) return
   const canvas = spectrogramRef.value
   const ctx = canvas.getContext('2d')
   if (!ctx) return
 
-  canvas.width = 500
-  canvas.height = 200
-  const w = canvas.width
-  const h = canvas.height
+  // 高分屏：位图按 DPR 放大，CSS 尺寸不变，否则 250 个物理像素被拉伸到 400+ 会糊
+  const dpr = Math.min(window.devicePixelRatio || 1, 2)
+  const cssW = Math.round(canvas.clientWidth || 500)
+  const cssH = 200
+  canvas.width = Math.round(cssW * dpr)
+  canvas.height = Math.round(cssH * dpr)
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
-  // 用后端返回的真实MFCC数据生成频谱图（无假数据回退）
+  const w = cssW
+  const h = cssH
+
   const timeSteps = 100
   const freqBins = 80
   const mfcc = assessment.value?.audioAnalysis?.mfcc || []
-
-  // 若后端未返回MFCC数据，显示空白并标注
   const hasMfcc = mfcc.length > 0 && (mfcc[0]?.length ?? 0) > 0
+
+  // 无数据：清空后直接返回，空态由模板负责，不涂任何颜色
+  ctx.clearRect(0, 0, w, h)
+  if (!hasMfcc) return
+
+  // 峰值归一化 + γ 压缩
+  // ⚠️ 只做峰值归一化不够：MFCC 的 c0（第 0 阶）量级比其他阶大十几到几十倍，
+  //    峰值卡在 c0 上，高阶系数会被整个压成深蓝、看不出结构。
+  //    γ = 0.45 < 1 用来提升小值的可见度，同时保留"谁大谁小"的顺序，不改变可比性。
+  let peak = 0
+  for (const row of mfcc) {
+    for (const v of row) {
+      const a = Math.abs(v)
+      if (a > peak) peak = a
+    }
+  }
+  const scale = peak > 0 ? peak : 1
+  const GAMMA = 0.45
 
   for (let t = 0; t < timeSteps; t++) {
     for (let f = 0; f < freqBins; f++) {
-      // 用MFCC数据生成能量值
-      let energy = 0
-      if (hasMfcc) {
-        const mfccIdx = Math.floor(f / freqBins * mfcc.length)
-        const timeIdx = Math.floor(t / timeSteps * (mfcc[0]?.length || 1))
-        energy = Math.abs(mfcc[mfccIdx]?.[timeIdx] || 0)
-      } else {
-        energy = 0
-      }
-      energy = Math.max(0, Math.min(1, energy))
+      const mfccIdx = Math.floor((f / freqBins) * mfcc.length)
+      const timeIdx = Math.floor((t / timeSteps) * (mfcc[0]?.length || 1))
+      const raw = Math.abs(mfcc[mfccIdx]?.[timeIdx] || 0)
+      const ratio = Math.max(0, Math.min(1, raw / scale))
+      const energy = Math.pow(ratio, GAMMA)
 
       // 颜色映射：深蓝→青→绿→黄→红
       const r = Math.floor(energy < 0.5 ? energy * 2 * 255 : 255)
@@ -780,23 +937,21 @@ function initSpectrogram() {
     }
   }
 
-  // 坐标轴标签
+  // 轴说明：纵轴是倒谱系数序号，不是频率
   ctx.fillStyle = '#909399'
   ctx.font = '11px sans-serif'
   ctx.fillText('时间 →', w - 50, h - 5)
   ctx.save()
   ctx.translate(12, h / 2)
   ctx.rotate(-Math.PI / 2)
-  ctx.fillText('频率 →', -20, 0)
+  ctx.fillText('倒谱系数 →', -32, 0)
   ctx.restore()
 }
 
 // 共振峰轨迹图 (F1-F2空间)
 function initFormantChart() {
-  if (!formantChartRef.value) return
-  const existing = echarts.getInstanceByDom(formantChartRef.value)
-  if (existing) existing.dispose()
-  const chart = echarts.init(formantChartRef.value)
+  const chart = trackChart(formantChartRef.value)
+  if (!chart) return
 
   const f1Data = assessment.value?.audioAnalysis?.f1 || []
   const f2Data = assessment.value?.audioAnalysis?.f2 || []
@@ -850,25 +1005,37 @@ function initFormantChart() {
 
 // 能量包络图
 function initEnergyChart() {
-  if (!energyChartRef.value) return
-  const existing = echarts.getInstanceByDom(energyChartRef.value)
-  if (existing) existing.dispose()
-  const chart = echarts.init(energyChartRef.value)
+  const chart = trackChart(energyChartRef.value)
+  if (!chart) return
 
   const energy = assessment.value?.audioAnalysis?.energy || []
-  const labels = energy.map((_, i) => i)
-  const duration = assessment.value?.audioAnalysis?.duration || 1.5
+  const duration = assessment.value?.audioAnalysis?.duration || 0
+  const n = energy.length
+
+  // 横轴与声调图用同一套退化规则：有真实总时长才换算成秒，否则如实显示帧序号。
+  // 原先是 `duration || 1.5` —— 没有时长就编一个 1.5 秒，等于编时间轴。
+  const timed = duration > 0 && n > 1
+  const labels = Array.from(
+    { length: n },
+    (_, i) => (timed ? Number(((i / n) * duration).toFixed(2)) : i),
+  )
 
   chart.setOption({
     title: { text: '能量包络图', left: 'center', textStyle: { fontSize: 14 } },
-    tooltip: { trigger: 'axis', formatter: (p: any) => `时间: ${(p[0].dataIndex / energy.length * duration).toFixed(2)}s<br/>能量: ${p[0].data.toFixed(3)}` },
-    xAxis: {
-      type: 'category',
-      data: labels,
-      name: '时间',
-      axisLabel: { formatter: (v: string) => (parseInt(v) / energy.length * duration).toFixed(1) + 's' },
+    tooltip: {
+      trigger: 'axis',
+      formatter: (p: any) => {
+        const item = Array.isArray(p) ? p[0] : p
+        const i = item?.dataIndex ?? 0
+        const head = timed ? `时间: ${labels[i]} s` : `第 ${i} 帧`
+        const val = typeof item?.data === 'number' ? item.data.toFixed(3) : '—'
+        return `${head}<br/>能量(RMS): ${val}`
+      },
     },
-    yAxis: { type: 'value', name: '能量', min: 0, max: 1 },
+    xAxis: { type: 'category', data: labels, name: timed ? '时间 (s)' : '帧序号' },
+    // 不再硬编码 0–1：后端是 librosa RMS，真实量级约 0.01–0.2，
+    // 写死 max:1 会让曲线贴在底部，看不出包络形状。
+    yAxis: { type: 'value', name: '能量 (RMS)', min: 0 },
     series: [{
       type: 'line',
       data: energy,
@@ -925,6 +1092,10 @@ onMounted(async () => {
 onUnmounted(() => {
   disposeThree?.()
   disposeThree = null
+  // 图表实例统一 dispose：否则离开页面后实例仍持有 canvas 与 zrender 内部监听；
+  // 而图表容器挂在 v-if 上，容器被摘掉后旧实例会变成再也找不到的孤儿（演示中反复重录会累积）。
+  for (const chart of liveCharts) chart.dispose()
+  liveCharts.clear()
   stopAudio()
 })
 
@@ -1095,25 +1266,42 @@ watch(
     <div v-if="assessment?.evaluable && assessment?.audioAnalysis" class="analysis-row">
       <div class="chart-card">
         <div ref="toneChartRef" class="chart-container"></div>
+        <p v-if="toneStandardMissing" class="chart-desc">
+          本次没有标准声调曲线（后端未提供），图中只显示你自己的音高走势。
+        </p>
       </div>
       <div class="three-card">
         <h4>3D发音动画 <small>（剖面示意 · 拖拽旋转 · 滚轮缩放 · 悬停部位查看说明）</small></h4>
-        <div ref="threeContainerRef" class="three-container"></div>
+        <!-- 预检兜底：不支持 WebGL2 时给看得懂的解释，而不是留一个空框 -->
+        <div v-if="threeFailed" class="three-fallback">
+          <p class="three-fallback-title">这台设备暂时显示不了 3D 演示</p>
+          <p class="three-fallback-desc">
+            浏览器或显卡不支持 WebGL2（也可能是关闭了硬件加速，或正通过远程桌面演示）。
+            这不影响上面的分数与图表，换个浏览器 / 打开硬件加速 / 换台机器即可看到。
+          </p>
+        </div>
+        <div v-else ref="threeContainerRef" class="three-container"></div>
       </div>
     </div>
 
     <!-- 声谱图 + 共振峰 + 能量图（仅可评价时展示） -->
     <div v-if="assessment?.evaluable && assessment?.audioAnalysis" class="analysis-row three-col">
       <div class="chart-card">
-        <h4>声谱图（语谱图）</h4>
-        <canvas ref="spectrogramRef" class="spectrogram-canvas"></canvas>
-        <p class="chart-desc">颜色越亮表示该频率在该时间点的能量越强</p>
+        <h4>声谱图</h4>
+        <canvas v-if="hasSpectrogramData" ref="spectrogramRef" class="spectrogram-canvas"></canvas>
+        <p v-else class="chart-desc">本次没有频谱数据（后端未返回 MFCC），无法绘制声谱图。</p>
+        <!-- 文案改准：后端给的是 MFCC（倒谱系数），不是某频率上的能量 -->
+        <p v-if="hasSpectrogramData" class="chart-desc">
+          颜色越亮表示该倒谱分量的强度越大（MFCC，不是物理频率上的能量）
+        </p>
       </div>
       <div class="chart-card">
         <div ref="formantChartRef" class="chart-container"></div>
       </div>
       <div class="chart-card">
-        <div ref="energyChartRef" class="chart-container"></div>
+        <h4 v-if="!hasEnergyData">能量包络图</h4>
+        <div v-if="hasEnergyData" ref="energyChartRef" class="chart-container"></div>
+        <p v-else class="chart-desc">本次没有能量数据，无法绘制能量包络。</p>
       </div>
     </div>
 
@@ -1197,6 +1385,14 @@ watch(
 .three-card h4 { margin: 0 0 8px; font-size: 14px; color: #303133; }
 .three-card h4 small { font-size: 11px; color: #909399; font-weight: normal; }
 .three-container { position: relative; width: 100%; height: 300px; border-radius: 8px; overflow: hidden; }
+/* 3D 不可用时的兜底说明：占位高度与画布一致，避免布局跳动 */
+.three-fallback {
+  display: flex; flex-direction: column; justify-content: center; align-items: center;
+  height: 300px; padding: 0 24px; border-radius: 8px;
+  background: #f5f7fa; border: 1px dashed #dcdfe6; text-align: center;
+}
+.three-fallback-title { margin: 0 0 8px; font-size: 14px; font-weight: 600; color: #606266; }
+.three-fallback-desc { margin: 0; font-size: 12px; line-height: 1.8; color: #909399; }
 .phoneme-section { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
 .phoneme-section h3 { margin: 0 0 16px; font-size: 16px; color: #303133; }
 .phoneme-section h3 small { font-size: 12px; color: #909399; font-weight: normal; }
