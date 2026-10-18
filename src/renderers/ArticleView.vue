@@ -130,7 +130,6 @@ const demoMediaIds = computed(() => (props.article.demo?.mediaId ? [props.articl
         <li v-for="reference in references" :key="reference.title">
           <strong>{{ reference.title }}</strong>
           <span class="reference-meta">来源：{{ reference.source }} · 许可：{{ reference.license }}</span>
-          <span v-if="reference.boundary" class="reference-scope">适用边界：{{ reference.boundary }}</span>
         </li>
       </ul>
     </section>
@@ -290,7 +289,7 @@ const demoMediaIds = computed(() => (props.article.demo?.mediaId ? [props.articl
     flex-direction: column
     gap: 2px
 
-.reference-meta, .reference-scope
+.reference-meta
   font-size: 13px
   color: #78909c
 </style>

@@ -14,5 +14,6 @@ export {
   audioF0Url,
   audioFormantsUrl,
   audioFormantsPngUrl,
+  audioSpectrogramPngUrl,
 } from './mediaUrl'
 export type { MediaUrlOptions } from './mediaUrl'

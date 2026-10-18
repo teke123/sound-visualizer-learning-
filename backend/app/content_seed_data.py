@@ -72,9 +72,9 @@ LEVELS = [
             },
         ],
         "practice": [
-            {"id": "L01-P1", "title": "打个哈欠再发音", "instruction": "像打哈欠的前半段那样把嘴张到最大，保持 2 秒，再发 a，读完停 1 秒。", "repeat": 5, "durationSec": None, "bodyCue": "下巴完全放松地下沉，喉咙敞开没有紧绷感。", "stopNote": "不舒服就停止"},
-            {"id": "L01-P2", "title": "长音稳住", "instruction": "发 a 并拉长到 5 秒左右，音量保持均匀，一口气算一组。", "repeat": None, "durationSec": 30, "bodyCue": "小腹微微托住气息，口型从头到尾保持张大。", "stopNote": "头晕就坐下休息"},
-            {"id": "L01-P3", "title": "a 和 o 换口型", "instruction": "先发 a 再滑到 o，来回 5 次，体会嘴从“摊开”到“收圆”。", "repeat": 5, "durationSec": None, "bodyCue": "变化只发生在嘴唇，下巴和舌头基本不动。", "stopNote": "不舒服就停止"},
+            {"id": "L01-P1", "title": "打个哈欠再发音", "instruction": "像打哈欠的前半段那样把嘴张到最大，保持 2 秒，再发 a，读完停 1 秒。", "repeat": 5, "durationSec": None, "bodyCue": "下巴完全放松地下沉，喉咙敞开没有紧绷感。"},
+            {"id": "L01-P2", "title": "长音稳住", "instruction": "发 a 并拉长到 5 秒左右，音量保持均匀，一口气算一组。", "repeat": None, "durationSec": 30, "bodyCue": "小腹微微托住气息，口型从头到尾保持张大。"},
+            {"id": "L01-P3", "title": "a 和 o 换口型", "instruction": "先发 a 再滑到 o，来回 5 次，体会嘴从“摊开”到“收圆”。", "repeat": 5, "durationSec": None, "bodyCue": "变化只发生在嘴唇，下巴和舌头基本不动。"},
         ],
         "misconceptions": [
             {"phenomenon": "a 听起来又扁又闷，像 e，通常是嘴没张开、舌头抬高了。", "fix": "可以先用手指轻轻抵住下巴，帮自己把嘴撑开再发音，习惯后再放开手。"},
@@ -87,8 +87,8 @@ LEVELS = [
                 {"name": "F2（第二共振峰）", "value": "约 1100–1400 Hz", "note": "舌位越前 F2 越高，因人而异"},
             ],
             "sources": [
-                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
-                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
+                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用"},
+                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用"},
             ],
         },
         "detection": {
@@ -96,7 +96,6 @@ LEVELS = [
             "evaluationText": "啊",
             "sampleVoice": "male",
             "allowedMetrics": ["score", "pitch_curve", "tone", "final", "formants"],
-            "reliabilityNote": "本关以口型要点与共振峰参考为主，评分和曲线供学习参考，数值因人而异。",
             "fourStepTemplates": [
                 {"tag": "low_overall_score", "phenomenon": "整体相似度分数偏低，读音与参考示范的差距比较明显。", "possibleCause": "可能与嘴张开不足、声音不够稳定有关。", "cue": "先打个哈欠把嘴张开，再稳定发出 a。", "practiceStepId": "L01-P1"},
                 {"tag": "final_error", "phenomenon": "本次韵母听起来跑到了相近的音上，比如 a 读起来更像 o。", "possibleCause": "可能与嘴唇收拢、下巴没打开有关。", "cue": "下巴再往下放一点，嘴角向两边展开。", "practiceStepId": "L01-P1"},
@@ -169,9 +168,9 @@ LEVELS = [
             },
         ],
         "practice": [
-            {"id": "L02-P1", "title": "含吸管练习", "instruction": "想象嘴里含着一根粗吸管，把嘴唇拢圆，保持 3 秒再发 o。", "repeat": 5, "durationSec": None, "bodyCue": "两颊放松，嘴唇像圆圈一样围住，基本看不见牙齿。", "stopNote": "不舒服就停止"},
-            {"id": "L02-P2", "title": "圆唇长音", "instruction": "圆着嘴发 o 并拉长到 5 秒左右，口型不许变扁。", "repeat": None, "durationSec": 30, "bodyCue": "嘴唇维持圆孔大小，气流匀匀地出来。", "stopNote": "嘴唇发酸就休息"},
-            {"id": "L02-P3", "title": "o 和 e 切换", "instruction": "先圆唇发 o，再咧嘴发 e，来回 5 次，体会嘴唇收圆与展开。", "repeat": 5, "durationSec": None, "bodyCue": "变化的只是嘴唇圆扁，舌头几乎不动。", "stopNote": "不舒服就停止"},
+            {"id": "L02-P1", "title": "含吸管练习", "instruction": "想象嘴里含着一根粗吸管，把嘴唇拢圆，保持 3 秒再发 o。", "repeat": 5, "durationSec": None, "bodyCue": "两颊放松，嘴唇像圆圈一样围住，基本看不见牙齿。"},
+            {"id": "L02-P2", "title": "圆唇长音", "instruction": "圆着嘴发 o 并拉长到 5 秒左右，口型不许变扁。", "repeat": None, "durationSec": 30, "bodyCue": "嘴唇维持圆孔大小，气流匀匀地出来。"},
+            {"id": "L02-P3", "title": "o 和 e 切换", "instruction": "先圆唇发 o，再咧嘴发 e，来回 5 次，体会嘴唇收圆与展开。", "repeat": 5, "durationSec": None, "bodyCue": "变化的只是嘴唇圆扁，舌头几乎不动。"},
         ],
         "misconceptions": [
             {"phenomenon": "o 读着读着嘴型变扁，听起来像 e。", "fix": "可以对着镜子，在嘴前比一个圆圈，让口型始终对准圆圈再发音。"},
@@ -184,8 +183,8 @@ LEVELS = [
                 {"name": "F2（第二共振峰）", "value": "约 700–1000 Hz", "note": "圆唇同时拉低 F2，因人而异"},
             ],
             "sources": [
-                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
-                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
+                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用"},
+                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用"},
             ],
         },
         "detection": {
@@ -193,7 +192,6 @@ LEVELS = [
             "evaluationText": "噢",
             "sampleVoice": "female",
             "allowedMetrics": ["score", "pitch_curve", "tone", "final", "formants"],
-            "reliabilityNote": "本关以唇形要点与共振峰参考为主，评分和曲线供学习参考，数值因人而异。",
             "fourStepTemplates": [
                 {"tag": "low_overall_score", "phenomenon": "整体相似度分数偏低，读音与参考示范的差距比较明显。", "possibleCause": "可能与唇形没做足、口型中途变化有关。", "cue": "先摆好圆唇口型再出声，全程保持圆形。", "practiceStepId": "L02-P1"},
                 {"tag": "final_error", "phenomenon": "本次韵母听起来跑到了相近的音上，比如 o 读起来更像 e。", "possibleCause": "可能与嘴唇没收圆、嘴角咧开了有关。", "cue": "嘴角向中间收拢，嘴唇圆圆地留个小孔。", "practiceStepId": "L02-P1"},
@@ -266,9 +264,9 @@ LEVELS = [
             },
         ],
         "practice": [
-            {"id": "L03-P1", "title": "微笑式展唇", "instruction": "嘴角像浅微笑一样向两边展开，保持 3 秒再发 e。", "repeat": 5, "durationSec": None, "bodyCue": "嘴角微微有拉伸感，嘴唇不用劲。", "stopNote": "不舒服就停止"},
-            {"id": "L03-P2", "title": "e 长音", "instruction": "展唇发 e 并拉长到 5 秒左右，口型不许变圆。", "repeat": None, "durationSec": 30, "bodyCue": "喉咙放松，声音像从胸口平稳送出。", "stopNote": "不舒服就停止"},
-            {"id": "L03-P3", "title": "e/o 圆扁对比", "instruction": "展唇发 e、圆唇发 o 交替进行 6 次，体会嘴唇一扁一圆。", "repeat": 6, "durationSec": None, "bodyCue": "舌头基本不动，变化都在嘴唇。", "stopNote": "不舒服就停止"},
+            {"id": "L03-P1", "title": "微笑式展唇", "instruction": "嘴角像浅微笑一样向两边展开，保持 3 秒再发 e。", "repeat": 5, "durationSec": None, "bodyCue": "嘴角微微有拉伸感，嘴唇不用劲。"},
+            {"id": "L03-P2", "title": "e 长音", "instruction": "展唇发 e 并拉长到 5 秒左右，口型不许变圆。", "repeat": None, "durationSec": 30, "bodyCue": "喉咙放松，声音像从胸口平稳送出。"},
+            {"id": "L03-P3", "title": "e/o 圆扁对比", "instruction": "展唇发 e、圆唇发 o 交替进行 6 次，体会嘴唇一扁一圆。", "repeat": 6, "durationSec": None, "bodyCue": "舌头基本不动，变化都在嘴唇。"},
         ],
         "misconceptions": [
             {"phenomenon": "e 听起来像 o，通常是嘴唇不自觉地圆起来了。", "fix": "可以照着镜子盯嘴角，发音全程保持嘴角展开。"},
@@ -281,8 +279,8 @@ LEVELS = [
                 {"name": "F2（第二共振峰）", "value": "约 1000–1400 Hz", "note": "不圆唇使 F2 高于 o，因人而异"},
             ],
             "sources": [
-                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
-                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
+                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用"},
+                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用"},
             ],
         },
         "detection": {
@@ -290,7 +288,6 @@ LEVELS = [
             "evaluationText": "鹅",
             "sampleVoice": "male",
             "allowedMetrics": ["score", "pitch_curve", "tone", "final", "formants"],
-            "reliabilityNote": "本关以唇形要点与共振峰参考为主，评分和曲线供学习参考，数值因人而异。",
             "fourStepTemplates": [
                 {"tag": "low_overall_score", "phenomenon": "整体相似度分数偏低，读音与参考示范的差距比较明显。", "possibleCause": "可能与展唇不够、舌位偏移有关。", "cue": "先摆好微笑口型，再自然发出 e。", "practiceStepId": "L03-P1"},
                 {"tag": "final_error", "phenomenon": "本次韵母听起来跑到了相近的音上，比如 e 读起来更像 o。", "possibleCause": "可能与嘴唇不自觉收圆有关。", "cue": "嘴角向两边展开，别让嘴唇变圆。", "practiceStepId": "L03-P1"},
@@ -363,9 +360,9 @@ LEVELS = [
             },
         ],
         "practice": [
-            {"id": "L04-P1", "title": "咧嘴亮音", "instruction": "嘴角咧开、舌前部抬高发 i，保持 3 秒再放开。", "repeat": 5, "durationSec": None, "bodyCue": "舌前部贴近上腭有轻微紧张感，嘴角有拉伸。", "stopNote": "不舒服就停止"},
-            {"id": "L04-P2", "title": "i 长音", "instruction": "保持口型不变，发 i 拉长到 5 秒左右。", "repeat": None, "durationSec": 30, "bodyCue": "气息从窄缝里匀匀通过，声音细而稳。", "stopNote": "不舒服就停止"},
-            {"id": "L04-P3", "title": "i/ü 圆唇切换", "instruction": "舌头不动，嘴唇由咧变撮，i 变成 ü 再变回 i，来回 6 次。", "repeat": 6, "durationSec": None, "bodyCue": "舌头位置保持不变，只有嘴唇在动。", "stopNote": "不舒服就停止"},
+            {"id": "L04-P1", "title": "咧嘴亮音", "instruction": "嘴角咧开、舌前部抬高发 i，保持 3 秒再放开。", "repeat": 5, "durationSec": None, "bodyCue": "舌前部贴近上腭有轻微紧张感，嘴角有拉伸。"},
+            {"id": "L04-P2", "title": "i 长音", "instruction": "保持口型不变，发 i 拉长到 5 秒左右。", "repeat": None, "durationSec": 30, "bodyCue": "气息从窄缝里匀匀通过，声音细而稳。"},
+            {"id": "L04-P3", "title": "i/ü 圆唇切换", "instruction": "舌头不动，嘴唇由咧变撮，i 变成 ü 再变回 i，来回 6 次。", "repeat": 6, "durationSec": None, "bodyCue": "舌头位置保持不变，只有嘴唇在动。"},
         ],
         "misconceptions": [
             {"phenomenon": "i 发得发闷，像 e，通常是舌位没抬高。", "fix": "可以先把舌尖轻抵下齿背、舌面拱起，再发音。"},
@@ -378,8 +375,8 @@ LEVELS = [
                 {"name": "F2（第二共振峰）", "value": "约 2100–2600 Hz", "note": "前元音 F2 高，因人而异"},
             ],
             "sources": [
-                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
-                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
+                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用"},
+                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用"},
             ],
         },
         "detection": {
@@ -387,7 +384,6 @@ LEVELS = [
             "evaluationText": "一",
             "sampleVoice": "female",
             "allowedMetrics": ["score", "pitch_curve", "tone", "final", "formants"],
-            "reliabilityNote": "本关以舌位唇形要点与共振峰参考为主，评分和曲线供学习参考，数值因人而异。",
             "fourStepTemplates": [
                 {"tag": "low_overall_score", "phenomenon": "整体相似度分数偏低，读音与参考示范的差距比较明显。", "possibleCause": "可能与舌位没抬高、嘴角没咧开有关。", "cue": "先咧嘴抬舌摆好口型，再发出细亮的 i。", "practiceStepId": "L04-P1"},
                 {"tag": "final_error", "phenomenon": "本次韵母听起来跑到了相近的音上，比如 i 读起来更像 ü 或 e。", "possibleCause": "可能与嘴唇撮圆、舌位下沉有关。", "cue": "嘴角向两边咧开，舌前部再抬高一点。", "practiceStepId": "L04-P1"},
@@ -460,9 +456,9 @@ LEVELS = [
             },
         ],
         "practice": [
-            {"id": "L05-P1", "title": "小火车呜呜", "instruction": "撮圆嘴唇发 u，像火车鸣笛一样每次拉长 3 秒。", "repeat": 6, "durationSec": None, "bodyCue": "嘴唇前突有收紧感，脸颊轻微内收。", "stopNote": "不舒服就停止"},
-            {"id": "L05-P2", "title": "u 长音", "instruction": "保持圆口型发 u 拉长到 5 秒左右，圆孔不许变大。", "repeat": None, "durationSec": 30, "bodyCue": "气流从圆孔匀匀吹出，喉咙放松。", "stopNote": "不舒服就停止"},
-            {"id": "L05-P3", "title": "u/ü 舌位切换", "instruction": "嘴唇保持圆，舌头从后滑到前，u 变成 ü 再变回来，来回 6 次。", "repeat": 6, "durationSec": None, "bodyCue": "嘴唇不动，舌头在口腔里前后移动。", "stopNote": "不舒服就停止"},
+            {"id": "L05-P1", "title": "小火车呜呜", "instruction": "撮圆嘴唇发 u，像火车鸣笛一样每次拉长 3 秒。", "repeat": 6, "durationSec": None, "bodyCue": "嘴唇前突有收紧感，脸颊轻微内收。"},
+            {"id": "L05-P2", "title": "u 长音", "instruction": "保持圆口型发 u 拉长到 5 秒左右，圆孔不许变大。", "repeat": None, "durationSec": 30, "bodyCue": "气流从圆孔匀匀吹出，喉咙放松。"},
+            {"id": "L05-P3", "title": "u/ü 舌位切换", "instruction": "嘴唇保持圆，舌头从后滑到前，u 变成 ü 再变回来，来回 6 次。", "repeat": 6, "durationSec": None, "bodyCue": "嘴唇不动，舌头在口腔里前后移动。"},
         ],
         "misconceptions": [
             {"phenomenon": "u 听起来像 e 或 o，通常是嘴唇没撮圆。", "fix": "可以先做吹蜡烛的口型再发音，保持小圆孔。"},
@@ -475,8 +471,8 @@ LEVELS = [
                 {"name": "F2（第二共振峰）", "value": "约 600–850 Hz", "note": "圆唇与后位共同压低 F2，因人而异"},
             ],
             "sources": [
-                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
-                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
+                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用"},
+                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用"},
             ],
         },
         "detection": {
@@ -484,7 +480,6 @@ LEVELS = [
             "evaluationText": "乌",
             "sampleVoice": "male",
             "allowedMetrics": ["score", "pitch_curve", "tone", "final", "formants"],
-            "reliabilityNote": "本关以唇形舌位要点与共振峰参考为主，评分和曲线供学习参考，数值因人而异。",
             "fourStepTemplates": [
                 {"tag": "low_overall_score", "phenomenon": "整体相似度分数偏低，读音与参考示范的差距比较明显。", "possibleCause": "可能与圆唇不够、舌位没后缩有关。", "cue": "先撮圆嘴唇再发音，声音要低而圆。", "practiceStepId": "L05-P1"},
                 {"tag": "final_error", "phenomenon": "本次韵母听起来跑到了相近的音上，比如 u 读起来更像 o 或 ü。", "possibleCause": "可能与开口偏大、舌位偏前有关。", "cue": "圆孔再收小一点，舌头向后缩一点。", "practiceStepId": "L05-P1"},
@@ -557,9 +552,9 @@ LEVELS = [
             },
         ],
         "practice": [
-            {"id": "L06-P1", "title": "i 变 ü 魔法", "instruction": "持续发 i，保持舌头不动，嘴唇慢慢由咧变圆，听声音变成 ü 再变回 i。", "repeat": 6, "durationSec": None, "bodyCue": "舌头稳住不动，只动嘴唇。", "stopNote": "不舒服就停止"},
-            {"id": "L06-P2", "title": "ü 长音", "instruction": "撮口发 ü 并拉长到 5 秒左右，圆孔保持小而稳。", "repeat": None, "durationSec": 30, "bodyCue": "两颊微收，嘴唇圆圆地拢住。", "stopNote": "不舒服就停止"},
-            {"id": "L06-P3", "title": "u/ü 来回切换", "instruction": "嘴唇保持圆，舌头前后移动，u、ü 交替各 3 秒，来回 6 次。", "repeat": 6, "durationSec": None, "bodyCue": "口腔后部与前部交替松紧，嘴唇始终圆着。", "stopNote": "不舒服就停止"},
+            {"id": "L06-P1", "title": "i 变 ü 魔法", "instruction": "持续发 i，保持舌头不动，嘴唇慢慢由咧变圆，听声音变成 ü 再变回 i。", "repeat": 6, "durationSec": None, "bodyCue": "舌头稳住不动，只动嘴唇。"},
+            {"id": "L06-P2", "title": "ü 长音", "instruction": "撮口发 ü 并拉长到 5 秒左右，圆孔保持小而稳。", "repeat": None, "durationSec": 30, "bodyCue": "两颊微收，嘴唇圆圆地拢住。"},
+            {"id": "L06-P3", "title": "u/ü 来回切换", "instruction": "嘴唇保持圆，舌头前后移动，u、ü 交替各 3 秒，来回 6 次。", "repeat": 6, "durationSec": None, "bodyCue": "口腔后部与前部交替松紧，嘴唇始终圆着。"},
         ],
         "misconceptions": [
             {"phenomenon": "ü 读成了 i，通常是嘴唇忘了撮圆。", "fix": "可以用手指轻轻捏一下两颊，帮嘴唇收圆，习惯后再放开。"},
@@ -572,8 +567,8 @@ LEVELS = [
                 {"name": "F2（第二共振峰）", "value": "约 1700–2100 Hz", "note": "圆唇使 F2 略低于 i，因人而异"},
             ],
             "sources": [
-                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
-                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
+                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用"},
+                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用"},
             ],
         },
         "detection": {
@@ -581,7 +576,6 @@ LEVELS = [
             "evaluationText": "迂",
             "sampleVoice": "female",
             "allowedMetrics": ["score", "pitch_curve", "tone", "final", "formants"],
-            "reliabilityNote": "本关以唇形舌位要点与共振峰参考为主，评分和曲线供学习参考，数值因人而异。",
             "fourStepTemplates": [
                 {"tag": "low_overall_score", "phenomenon": "整体相似度分数偏低，读音与参考示范的差距比较明显。", "possibleCause": "可能与圆唇和前舌没有同时做够有关。", "cue": "先咧嘴定舌位，再撮圆嘴唇发出 ü。", "practiceStepId": "L06-P1"},
                 {"tag": "final_error", "phenomenon": "本次韵母听起来跑到了相近的音上，比如 ü 读起来更像 u 或 i。", "possibleCause": "可能与舌位后缩或嘴唇没圆有关。", "cue": "舌头保持在前，嘴唇撮圆，两件事同时做。", "practiceStepId": "L06-P1"},
@@ -665,9 +659,9 @@ LEVELS = [
             },
         ],
         "practice": [
-            {"id": "L07-P1", "title": "纸巾测气流", "instruction": "把纸巾举在嘴前约 5 厘米，读“波”，目标是纸巾基本不动。", "repeat": 5, "durationSec": None, "bodyCue": "嘴唇轻碰即开，只用一点点气流。", "stopNote": "不舒服就停止"},
-            {"id": "L07-P2", "title": "闭唇蓄气再弹发", "instruction": "双唇轻闭憋气 1 秒，突然打开读“波”，体会先挡后放。", "repeat": 6, "durationSec": None, "bodyCue": "闭唇时嘴里有股气被轻轻挡住的感觉。", "stopNote": "不舒服就停止"},
-            {"id": "L07-P3", "title": "波/坡最小对比", "instruction": "“波—坡”交替读 8 组，用手背感受气流的弱与强。", "repeat": 8, "durationSec": None, "bodyCue": "读“坡”时手背有风，读“波”时几乎没风。", "stopNote": "不舒服就停止"},
+            {"id": "L07-P1", "title": "纸巾测气流", "instruction": "把纸巾举在嘴前约 5 厘米，读“波”，目标是纸巾基本不动。", "repeat": 5, "durationSec": None, "bodyCue": "嘴唇轻碰即开，只用一点点气流。"},
+            {"id": "L07-P2", "title": "闭唇蓄气再弹发", "instruction": "双唇轻闭憋气 1 秒，突然打开读“波”，体会先挡后放。", "repeat": 6, "durationSec": None, "bodyCue": "闭唇时嘴里有股气被轻轻挡住的感觉。"},
+            {"id": "L07-P3", "title": "波/坡最小对比", "instruction": "“波—坡”交替读 8 组，用手背感受气流的弱与强。", "repeat": 8, "durationSec": None, "bodyCue": "读“坡”时手背有风，读“波”时几乎没风。"},
         ],
         "misconceptions": [
             {"phenomenon": "b 读起来像 p，除阻后跟了一股明显的气。", "fix": "可以把纸巾放在嘴前练“读‘波’纸巾不动”，慢慢把气流收小。"},
@@ -680,8 +674,8 @@ LEVELS = [
                 {"name": "成阻段时长", "value": "约 50–120 ms", "note": "受语速影响大，因人而异"},
             ],
             "sources": [
-                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
-                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
+                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用"},
+                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用"},
             ],
         },
         "detection": {
@@ -689,7 +683,6 @@ LEVELS = [
             "evaluationText": "波",
             "sampleVoice": "male",
             "allowedMetrics": ["score", "pitch_curve", "tone", "initial", "final"],
-            "reliabilityNote": "本关以听感对比与气流提示为主，声母判别结果供学习参考，不作个体判定。",
             "fourStepTemplates": [
                 {"tag": "low_overall_score", "phenomenon": "整体相似度分数偏低，读音与参考示范的差距比较明显。", "possibleCause": "可能与双唇动作没做足、气流没收住有关。", "cue": "先闭唇蓄气，再干脆地弹开发“波”。", "practiceStepId": "L07-P1"},
                 {"tag": "initial_error", "phenomenon": "本次声母听起来更像 p，除阻后跟了一股明显的送气。", "possibleCause": "可能与送气习惯过强、气流没收住有关。", "cue": "纸巾放嘴前，读“波”时让它几乎不动。", "practiceStepId": "L07-P1"},
@@ -773,9 +766,9 @@ LEVELS = [
             },
         ],
         "practice": [
-            {"id": "L08-P1", "title": "纸巾飘起来", "instruction": "把纸巾举在嘴前约 5 厘米，读“坡”，目标是纸巾明显飘动。", "repeat": 5, "durationSec": None, "bodyCue": "弹开嘴唇时送出一股风，小腹轻轻用力。", "stopNote": "不舒服就停止"},
-            {"id": "L08-P2", "title": "蓄足气弹发", "instruction": "双唇闭拢憋足气，打开时干脆送气读“坡”。", "repeat": 6, "durationSec": None, "bodyCue": "气流在嘴唇打开的一瞬间冲出。", "stopNote": "不舒服就停止"},
-            {"id": "L08-P3", "title": "坡/波最小对比", "instruction": "“坡—波”交替读 8 组，用手背区分有风与无风。", "repeat": 8, "durationSec": None, "bodyCue": "读“坡”手背感到一阵风，读“波”没有。", "stopNote": "不舒服就停止"},
+            {"id": "L08-P1", "title": "纸巾飘起来", "instruction": "把纸巾举在嘴前约 5 厘米，读“坡”，目标是纸巾明显飘动。", "repeat": 5, "durationSec": None, "bodyCue": "弹开嘴唇时送出一股风，小腹轻轻用力。"},
+            {"id": "L08-P2", "title": "蓄足气弹发", "instruction": "双唇闭拢憋足气，打开时干脆送气读“坡”。", "repeat": 6, "durationSec": None, "bodyCue": "气流在嘴唇打开的一瞬间冲出。"},
+            {"id": "L08-P3", "title": "坡/波最小对比", "instruction": "“坡—波”交替读 8 组，用手背区分有风与无风。", "repeat": 8, "durationSec": None, "bodyCue": "读“坡”手背感到一阵风，读“波”没有。"},
         ],
         "misconceptions": [
             {"phenomenon": "p 读起来像 b，风送不出来。", "fix": "可以先用“吹灰尘”的动作找气流，再把声音接上。"},
@@ -788,8 +781,8 @@ LEVELS = [
                 {"name": "送气摩擦时长", "value": "约 60–100 ms", "note": "语速越快越短，因人而异"},
             ],
             "sources": [
-                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
-                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
+                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用"},
+                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用"},
             ],
         },
         "detection": {
@@ -797,7 +790,6 @@ LEVELS = [
             "evaluationText": "坡",
             "sampleVoice": "female",
             "allowedMetrics": ["score", "pitch_curve", "tone", "initial", "final"],
-            "reliabilityNote": "本关以听感对比与气流提示为主，声母判别结果供学习参考，不作个体判定。",
             "fourStepTemplates": [
                 {"tag": "low_overall_score", "phenomenon": "整体相似度分数偏低，读音与参考示范的差距比较明显。", "possibleCause": "可能与送气不足、双唇动作幅度小有关。", "cue": "闭唇憋气，打开时干脆送一口风。", "practiceStepId": "L08-P1"},
                 {"tag": "initial_error", "phenomenon": "本次声母听起来更像 b，除阻后没有明显的送气。", "possibleCause": "可能与气流没送出来、动作太轻有关。", "cue": "手背放嘴前，读“坡”时要能感到风。", "practiceStepId": "L08-P1"},
@@ -870,9 +862,9 @@ LEVELS = [
             },
         ],
         "practice": [
-            {"id": "L09-P1", "title": "哼鸣找鼻音", "instruction": "闭上嘴哼一个舒服的音，手指轻放在鼻翼两侧感受震动，再张开嘴收音。", "repeat": 5, "durationSec": None, "bodyCue": "鼻翼甚至眉心有麻麻的震动感。", "stopNote": "不舒服就停止"},
-            {"id": "L09-P2", "title": "m 延长再张嘴", "instruction": "闭唇把 m 哼长 4 秒，再张嘴收住，中间不打断。", "repeat": None, "durationSec": 30, "bodyCue": "嘴巴一直闭着，气从鼻子匀匀外出。", "stopNote": "不舒服就停止"},
-            {"id": "L09-P3", "title": "m/b 对比", "instruction": "“妈—爸”交替读 8 组，体会鼻子走气与弹开的区别。", "repeat": 8, "durationSec": None, "bodyCue": "读“妈”时鼻子出气，读“爸”时嘴前有小小的气流。", "stopNote": "不舒服就停止"},
+            {"id": "L09-P1", "title": "哼鸣找鼻音", "instruction": "闭上嘴哼一个舒服的音，手指轻放在鼻翼两侧感受震动，再张开嘴收音。", "repeat": 5, "durationSec": None, "bodyCue": "鼻翼甚至眉心有麻麻的震动感。"},
+            {"id": "L09-P2", "title": "m 延长再张嘴", "instruction": "闭唇把 m 哼长 4 秒，再张嘴收住，中间不打断。", "repeat": None, "durationSec": 30, "bodyCue": "嘴巴一直闭着，气从鼻子匀匀外出。"},
+            {"id": "L09-P3", "title": "m/b 对比", "instruction": "“妈—爸”交替读 8 组，体会鼻子走气与弹开的区别。", "repeat": 8, "durationSec": None, "bodyCue": "读“妈”时鼻子出气，读“爸”时嘴前有小小的气流。"},
         ],
         "misconceptions": [
             {"phenomenon": "m 开头没有鼻音，听起来像 b。", "fix": "可以先闭嘴哼一声“嗯——”，再直接张嘴接上韵母。"},
@@ -885,8 +877,8 @@ LEVELS = [
                 {"name": "鼻音低频共振区", "value": "约 250–500 Hz 能量集中", "note": "鼻腔共振使低频突出，因人而异"},
             ],
             "sources": [
-                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
-                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
+                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用"},
+                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用"},
             ],
         },
         "detection": {
@@ -894,7 +886,6 @@ LEVELS = [
             "evaluationText": "摸",
             "sampleVoice": "male",
             "allowedMetrics": ["score", "pitch_curve", "tone", "initial", "final"],
-            "reliabilityNote": "本关以鼻音震动感与听感对比为主，声母判别结果供学习参考，不作个体判定。",
             "fourStepTemplates": [
                 {"tag": "low_overall_score", "phenomenon": "整体相似度分数偏低，读音与参考示范的差距比较明显。", "possibleCause": "可能与鼻音太短、张嘴太快有关。", "cue": "闭嘴哼半拍，再张嘴读“摸”。", "practiceStepId": "L09-P1"},
                 {"tag": "initial_error", "phenomenon": "本次声母听起来更像 b，开头的鼻音不明显。", "possibleCause": "可能与软腭没放下来、气没走鼻子有关。", "cue": "先哼一声“嗯”，找到鼻翼震动再张嘴。", "practiceStepId": "L09-P1"},
@@ -967,9 +958,9 @@ LEVELS = [
             },
         ],
         "practice": [
-            {"id": "L10-P1", "title": "找缝隙", "instruction": "上齿轻搭下唇，先只吹气不出声，听到“夫夫”风声后再加声音读“佛”。", "repeat": 6, "durationSec": None, "bodyCue": "下唇有轻轻发痒的感觉，气流细细一条。", "stopNote": "不舒服就停止"},
-            {"id": "L10-P2", "title": "f 长摩擦", "instruction": "保持唇齿缝发 f 的摩擦音，匀匀拉长 4 秒。", "repeat": None, "durationSec": 30, "bodyCue": "缝的位置不动，风声稳定不忽大忽小。", "stopNote": "不舒服就停止"},
-            {"id": "L10-P3", "title": "飞/灰对比", "instruction": "“飞—灰”交替读 8 组，手背放在嘴前感受 f 的细风。", "repeat": 8, "durationSec": None, "bodyCue": "f 的气流细而凉，h 的气流宽而暖。", "stopNote": "不舒服就停止"},
+            {"id": "L10-P1", "title": "找缝隙", "instruction": "上齿轻搭下唇，先只吹气不出声，听到“夫夫”风声后再加声音读“佛”。", "repeat": 6, "durationSec": None, "bodyCue": "下唇有轻轻发痒的感觉，气流细细一条。"},
+            {"id": "L10-P2", "title": "f 长摩擦", "instruction": "保持唇齿缝发 f 的摩擦音，匀匀拉长 4 秒。", "repeat": None, "durationSec": 30, "bodyCue": "缝的位置不动，风声稳定不忽大忽小。"},
+            {"id": "L10-P3", "title": "飞/灰对比", "instruction": "“飞—灰”交替读 8 组，手背放在嘴前感受 f 的细风。", "repeat": 8, "durationSec": None, "bodyCue": "f 的气流细而凉，h 的气流宽而暖。"},
         ],
         "misconceptions": [
             {"phenomenon": "f 读成了 h，像从喉咙呵气。", "fix": "可以照镜子看上牙有没有碰到下唇，轻碰一下再发音。"},
@@ -982,8 +973,8 @@ LEVELS = [
                 {"name": "摩擦噪声频带", "value": "约 1000–8000 Hz 宽带分布", "note": "能量较弱、频谱分散，因人而异"},
             ],
             "sources": [
-                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
-                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
+                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用"},
+                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用"},
             ],
         },
         "detection": {
@@ -991,7 +982,6 @@ LEVELS = [
             "evaluationText": "佛",
             "sampleVoice": "female",
             "allowedMetrics": ["score", "pitch_curve", "tone", "initial", "final"],
-            "reliabilityNote": "本关以唇齿接触与听感对比为主，声母判别结果供学习参考，不作个体判定。",
             "fourStepTemplates": [
                 {"tag": "low_overall_score", "phenomenon": "整体相似度分数偏低，读音与参考示范的差距比较明显。", "possibleCause": "可能与唇齿接触位置不稳、摩擦不匀有关。", "cue": "上齿轻搭下唇，匀匀擦出“夫”再读字。", "practiceStepId": "L10-P1"},
                 {"tag": "initial_error", "phenomenon": "本次声母听起来更像 h，缺少唇齿摩擦。", "possibleCause": "可能与上齿没碰到下唇、气流从喉咙出来有关。", "cue": "照镜子确认上牙搭在下唇上再发音。", "practiceStepId": "L10-P1"},
@@ -1075,9 +1065,9 @@ LEVELS = [
             },
         ],
         "practice": [
-            {"id": "L11-P1", "title": "敲门式弹发", "instruction": "舌尖抵上牙床，弹开发“得”，像轻敲门一样干脆。", "repeat": 6, "durationSec": None, "bodyCue": "舌尖轻触即离，动作小而快。", "stopNote": "不舒服就停止"},
-            {"id": "L11-P2", "title": "舌尖定位", "instruction": "舌尖抵住上牙床数 2 秒再弹发，确保接触点不后缩。", "repeat": 6, "durationSec": None, "bodyCue": "舌尖的接触点在上牙后方的牙龈丘上。", "stopNote": "不舒服就停止"},
-            {"id": "L11-P3", "title": "兜/偷最小对比", "instruction": "“兜—偷”交替读 8 组，用纸巾感受有无气流。", "repeat": 8, "durationSec": None, "bodyCue": "读“兜”纸巾不动，读“偷”纸巾微动。", "stopNote": "不舒服就停止"},
+            {"id": "L11-P1", "title": "敲门式弹发", "instruction": "舌尖抵上牙床，弹开发“得”，像轻敲门一样干脆。", "repeat": 6, "durationSec": None, "bodyCue": "舌尖轻触即离，动作小而快。"},
+            {"id": "L11-P2", "title": "舌尖定位", "instruction": "舌尖抵住上牙床数 2 秒再弹发，确保接触点不后缩。", "repeat": 6, "durationSec": None, "bodyCue": "舌尖的接触点在上牙后方的牙龈丘上。"},
+            {"id": "L11-P3", "title": "兜/偷最小对比", "instruction": "“兜—偷”交替读 8 组，用纸巾感受有无气流。", "repeat": 8, "durationSec": None, "bodyCue": "读“兜”纸巾不动，读“偷”纸巾微动。"},
         ],
         "misconceptions": [
             {"phenomenon": "d 读起来像 t，弹开时跟了一股气。", "fix": "可以放纸巾在嘴前，练“读‘兜’纸巾不动”。"},
@@ -1090,8 +1080,8 @@ LEVELS = [
                 {"name": "成阻段时长", "value": "约 40–100 ms", "note": "受语速影响大，因人而异"},
             ],
             "sources": [
-                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
-                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
+                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用"},
+                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用"},
             ],
         },
         "detection": {
@@ -1099,7 +1089,6 @@ LEVELS = [
             "evaluationText": "得",
             "sampleVoice": "male",
             "allowedMetrics": ["score", "pitch_curve", "tone", "initial", "final"],
-            "reliabilityNote": "本关以舌尖定位与气流对比为主，声母判别结果供学习参考，不作个体判定。",
             "fourStepTemplates": [
                 {"tag": "low_overall_score", "phenomenon": "整体相似度分数偏低，读音与参考示范的差距比较明显。", "possibleCause": "可能与舌尖位置不准、弹发不干脆有关。", "cue": "舌尖抵上牙床，轻快地弹开发“得”。", "practiceStepId": "L11-P1"},
                 {"tag": "initial_error", "phenomenon": "本次声母听起来更像 t，除阻后带了送气。", "possibleCause": "可能与气流没收住、弹开太用力有关。", "cue": "纸巾放嘴前，读“得”时让它基本不动。", "practiceStepId": "L11-P1"},
@@ -1183,9 +1172,9 @@ LEVELS = [
             },
         ],
         "practice": [
-            {"id": "L12-P1", "title": "纸巾微动", "instruction": "把纸巾举在嘴前约 5 厘米，读“特”，目标是纸巾轻轻动一下。", "repeat": 5, "durationSec": None, "bodyCue": "舌尖弹开的同时送出一小股风。", "stopNote": "不舒服就停止"},
-            {"id": "L12-P2", "title": "送气弹发", "instruction": "舌尖抵住上牙床憋气 1 秒，弹开时干脆送气读“特”。", "repeat": 6, "durationSec": None, "bodyCue": "气流集中在弹开的一瞬间。", "stopNote": "不舒服就停止"},
-            {"id": "L12-P3", "title": "踢/低最小对比", "instruction": "“踢—低”交替读 8 组，用手背感受有风与无风。", "repeat": 8, "durationSec": None, "bodyCue": "读“踢”有风感，读“低”几乎没有。", "stopNote": "不舒服就停止"},
+            {"id": "L12-P1", "title": "纸巾微动", "instruction": "把纸巾举在嘴前约 5 厘米，读“特”，目标是纸巾轻轻动一下。", "repeat": 5, "durationSec": None, "bodyCue": "舌尖弹开的同时送出一小股风。"},
+            {"id": "L12-P2", "title": "送气弹发", "instruction": "舌尖抵住上牙床憋气 1 秒，弹开时干脆送气读“特”。", "repeat": 6, "durationSec": None, "bodyCue": "气流集中在弹开的一瞬间。"},
+            {"id": "L12-P3", "title": "踢/低最小对比", "instruction": "“踢—低”交替读 8 组，用手背感受有风与无风。", "repeat": 8, "durationSec": None, "bodyCue": "读“踢”有风感，读“低”几乎没有。"},
         ],
         "misconceptions": [
             {"phenomenon": "t 读起来像 d，风送不出来。", "fix": "可以先用“吹蜡烛”的感觉把气送出去，再接上声音。"},
@@ -1198,8 +1187,8 @@ LEVELS = [
                 {"name": "送气摩擦时长", "value": "约 60–100 ms", "note": "随语速变化，因人而异"},
             ],
             "sources": [
-                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
-                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
+                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用"},
+                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用"},
             ],
         },
         "detection": {
@@ -1207,7 +1196,6 @@ LEVELS = [
             "evaluationText": "特",
             "sampleVoice": "female",
             "allowedMetrics": ["score", "pitch_curve", "tone", "initial", "final"],
-            "reliabilityNote": "本关以舌尖定位与气流对比为主，声母判别结果供学习参考，不作个体判定。",
             "fourStepTemplates": [
                 {"tag": "low_overall_score", "phenomenon": "整体相似度分数偏低，读音与参考示范的差距比较明显。", "possibleCause": "可能与送气不足、舌尖位置不准有关。", "cue": "舌尖抵住上牙床，弹开时送一口气。", "practiceStepId": "L12-P1"},
                 {"tag": "initial_error", "phenomenon": "本次声母听起来更像 d，缺少明显的送气。", "possibleCause": "可能与气流没送出、弹开太轻有关。", "cue": "手背放嘴前，读“特”时要感到风。", "practiceStepId": "L12-P1"},
@@ -1280,9 +1268,9 @@ LEVELS = [
             },
         ],
         "practice": [
-            {"id": "L13-P1", "title": "捏鼻检验", "instruction": "读“男”时捏一下鼻子：如果发不出来，说明气走对了鼻腔。", "repeat": 5, "durationSec": None, "bodyCue": "鼻翼震动，舌尖一直贴住上牙床。", "stopNote": "不舒服就停止"},
-            {"id": "L13-P2", "title": "n 延长哼鸣", "instruction": "舌尖抵住上牙床，把 n 哼长 4 秒再放开收音。", "repeat": None, "durationSec": 30, "bodyCue": "气从鼻子匀匀外出，嘴巴保持微张。", "stopNote": "不舒服就停止"},
-            {"id": "L13-P3", "title": "n/l 对比", "instruction": "“男—兰”“牛—流”交替读 8 组，手指放鼻翼对比震动。", "repeat": 8, "durationSec": None, "bodyCue": "读 n 时鼻翼震，读 l 时鼻翼安静。", "stopNote": "不舒服就停止"},
+            {"id": "L13-P1", "title": "捏鼻检验", "instruction": "读“男”时捏一下鼻子：如果发不出来，说明气走对了鼻腔。", "repeat": 5, "durationSec": None, "bodyCue": "鼻翼震动，舌尖一直贴住上牙床。"},
+            {"id": "L13-P2", "title": "n 延长哼鸣", "instruction": "舌尖抵住上牙床，把 n 哼长 4 秒再放开收音。", "repeat": None, "durationSec": 30, "bodyCue": "气从鼻子匀匀外出，嘴巴保持微张。"},
+            {"id": "L13-P3", "title": "n/l 对比", "instruction": "“男—兰”“牛—流”交替读 8 组，手指放鼻翼对比震动。", "repeat": 8, "durationSec": None, "bodyCue": "读 n 时鼻翼震，读 l 时鼻翼安静。"},
         ],
         "misconceptions": [
             {"phenomenon": "n 读成了 l，鼻子没走气，字听起来发飘。", "fix": "可以先闭嘴哼“嗯”找到鼻音，再抬起舌尖接着发音。"},
@@ -1295,8 +1283,8 @@ LEVELS = [
                 {"name": "鼻音低频共振区", "value": "约 250–500 Hz 能量集中", "note": "鼻腔共振特征，因人而异"},
             ],
             "sources": [
-                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
-                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
+                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用"},
+                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用"},
             ],
         },
         "detection": {
@@ -1304,7 +1292,6 @@ LEVELS = [
             "evaluationText": "讷",
             "sampleVoice": "male",
             "allowedMetrics": ["score", "pitch_curve", "tone", "initial", "final"],
-            "reliabilityNote": "本关以鼻音震动与听感对比为主，声母判别结果供学习参考，不作个体判定。",
             "fourStepTemplates": [
                 {"tag": "low_overall_score", "phenomenon": "整体相似度分数偏低，读音与参考示范的差距比较明显。", "possibleCause": "可能与鼻音太短、舌尖位置不稳有关。", "cue": "舌尖贴住上牙床，鼻子哼出声再读字。", "practiceStepId": "L13-P1"},
                 {"tag": "initial_error", "phenomenon": "本次声母听起来更像 l，缺少鼻腔气流。", "possibleCause": "可能与软腭没放下、气从口出了有关。", "cue": "先哼“嗯”找到鼻音，再抬舌尖接韵母。", "practiceStepId": "L13-P1"},
@@ -1377,9 +1364,9 @@ LEVELS = [
             },
         ],
         "practice": [
-            {"id": "L14-P1", "title": "清亮 l", "instruction": "舌尖顶住上牙床读“勒”，保持声音清亮、不嗡嗡。", "repeat": 6, "durationSec": None, "bodyCue": "舌尖贴住，舌两侧有气流通过的感觉。", "stopNote": "不舒服就停止"},
-            {"id": "L14-P2", "title": "l 延长", "instruction": "舌尖保持接触，把 l 拉长 4 秒，鼻翼全程不震。", "repeat": None, "durationSec": 30, "bodyCue": "声音清亮稳定，气从口出来。", "stopNote": "不舒服就停止"},
-            {"id": "L14-P3", "title": "n/l 捏鼻对比", "instruction": "捏住鼻子分别读“兰”和“男”，能顺利读出的是“兰”。", "repeat": 8, "durationSec": None, "bodyCue": "读 l 时鼻翼安静，读 n 时鼻翼发麻。", "stopNote": "不舒服就停止"},
+            {"id": "L14-P1", "title": "清亮 l", "instruction": "舌尖顶住上牙床读“勒”，保持声音清亮、不嗡嗡。", "repeat": 6, "durationSec": None, "bodyCue": "舌尖贴住，舌两侧有气流通过的感觉。"},
+            {"id": "L14-P2", "title": "l 延长", "instruction": "舌尖保持接触，把 l 拉长 4 秒，鼻翼全程不震。", "repeat": None, "durationSec": 30, "bodyCue": "声音清亮稳定，气从口出来。"},
+            {"id": "L14-P3", "title": "n/l 捏鼻对比", "instruction": "捏住鼻子分别读“兰”和“男”，能顺利读出的是“兰”。", "repeat": 8, "durationSec": None, "bodyCue": "读 l 时鼻翼安静，读 n 时鼻翼发麻。"},
         ],
         "misconceptions": [
             {"phenomenon": "l 读出来带鼻音，和 n 混在一起。", "fix": "可以捏住鼻子读 l，读得越顺说明气越没走鼻子。"},
@@ -1392,8 +1379,8 @@ LEVELS = [
                 {"name": "F3（第三共振峰）", "value": "约 2600–3400 Hz", "note": "边音 F3 相对清晰，因人而异"},
             ],
             "sources": [
-                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
-                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
+                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用"},
+                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用"},
             ],
         },
         "detection": {
@@ -1401,7 +1388,6 @@ LEVELS = [
             "evaluationText": "勒",
             "sampleVoice": "female",
             "allowedMetrics": ["score", "pitch_curve", "tone", "initial", "final"],
-            "reliabilityNote": "本关以舌侧气流与听感对比为主，声母判别结果供学习参考，不作个体判定。",
             "fourStepTemplates": [
                 {"tag": "low_overall_score", "phenomenon": "整体相似度分数偏低，读音与参考示范的差距比较明显。", "possibleCause": "可能与舌尖接触不实、混入鼻音有关。", "cue": "舌尖贴实上牙床，让气从舌两边走。", "practiceStepId": "L14-P1"},
                 {"tag": "initial_error", "phenomenon": "本次声母听起来更像 n，混入了鼻音。", "possibleCause": "可能与软腭放下、气走了鼻腔有关。", "cue": "捏住鼻子读“勒”，保持声音清亮。", "practiceStepId": "L14-P1"},
@@ -1485,9 +1471,9 @@ LEVELS = [
             },
         ],
         "practice": [
-            {"id": "L15-P1", "title": "漱口式抬舌根", "instruction": "像漱口一样感受舌根抬起来贴住上壁，再弹开发“哥”。", "repeat": 5, "durationSec": None, "bodyCue": "舌根与软腭有接触又分开的感觉，喉咙保持放松。", "stopNote": "不舒服就停止"},
-            {"id": "L15-P2", "title": "干脆弹发", "instruction": "舌根抵软腭憋气 1 秒，突然放开读“哥”，气流收小。", "repeat": 6, "durationSec": None, "bodyCue": "放开的一瞬间气冲出，随后马上进入韵母。", "stopNote": "不舒服就停止"},
-            {"id": "L15-P3", "title": "哥/科最小对比", "instruction": "“哥—科”交替读 8 组，手背感受气流的弱与强。", "repeat": 8, "durationSec": None, "bodyCue": "读“哥”几乎无风，读“科”有风。", "stopNote": "不舒服就停止"},
+            {"id": "L15-P1", "title": "漱口式抬舌根", "instruction": "像漱口一样感受舌根抬起来贴住上壁，再弹开发“哥”。", "repeat": 5, "durationSec": None, "bodyCue": "舌根与软腭有接触又分开的感觉，喉咙保持放松。"},
+            {"id": "L15-P2", "title": "干脆弹发", "instruction": "舌根抵软腭憋气 1 秒，突然放开读“哥”，气流收小。", "repeat": 6, "durationSec": None, "bodyCue": "放开的一瞬间气冲出，随后马上进入韵母。"},
+            {"id": "L15-P3", "title": "哥/科最小对比", "instruction": "“哥—科”交替读 8 组，手背感受气流的弱与强。", "repeat": 8, "durationSec": None, "bodyCue": "读“哥”几乎无风，读“科”有风。"},
         ],
         "misconceptions": [
             {"phenomenon": "g 读起来像 k，除阻后跟了一股气。", "fix": "可以用手背或纸巾测风，练“读‘哥’无风”。"},
@@ -1500,8 +1486,8 @@ LEVELS = [
                 {"name": "成阻段时长", "value": "约 50–120 ms", "note": "受语速影响大，因人而异"},
             ],
             "sources": [
-                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
-                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
+                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用"},
+                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用"},
             ],
         },
         "detection": {
@@ -1509,7 +1495,6 @@ LEVELS = [
             "evaluationText": "哥",
             "sampleVoice": "male",
             "allowedMetrics": ["score", "pitch_curve", "tone", "initial", "final"],
-            "reliabilityNote": "本关以舌根定位与气流对比为主，声母判别结果供学习参考，不作个体判定。",
             "fourStepTemplates": [
                 {"tag": "low_overall_score", "phenomenon": "整体相似度分数偏低，读音与参考示范的差距比较明显。", "possibleCause": "可能与舌根位置不准、气流没收住有关。", "cue": "舌根贴住软腭，干脆弹开发“哥”。", "practiceStepId": "L15-P1"},
                 {"tag": "initial_error", "phenomenon": "本次声母听起来更像 k，带了明显送气。", "possibleCause": "可能与送气习惯过强有关。", "cue": "纸巾放嘴前，读“哥”时让它基本不动。", "practiceStepId": "L15-P1"},
@@ -1593,9 +1578,9 @@ LEVELS = [
             },
         ],
         "practice": [
-            {"id": "L16-P1", "title": "纸巾飘起来", "instruction": "把纸巾举在嘴前约 5 厘米，读“科”，目标是纸巾明显飘动。", "repeat": 5, "durationSec": None, "bodyCue": "舌根弹开时送出一股风，风感清晰。", "stopNote": "不舒服就停止"},
-            {"id": "L16-P2", "title": "咳风式弹发", "instruction": "舌根抵软腭憋气 1 秒，弹开时像轻咳一样送气读“科”。", "repeat": 6, "durationSec": None, "bodyCue": "气流集中在放开的一瞬间。", "stopNote": "不舒服就停止"},
-            {"id": "L16-P3", "title": "科/哥最小对比", "instruction": "“科—哥”交替读 8 组，用手背感受有风与无风。", "repeat": 8, "durationSec": None, "bodyCue": "读“科”有风，读“哥”没有。", "stopNote": "不舒服就停止"},
+            {"id": "L16-P1", "title": "纸巾飘起来", "instruction": "把纸巾举在嘴前约 5 厘米，读“科”，目标是纸巾明显飘动。", "repeat": 5, "durationSec": None, "bodyCue": "舌根弹开时送出一股风，风感清晰。"},
+            {"id": "L16-P2", "title": "咳风式弹发", "instruction": "舌根抵软腭憋气 1 秒，弹开时像轻咳一样送气读“科”。", "repeat": 6, "durationSec": None, "bodyCue": "气流集中在放开的一瞬间。"},
+            {"id": "L16-P3", "title": "科/哥最小对比", "instruction": "“科—哥”交替读 8 组，用手背感受有风与无风。", "repeat": 8, "durationSec": None, "bodyCue": "读“科”有风，读“哥”没有。"},
         ],
         "misconceptions": [
             {"phenomenon": "k 读起来像 g，风送不出来。", "fix": "可以先做轻咳带风的动作，再把声音接上去。"},
@@ -1608,8 +1593,8 @@ LEVELS = [
                 {"name": "送气摩擦时长", "value": "约 60–110 ms", "note": "随语速变化，因人而异"},
             ],
             "sources": [
-                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
-                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
+                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用"},
+                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用"},
             ],
         },
         "detection": {
@@ -1617,7 +1602,6 @@ LEVELS = [
             "evaluationText": "科",
             "sampleVoice": "female",
             "allowedMetrics": ["score", "pitch_curve", "tone", "initial", "final"],
-            "reliabilityNote": "本关以舌根定位与气流对比为主，声母判别结果供学习参考，不作个体判定。",
             "fourStepTemplates": [
                 {"tag": "low_overall_score", "phenomenon": "整体相似度分数偏低，读音与参考示范的差距比较明显。", "possibleCause": "可能与送气不足、舌根位置不准有关。", "cue": "舌根抵住软腭，弹开时干脆送风。", "practiceStepId": "L16-P1"},
                 {"tag": "initial_error", "phenomenon": "本次声母听起来更像 g，缺少明显送气。", "possibleCause": "可能与气流没送出有关。", "cue": "手背放嘴前，读“科”时要感到风。", "practiceStepId": "L16-P1"},
@@ -1690,9 +1674,9 @@ LEVELS = [
             },
         ],
         "practice": [
-            {"id": "L17-P1", "title": "哈气暖手", "instruction": "对手心哈气发出 h，感受宽而暖的气流，再接上韵母读“喝”。", "repeat": 5, "durationSec": None, "bodyCue": "喉咙放松，气流宽宽地从喉咙送出。", "stopNote": "不舒服就停止"},
-            {"id": "L17-P2", "title": "h 长摩擦", "instruction": "保持舌根与软腭的缝，发 h 的摩擦音拉长 4 秒。", "repeat": None, "durationSec": 30, "bodyCue": "风声匀匀不断，缝的位置不动。", "stopNote": "不舒服就停止"},
-            {"id": "L17-P3", "title": "花/发对比", "instruction": "“花—发”交替读 8 组，手背感受宽暖与细凉的差别。", "repeat": 8, "durationSec": None, "bodyCue": "h 的风宽而暖，f 的风细而凉。", "stopNote": "不舒服就停止"},
+            {"id": "L17-P1", "title": "哈气暖手", "instruction": "对手心哈气发出 h，感受宽而暖的气流，再接上韵母读“喝”。", "repeat": 5, "durationSec": None, "bodyCue": "喉咙放松，气流宽宽地从喉咙送出。"},
+            {"id": "L17-P2", "title": "h 长摩擦", "instruction": "保持舌根与软腭的缝，发 h 的摩擦音拉长 4 秒。", "repeat": None, "durationSec": 30, "bodyCue": "风声匀匀不断，缝的位置不动。"},
+            {"id": "L17-P3", "title": "花/发对比", "instruction": "“花—发”交替读 8 组，手背感受宽暖与细凉的差别。", "repeat": 8, "durationSec": None, "bodyCue": "h 的风宽而暖，f 的风细而凉。"},
         ],
         "misconceptions": [
             {"phenomenon": "h 读成了 f，像用嘴唇摩擦。", "fix": "可以照镜子确认牙齿和嘴唇没接触，风从喉咙出。"},
@@ -1705,8 +1689,8 @@ LEVELS = [
                 {"name": "摩擦噪声频带中心", "value": "约 1000–2500 Hz", "note": "能量低于唇齿擦音 f，因人而异"},
             ],
             "sources": [
-                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
-                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
+                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用"},
+                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用"},
             ],
         },
         "detection": {
@@ -1714,7 +1698,6 @@ LEVELS = [
             "evaluationText": "喝",
             "sampleVoice": "male",
             "allowedMetrics": ["score", "pitch_curve", "tone", "initial", "final"],
-            "reliabilityNote": "本关以呵气位置与听感对比为主，声母判别结果供学习参考，不作个体判定。",
             "fourStepTemplates": [
                 {"tag": "low_overall_score", "phenomenon": "整体相似度分数偏低，读音与参考示范的差距比较明显。", "possibleCause": "可能与缝隙位置不稳、气流不匀有关。", "cue": "先哈一口气找到位置，再匀匀擦出 h。", "practiceStepId": "L17-P1"},
                 {"tag": "initial_error", "phenomenon": "本次声母听起来更像 f，摩擦位置跑到嘴唇了。", "possibleCause": "可能与下唇碰上齿、舌根没抬有关。", "cue": "牙齿和嘴唇分开，风从喉咙呵出来。", "practiceStepId": "L17-P1"},
@@ -1798,9 +1781,9 @@ LEVELS = [
             },
         ],
         "practice": [
-            {"id": "L18-P1", "title": "先挡后擦", "instruction": "舌面贴住硬腭前部挡气 1 秒，松出细缝挤发“鸡”。", "repeat": 6, "durationSec": None, "bodyCue": "舌面先贴后松，气流从细缝里挤出。", "stopNote": "不舒服就停止"},
-            {"id": "L18-P2", "title": "微笑口型读鸡", "instruction": "嘴角略展、舌尖下垂，读“鸡”，保持动作干净。", "repeat": 6, "durationSec": None, "bodyCue": "舌面拱起在前，舌尖完全不参与。", "stopNote": "不舒服就停止"},
-            {"id": "L18-P3", "title": "鸡/七最小对比", "instruction": "“鸡—七”交替读 8 组，纸巾放在嘴前测气流。", "repeat": 8, "durationSec": None, "bodyCue": "读“鸡”纸巾不动，读“七”纸巾微动。", "stopNote": "不舒服就停止"},
+            {"id": "L18-P1", "title": "先挡后擦", "instruction": "舌面贴住硬腭前部挡气 1 秒，松出细缝挤发“鸡”。", "repeat": 6, "durationSec": None, "bodyCue": "舌面先贴后松，气流从细缝里挤出。"},
+            {"id": "L18-P2", "title": "微笑口型读鸡", "instruction": "嘴角略展、舌尖下垂，读“鸡”，保持动作干净。", "repeat": 6, "durationSec": None, "bodyCue": "舌面拱起在前，舌尖完全不参与。"},
+            {"id": "L18-P3", "title": "鸡/七最小对比", "instruction": "“鸡—七”交替读 8 组，纸巾放在嘴前测气流。", "repeat": 8, "durationSec": None, "bodyCue": "读“鸡”纸巾不动，读“七”纸巾微动。"},
         ],
         "misconceptions": [
             {"phenomenon": "j 读起来像 zh，舌尖翘起来了。", "fix": "可以先把舌尖轻抵下齿背，让舌面去做事。"},
@@ -1813,8 +1796,8 @@ LEVELS = [
                 {"name": "摩擦段高频能量", "value": "约 3000 Hz 以上明显", "note": "舌面擦音高频突出，因人而异"},
             ],
             "sources": [
-                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
-                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
+                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用"},
+                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用"},
             ],
         },
         "detection": {
@@ -1822,7 +1805,6 @@ LEVELS = [
             "evaluationText": "鸡",
             "sampleVoice": "female",
             "allowedMetrics": ["score", "pitch_curve", "tone", "initial", "final"],
-            "reliabilityNote": "本关以舌面定位与气流对比为主，声母判别结果供学习参考，不作个体判定。",
             "fourStepTemplates": [
                 {"tag": "low_overall_score", "phenomenon": "整体相似度分数偏低，读音与参考示范的差距比较明显。", "possibleCause": "可能与舌面位置不准、挤擦不干净有关。", "cue": "舌面贴住前腭，先挡后擦读“鸡”。", "practiceStepId": "L18-P1"},
                 {"tag": "initial_error", "phenomenon": "本次声母听起来更像 q，挤开后送气明显。", "possibleCause": "可能与送气习惯过强有关。", "cue": "纸巾放嘴前，读“鸡”时让它基本不动。", "practiceStepId": "L18-P1"},
@@ -1906,9 +1888,9 @@ LEVELS = [
             },
         ],
         "practice": [
-            {"id": "L19-P1", "title": "纸巾飘起来", "instruction": "把纸巾举在嘴前约 5 厘米，读“七”，目标是纸巾明显飘动。", "repeat": 5, "durationSec": None, "bodyCue": "挤开的一瞬间送出一股风。", "stopNote": "不舒服就停止"},
-            {"id": "L19-P2", "title": "挤开送口气", "instruction": "舌面抵前腭憋气 1 秒，松缝时干脆送气读“七”。", "repeat": 6, "durationSec": None, "bodyCue": "先挡、后擦、再送气，三步连成一气。", "stopNote": "不舒服就停止"},
-            {"id": "L19-P3", "title": "七/鸡最小对比", "instruction": "“七—鸡”交替读 8 组，用手背感受有风与无风。", "repeat": 8, "durationSec": None, "bodyCue": "读“七”有风感，读“鸡”没有。", "stopNote": "不舒服就停止"},
+            {"id": "L19-P1", "title": "纸巾飘起来", "instruction": "把纸巾举在嘴前约 5 厘米，读“七”，目标是纸巾明显飘动。", "repeat": 5, "durationSec": None, "bodyCue": "挤开的一瞬间送出一股风。"},
+            {"id": "L19-P2", "title": "挤开送口气", "instruction": "舌面抵前腭憋气 1 秒，松缝时干脆送气读“七”。", "repeat": 6, "durationSec": None, "bodyCue": "先挡、后擦、再送气，三步连成一气。"},
+            {"id": "L19-P3", "title": "七/鸡最小对比", "instruction": "“七—鸡”交替读 8 组，用手背感受有风与无风。", "repeat": 8, "durationSec": None, "bodyCue": "读“七”有风感，读“鸡”没有。"},
         ],
         "misconceptions": [
             {"phenomenon": "q 读起来像 j，风送不出来。", "fix": "可以先发“嗤”的风声找气流，再接上声音。"},
@@ -1921,8 +1903,8 @@ LEVELS = [
                 {"name": "塞擦段总时长", "value": "约 100–200 ms", "note": "成阻加摩擦加送气，因人而异"},
             ],
             "sources": [
-                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
-                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
+                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用"},
+                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用"},
             ],
         },
         "detection": {
@@ -1930,7 +1912,6 @@ LEVELS = [
             "evaluationText": "七",
             "sampleVoice": "male",
             "allowedMetrics": ["score", "pitch_curve", "tone", "initial", "final"],
-            "reliabilityNote": "本关以舌面定位与气流对比为主，声母判别结果供学习参考，不作个体判定。",
             "fourStepTemplates": [
                 {"tag": "low_overall_score", "phenomenon": "整体相似度分数偏低，读音与参考示范的差距比较明显。", "possibleCause": "可能与送气不足、舌面位置不准有关。", "cue": "舌面贴住前腭，挤开时送一口风。", "practiceStepId": "L19-P1"},
                 {"tag": "initial_error", "phenomenon": "本次声母听起来更像 j，缺少明显送气。", "possibleCause": "可能与气流没收出来有关。", "cue": "手背放嘴前，读“七”时要感到风。", "practiceStepId": "L19-P1"},
@@ -2003,9 +1984,9 @@ LEVELS = [
             },
         ],
         "practice": [
-            {"id": "L20-P1", "title": "水壶冒气", "instruction": "保持舌面细缝，发 x 的摩擦音匀匀拉长 4 秒。", "repeat": None, "durationSec": 30, "bodyCue": "舌面拱起，气流细细匀匀地挤过缝。", "stopNote": "不舒服就停止"},
-            {"id": "L20-P2", "title": "舌尖看家", "instruction": "舌尖轻抵下齿背，舌面拱起读“西”，确认舌尖不翘。", "repeat": 6, "durationSec": None, "bodyCue": "舌尖安静待在下面，舌面在干活。", "stopNote": "不舒服就停止"},
-            {"id": "L20-P3", "title": "西/思/诗三连", "instruction": "“西—思—诗”交替读 6 组，体会舌面、平舌、翘舌三种位置。", "repeat": 6, "durationSec": None, "bodyCue": "三个音的摩擦位置一个比一个靠后或靠上。", "stopNote": "不舒服就停止"},
+            {"id": "L20-P1", "title": "水壶冒气", "instruction": "保持舌面细缝，发 x 的摩擦音匀匀拉长 4 秒。", "repeat": None, "durationSec": 30, "bodyCue": "舌面拱起，气流细细匀匀地挤过缝。"},
+            {"id": "L20-P2", "title": "舌尖看家", "instruction": "舌尖轻抵下齿背，舌面拱起读“西”，确认舌尖不翘。", "repeat": 6, "durationSec": None, "bodyCue": "舌尖安静待在下面，舌面在干活。"},
+            {"id": "L20-P3", "title": "西/思/诗三连", "instruction": "“西—思—诗”交替读 6 组，体会舌面、平舌、翘舌三种位置。", "repeat": 6, "durationSec": None, "bodyCue": "三个音的摩擦位置一个比一个靠后或靠上。"},
         ],
         "misconceptions": [
             {"phenomenon": "x 读成了 s，舌面没有拱起来。", "fix": "可以先把舌尖抵住下齿背，舌面自然就拱起来了。"},
@@ -2018,8 +1999,8 @@ LEVELS = [
                 {"name": "摩擦噪声频带", "value": "约 3000–6000 Hz 能量集中", "note": "高频擦音特征明显，因人而异"},
             ],
             "sources": [
-                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
-                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
+                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用"},
+                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用"},
             ],
         },
         "detection": {
@@ -2027,7 +2008,6 @@ LEVELS = [
             "evaluationText": "西",
             "sampleVoice": "female",
             "allowedMetrics": ["score", "pitch_curve", "tone", "initial", "final"],
-            "reliabilityNote": "本关以舌面定位与听感对比为主，声母判别结果供学习参考，不作个体判定。",
             "fourStepTemplates": [
                 {"tag": "low_overall_score", "phenomenon": "整体相似度分数偏低，读音与参考示范的差距比较明显。", "possibleCause": "可能与舌面没拱起、缝隙不稳有关。", "cue": "舌面拱起留细缝，匀匀擦出“西”。", "practiceStepId": "L20-P2"},
                 {"tag": "initial_error", "phenomenon": "本次声母听起来更像 s 或 sh，摩擦位置跑到了舌尖。", "possibleCause": "可能与舌面没抬起、舌尖代偿有关。", "cue": "舌尖抵下齿背，只用舌面擦出声音。", "practiceStepId": "L20-P2"},
@@ -2111,9 +2091,9 @@ LEVELS = [
             },
         ],
         "practice": [
-            {"id": "L21-P1", "title": "翘舌定位", "instruction": "舌尖轻舔上牙床，再往里挪一点顶住硬腭前部，保持 1 秒再读“知”。", "repeat": 6, "durationSec": None, "bodyCue": "舌尖卷起，舌面中央微微凹陷。", "stopNote": "不舒服就停止"},
-            {"id": "L21-P2", "title": "挡气挤发", "instruction": "翘舌挡气 1 秒，松出细缝挤发“知”，气流收小。", "repeat": 6, "durationSec": None, "bodyCue": "先挡后擦，一气呵成。", "stopNote": "不舒服就停止"},
-            {"id": "L21-P3", "title": "知/资最小对比", "instruction": "“知—资”交替读 8 组，体会舌尖翘与平。", "repeat": 8, "durationSec": None, "bodyCue": "读“知”舌尖在上，读“资”舌尖在下。", "stopNote": "不舒服就停止"},
+            {"id": "L21-P1", "title": "翘舌定位", "instruction": "舌尖轻舔上牙床，再往里挪一点顶住硬腭前部，保持 1 秒再读“知”。", "repeat": 6, "durationSec": None, "bodyCue": "舌尖卷起，舌面中央微微凹陷。"},
+            {"id": "L21-P2", "title": "挡气挤发", "instruction": "翘舌挡气 1 秒，松出细缝挤发“知”，气流收小。", "repeat": 6, "durationSec": None, "bodyCue": "先挡后擦，一气呵成。"},
+            {"id": "L21-P3", "title": "知/资最小对比", "instruction": "“知—资”交替读 8 组，体会舌尖翘与平。", "repeat": 8, "durationSec": None, "bodyCue": "读“知”舌尖在上，读“资”舌尖在下。"},
         ],
         "misconceptions": [
             {"phenomenon": "zh 读成了 z，翘舌没做出来。", "fix": "可以先用舌尖舔到硬腭再发音，位置感觉到了再加快。"},
@@ -2126,8 +2106,8 @@ LEVELS = [
                 {"name": "摩擦谱重心", "value": "约 2500–4500 Hz", "note": "低于舌面擦音 x，因人而异"},
             ],
             "sources": [
-                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
-                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
+                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用"},
+                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用"},
             ],
         },
         "detection": {
@@ -2135,7 +2115,6 @@ LEVELS = [
             "evaluationText": "知",
             "sampleVoice": "male",
             "allowedMetrics": ["score", "pitch_curve", "tone", "initial", "final"],
-            "reliabilityNote": "本关以翘舌定位与听感对比为主，声母判别结果供学习参考，不作个体判定。",
             "fourStepTemplates": [
                 {"tag": "low_overall_score", "phenomenon": "整体相似度分数偏低，读音与参考示范的差距比较明显。", "possibleCause": "可能与翘舌幅度不够、挤擦不干净有关。", "cue": "舌尖翘到牙床后面一点，先挡后擦。", "practiceStepId": "L21-P1"},
                 {"tag": "initial_error", "phenomenon": "本次声母听起来更像 z，翘舌没有做出来。", "possibleCause": "可能与舌尖没上翘、位置太平有关。", "cue": "舌尖先舔到硬腭再发音，别急着出声。", "practiceStepId": "L21-P1"},
@@ -2219,9 +2198,9 @@ LEVELS = [
             },
         ],
         "practice": [
-            {"id": "L22-P1", "title": "纸巾飘起来", "instruction": "把纸巾举在嘴前约 5 厘米，翘舌读“吃”，目标是纸巾明显飘动。", "repeat": 5, "durationSec": None, "bodyCue": "挤开的一瞬间送出一股明显的风。", "stopNote": "不舒服就停止"},
-            {"id": "L22-P2", "title": "翘舌挡气挤发", "instruction": "舌尖翘抵硬腭前部憋气 1 秒，松缝送气读“吃”。", "repeat": 6, "durationSec": None, "bodyCue": "翘舌保持不动，风从缝隙喷出。", "stopNote": "不舒服就停止"},
-            {"id": "L22-P3", "title": "吃/次最小对比", "instruction": "“吃—次”交替读 8 组，体会舌尖翘与平、风声厚与尖。", "repeat": 8, "durationSec": None, "bodyCue": "读“吃”舌尖在上风厚，读“次”舌尖平风尖。", "stopNote": "不舒服就停止"},
+            {"id": "L22-P1", "title": "纸巾飘起来", "instruction": "把纸巾举在嘴前约 5 厘米，翘舌读“吃”，目标是纸巾明显飘动。", "repeat": 5, "durationSec": None, "bodyCue": "挤开的一瞬间送出一股明显的风。"},
+            {"id": "L22-P2", "title": "翘舌挡气挤发", "instruction": "舌尖翘抵硬腭前部憋气 1 秒，松缝送气读“吃”。", "repeat": 6, "durationSec": None, "bodyCue": "翘舌保持不动，风从缝隙喷出。"},
+            {"id": "L22-P3", "title": "吃/次最小对比", "instruction": "“吃—次”交替读 8 组，体会舌尖翘与平、风声厚与尖。", "repeat": 8, "durationSec": None, "bodyCue": "读“吃”舌尖在上风厚，读“次”舌尖平风尖。"},
         ],
         "misconceptions": [
             {"phenomenon": "ch 读成了 c，翘舌没做出来。", "fix": "可以先练舌尖舔硬腭，确认位置后再加送气。"},
@@ -2234,8 +2213,8 @@ LEVELS = [
                 {"name": "摩擦谱重心", "value": "约 2000–4000 Hz", "note": "翘舌擦音频谱偏厚，因人而异"},
             ],
             "sources": [
-                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
-                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
+                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用"},
+                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用"},
             ],
         },
         "detection": {
@@ -2243,7 +2222,6 @@ LEVELS = [
             "evaluationText": "吃",
             "sampleVoice": "female",
             "allowedMetrics": ["score", "pitch_curve", "tone", "initial", "final"],
-            "reliabilityNote": "本关以翘舌定位与气流对比为主，声母判别结果供学习参考，不作个体判定。",
             "fourStepTemplates": [
                 {"tag": "low_overall_score", "phenomenon": "整体相似度分数偏低，读音与参考示范的差距比较明显。", "possibleCause": "可能与翘舌不够、送气不足有关。", "cue": "舌尖翘到牙床后，挤开时送一口风。", "practiceStepId": "L22-P1"},
                 {"tag": "initial_error", "phenomenon": "本次声母听起来更像 c，翘舌没做出来。", "possibleCause": "可能与舌尖没上翘有关。", "cue": "舌尖舔到硬腭前部再挤开送气。", "practiceStepId": "L22-P1"},
@@ -2316,9 +2294,9 @@ LEVELS = [
             },
         ],
         "practice": [
-            {"id": "L23-P1", "title": "翘舌长摩擦", "instruction": "保持翘舌缝隙，发 sh 的风声匀匀拉长 4 秒。", "repeat": None, "durationSec": 30, "bodyCue": "舌尖悬在硬腭前部下方，风声宽而匀。", "stopNote": "不舒服就停止"},
-            {"id": "L23-P2", "title": "哨音定位", "instruction": "舌尖先轻抵硬腭再稍稍离开，找到“诗”的风声位置后读字。", "repeat": 6, "durationSec": None, "bodyCue": "舌尖卷起不贴死，缝里出风。", "stopNote": "不舒服就停止"},
-            {"id": "L23-P3", "title": "诗/思最小对比", "instruction": "“诗—思”交替读 8 组，体会风声的厚与尖。", "repeat": 8, "durationSec": None, "bodyCue": "读“诗”舌尖翘，读“思”舌尖平。", "stopNote": "不舒服就停止"},
+            {"id": "L23-P1", "title": "翘舌长摩擦", "instruction": "保持翘舌缝隙，发 sh 的风声匀匀拉长 4 秒。", "repeat": None, "durationSec": 30, "bodyCue": "舌尖悬在硬腭前部下方，风声宽而匀。"},
+            {"id": "L23-P2", "title": "哨音定位", "instruction": "舌尖先轻抵硬腭再稍稍离开，找到“诗”的风声位置后读字。", "repeat": 6, "durationSec": None, "bodyCue": "舌尖卷起不贴死，缝里出风。"},
+            {"id": "L23-P3", "title": "诗/思最小对比", "instruction": "“诗—思”交替读 8 组，体会风声的厚与尖。", "repeat": 8, "durationSec": None, "bodyCue": "读“诗”舌尖翘，读“思”舌尖平。"},
         ],
         "misconceptions": [
             {"phenomenon": "sh 读成了 s，翘舌没做出来。", "fix": "可以把舌尖往上卷一点，风声立刻会变厚。"},
@@ -2331,8 +2309,8 @@ LEVELS = [
                 {"name": "摩擦噪声频带", "value": "约 2000–4000 Hz 能量集中", "note": "低于平舌 s 的高频，因人而异"},
             ],
             "sources": [
-                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
-                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
+                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用"},
+                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用"},
             ],
         },
         "detection": {
@@ -2340,7 +2318,6 @@ LEVELS = [
             "evaluationText": "诗",
             "sampleVoice": "male",
             "allowedMetrics": ["score", "pitch_curve", "tone", "initial", "final"],
-            "reliabilityNote": "本关以翘舌定位与听感对比为主，声母判别结果供学习参考，不作个体判定。",
             "fourStepTemplates": [
                 {"tag": "low_overall_score", "phenomenon": "整体相似度分数偏低，读音与参考示范的差距比较明显。", "possibleCause": "可能与翘舌幅度不够、缝隙不稳有关。", "cue": "舌尖翘向硬腭前部，匀匀擦出风声。", "practiceStepId": "L23-P2"},
                 {"tag": "initial_error", "phenomenon": "本次声母听起来更像 s，翘舌没有做出来。", "possibleCause": "可能与舌尖没上翘、位置太平有关。", "cue": "舌尖往上卷一点，风声会变厚。", "practiceStepId": "L23-P2"},
@@ -2413,9 +2390,9 @@ LEVELS = [
             },
         ],
         "practice": [
-            {"id": "L24-P1", "title": "sh 变 r", "instruction": "持续发 sh 的风声，然后加上嗓音震动，听声音变成 r。", "repeat": 6, "durationSec": None, "bodyCue": "喉咙开始震动，风声里混进“嗡”的嗓音。", "stopNote": "不舒服就停止"},
-            {"id": "L24-P2", "title": "r 长音", "instruction": "保持翘舌和嗓音，把 r 拉长 4 秒，手摸喉咙确认震动。", "repeat": None, "durationSec": 30, "bodyCue": "喉咙持续震动，舌尖位置不动。", "stopNote": "不舒服就停止"},
-            {"id": "L24-P3", "title": "热/乐最小对比", "instruction": "“热—乐”“肉—漏”交替读 8 组，手摸喉咙与鼻翼对比。", "repeat": 8, "durationSec": None, "bodyCue": "读“热”舌头翘在上方，读“乐”舌尖点牙床。", "stopNote": "不舒服就停止"},
+            {"id": "L24-P1", "title": "sh 变 r", "instruction": "持续发 sh 的风声，然后加上嗓音震动，听声音变成 r。", "repeat": 6, "durationSec": None, "bodyCue": "喉咙开始震动，风声里混进“嗡”的嗓音。"},
+            {"id": "L24-P2", "title": "r 长音", "instruction": "保持翘舌和嗓音，把 r 拉长 4 秒，手摸喉咙确认震动。", "repeat": None, "durationSec": 30, "bodyCue": "喉咙持续震动，舌尖位置不动。"},
+            {"id": "L24-P3", "title": "热/乐最小对比", "instruction": "“热—乐”“肉—漏”交替读 8 组，手摸喉咙与鼻翼对比。", "repeat": 8, "durationSec": None, "bodyCue": "读“热”舌头翘在上方，读“乐”舌尖点牙床。"},
         ],
         "misconceptions": [
             {"phenomenon": "r 读成了 l，翘舌没做出来。", "fix": "可以先发 sh 找到翘舌位置，再加上嗓音。"},
@@ -2428,8 +2405,8 @@ LEVELS = [
                 {"name": "摩擦段时长", "value": "约 60–150 ms", "note": "浊擦音摩擦较弱，因人而异"},
             ],
             "sources": [
-                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
-                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
+                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用"},
+                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用"},
             ],
         },
         "detection": {
@@ -2437,7 +2414,6 @@ LEVELS = [
             "evaluationText": "日",
             "sampleVoice": "female",
             "allowedMetrics": ["score", "pitch_curve", "tone", "initial", "final"],
-            "reliabilityNote": "本关以嗓音震动与听感对比为主，声母判别结果供学习参考，不作个体判定。",
             "fourStepTemplates": [
                 {"tag": "low_overall_score", "phenomenon": "整体相似度分数偏低，读音与参考示范的差距比较明显。", "possibleCause": "可能与翘舌不够、嗓音没加上有关。", "cue": "先发 sh 的风声，再让喉咙嗡起来。", "practiceStepId": "L24-P1"},
                 {"tag": "initial_error", "phenomenon": "本次声母听起来更像 l 或 sh，翘舌加嗓音少了一样。", "possibleCause": "可能与舌尖没翘、声带没振有关。", "cue": "翘着舌头发 sh，同时手摸喉咙确认在震。", "practiceStepId": "L24-P1"},
@@ -2521,9 +2497,9 @@ LEVELS = [
             },
         ],
         "practice": [
-            {"id": "L25-P1", "title": "平舌定位", "instruction": "舌尖轻抵上齿背，照镜子确认舌尖不翘，再读“资”。", "repeat": 6, "durationSec": None, "bodyCue": "舌尖平贴在上牙背面，位置很靠前。", "stopNote": "不舒服就停止"},
-            {"id": "L25-P2", "title": "平伸挤发", "instruction": "舌尖抵齿背憋气 1 秒，松出细缝挤发“资”。", "repeat": 6, "durationSec": None, "bodyCue": "先挡后擦，风声尖细短促。", "stopNote": "不舒服就停止"},
-            {"id": "L25-P3", "title": "资/知最小对比", "instruction": "“资—知”交替读 8 组，体会舌尖一平一翘。", "repeat": 8, "durationSec": None, "bodyCue": "读“资”舌尖在下前，读“知”舌尖卷起在上。", "stopNote": "不舒服就停止"},
+            {"id": "L25-P1", "title": "平舌定位", "instruction": "舌尖轻抵上齿背，照镜子确认舌尖不翘，再读“资”。", "repeat": 6, "durationSec": None, "bodyCue": "舌尖平贴在上牙背面，位置很靠前。"},
+            {"id": "L25-P2", "title": "平伸挤发", "instruction": "舌尖抵齿背憋气 1 秒，松出细缝挤发“资”。", "repeat": 6, "durationSec": None, "bodyCue": "先挡后擦，风声尖细短促。"},
+            {"id": "L25-P3", "title": "资/知最小对比", "instruction": "“资—知”交替读 8 组，体会舌尖一平一翘。", "repeat": 8, "durationSec": None, "bodyCue": "读“资”舌尖在下前，读“知”舌尖卷起在上。"},
         ],
         "misconceptions": [
             {"phenomenon": "z 读成了 zh，舌头不自觉翘起来。", "fix": "可以照镜子练，看到舌尖平平抵住上牙背面再发音。"},
@@ -2536,8 +2512,8 @@ LEVELS = [
                 {"name": "摩擦谱重心", "value": "约 4000 Hz 以上偏高", "note": "平舌擦音高频突出，因人而异"},
             ],
             "sources": [
-                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
-                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
+                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用"},
+                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用"},
             ],
         },
         "detection": {
@@ -2545,7 +2521,6 @@ LEVELS = [
             "evaluationText": "资",
             "sampleVoice": "male",
             "allowedMetrics": ["score", "pitch_curve", "tone", "initial", "final"],
-            "reliabilityNote": "本关以平舌定位与听感对比为主，声母判别结果供学习参考，不作个体判定。",
             "fourStepTemplates": [
                 {"tag": "low_overall_score", "phenomenon": "整体相似度分数偏低，读音与参考示范的差距比较明显。", "possibleCause": "可能与舌尖位置不准、挤擦不干净有关。", "cue": "舌尖平抵上齿背，先挡后擦读“资”。", "practiceStepId": "L25-P1"},
                 {"tag": "initial_error", "phenomenon": "本次声母听起来更像 zh，舌头翘起来了。", "possibleCause": "可能与舌尖上翘、位置后移有关。", "cue": "照镜子看舌尖，平平地贴住上牙背面。", "practiceStepId": "L25-P1"},
@@ -2629,9 +2604,9 @@ LEVELS = [
             },
         ],
         "practice": [
-            {"id": "L26-P1", "title": "纸巾飘起来", "instruction": "把纸巾举在嘴前约 5 厘米，平舌读“次”，目标是纸巾明显飘动。", "repeat": 5, "durationSec": None, "bodyCue": "挤开的一瞬间送出一股尖细的风。", "stopNote": "不舒服就停止"},
-            {"id": "L26-P2", "title": "平伸送气挤发", "instruction": "舌尖平抵齿背憋气 1 秒，松缝时干脆送气读“次”。", "repeat": 6, "durationSec": None, "bodyCue": "舌尖位置不动，风从细缝喷出。", "stopNote": "不舒服就停止"},
-            {"id": "L26-P3", "title": "次/吃最小对比", "instruction": "“次—吃”交替读 8 组，体会平舌尖风与翘舌厚风。", "repeat": 8, "durationSec": None, "bodyCue": "读“次”舌尖平，读“吃”舌尖翘。", "stopNote": "不舒服就停止"},
+            {"id": "L26-P1", "title": "纸巾飘起来", "instruction": "把纸巾举在嘴前约 5 厘米，平舌读“次”，目标是纸巾明显飘动。", "repeat": 5, "durationSec": None, "bodyCue": "挤开的一瞬间送出一股尖细的风。"},
+            {"id": "L26-P2", "title": "平伸送气挤发", "instruction": "舌尖平抵齿背憋气 1 秒，松缝时干脆送气读“次”。", "repeat": 6, "durationSec": None, "bodyCue": "舌尖位置不动，风从细缝喷出。"},
+            {"id": "L26-P3", "title": "次/吃最小对比", "instruction": "“次—吃”交替读 8 组，体会平舌尖风与翘舌厚风。", "repeat": 8, "durationSec": None, "bodyCue": "读“次”舌尖平，读“吃”舌尖翘。"},
         ],
         "misconceptions": [
             {"phenomenon": "c 读成了 ch，舌头翘起来了。", "fix": "可以照镜子确认舌尖平抵上牙背面。"},
@@ -2644,8 +2619,8 @@ LEVELS = [
                 {"name": "摩擦噪声频带", "value": "约 4000–8000 Hz 能量集中", "note": "平舌送气擦音高频突出，因人而异"},
             ],
             "sources": [
-                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
-                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
+                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用"},
+                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用"},
             ],
         },
         "detection": {
@@ -2653,7 +2628,6 @@ LEVELS = [
             "evaluationText": "次",
             "sampleVoice": "female",
             "allowedMetrics": ["score", "pitch_curve", "tone", "initial", "final"],
-            "reliabilityNote": "本关以平舌定位与气流对比为主，声母判别结果供学习参考，不作个体判定。",
             "fourStepTemplates": [
                 {"tag": "low_overall_score", "phenomenon": "整体相似度分数偏低，读音与参考示范的差距比较明显。", "possibleCause": "可能与送气不足、舌尖位置不准有关。", "cue": "舌尖平抵上齿背，挤开时送一口风。", "practiceStepId": "L26-P1"},
                 {"tag": "initial_error", "phenomenon": "本次声母听起来更像 ch 或 z，翘舌或送气出了偏差。", "possibleCause": "可能与舌尖上翘、气流没收出来有关。", "cue": "舌尖放平，挤开时让纸巾飘起来。", "practiceStepId": "L26-P1"},
@@ -2726,9 +2700,9 @@ LEVELS = [
             },
         ],
         "practice": [
-            {"id": "L27-P1", "title": "漏气长音", "instruction": "保持舌尖细缝，发 s 的漏气声匀匀拉长 4 秒。", "repeat": None, "durationSec": 30, "bodyCue": "舌尖靠近上牙背面，气流细细一条。", "stopNote": "不舒服就停止"},
-            {"id": "L27-P2", "title": "细缝定位", "instruction": "舌尖先轻抵上齿背再稍稍离开，找到尖细风声后读“思”。", "repeat": 6, "durationSec": None, "bodyCue": "舌尖平伸不翘，缝很窄。", "stopNote": "不舒服就停止"},
-            {"id": "L27-P3", "title": "思/诗最小对比", "instruction": "“思—诗”交替读 8 组，体会风声尖与厚。", "repeat": 8, "durationSec": None, "bodyCue": "读“思”舌尖平，读“诗”舌尖翘。", "stopNote": "不舒服就停止"},
+            {"id": "L27-P1", "title": "漏气长音", "instruction": "保持舌尖细缝，发 s 的漏气声匀匀拉长 4 秒。", "repeat": None, "durationSec": 30, "bodyCue": "舌尖靠近上牙背面，气流细细一条。"},
+            {"id": "L27-P2", "title": "细缝定位", "instruction": "舌尖先轻抵上齿背再稍稍离开，找到尖细风声后读“思”。", "repeat": 6, "durationSec": None, "bodyCue": "舌尖平伸不翘，缝很窄。"},
+            {"id": "L27-P3", "title": "思/诗最小对比", "instruction": "“思—诗”交替读 8 组，体会风声尖与厚。", "repeat": 8, "durationSec": None, "bodyCue": "读“思”舌尖平，读“诗”舌尖翘。"},
         ],
         "misconceptions": [
             {"phenomenon": "s 读成了 sh，舌头翘起来了。", "fix": "可以让舌尖放松放平，风声自然变尖。"},
@@ -2741,8 +2715,8 @@ LEVELS = [
                 {"name": "摩擦噪声频带", "value": "约 5000 Hz 以上能量突出", "note": "s 是普通话频率最高的擦音之一，因人而异"},
             ],
             "sources": [
-                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
-                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
+                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用"},
+                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用"},
             ],
         },
         "detection": {
@@ -2750,7 +2724,6 @@ LEVELS = [
             "evaluationText": "思",
             "sampleVoice": "male",
             "allowedMetrics": ["score", "pitch_curve", "tone", "initial", "final"],
-            "reliabilityNote": "本关以平舌定位与听感对比为主，声母判别结果供学习参考，不作个体判定。",
             "fourStepTemplates": [
                 {"tag": "low_overall_score", "phenomenon": "整体相似度分数偏低，读音与参考示范的差距比较明显。", "possibleCause": "可能与缝隙不稳、舌尖位置不准有关。", "cue": "舌尖平伸留细缝，匀匀擦出“思”。", "practiceStepId": "L27-P2"},
                 {"tag": "initial_error", "phenomenon": "本次声母听起来更像 sh，舌头翘起来了。", "possibleCause": "可能与舌尖上翘、位置后移有关。", "cue": "舌尖放平，风声立刻会变尖。", "practiceStepId": "L27-P2"},
@@ -2823,9 +2796,9 @@ LEVELS = [
             },
         ],
         "practice": [
-            {"id": "L28-P1", "title": "衣 拉长再加速", "instruction": "拉长发“衣——”，保持舌位唇形，再越读越短，变成快速的“医”。", "repeat": 6, "durationSec": None, "bodyCue": "嘴角展开，舌前部抬起后顺势滑开。", "stopNote": "不舒服就停止"},
-            {"id": "L28-P2", "title": "y 开头连读", "instruction": "连读“医生、月亮、衣服”，体会 y 轻轻一带就滑进韵母。", "repeat": 6, "durationSec": None, "bodyCue": "起音轻而快，没有卡顿。", "stopNote": "不舒服就停止"},
-            {"id": "L28-P3", "title": "眼/远对比", "instruction": "“眼—远”交替读 8 组，照镜子看嘴角咧开与撮圆。", "repeat": 8, "durationSec": None, "bodyCue": "读“眼”嘴角展开，读“远”嘴唇收圆。", "stopNote": "不舒服就停止"},
+            {"id": "L28-P1", "title": "衣 拉长再加速", "instruction": "拉长发“衣——”，保持舌位唇形，再越读越短，变成快速的“医”。", "repeat": 6, "durationSec": None, "bodyCue": "嘴角展开，舌前部抬起后顺势滑开。"},
+            {"id": "L28-P2", "title": "y 开头连读", "instruction": "连读“医生、月亮、衣服”，体会 y 轻轻一带就滑进韵母。", "repeat": 6, "durationSec": None, "bodyCue": "起音轻而快，没有卡顿。"},
+            {"id": "L28-P3", "title": "眼/远对比", "instruction": "“眼—远”交替读 8 组，照镜子看嘴角咧开与撮圆。", "repeat": 8, "durationSec": None, "bodyCue": "读“眼”嘴角展开，读“远”嘴唇收圆。"},
         ],
         "misconceptions": [
             {"phenomenon": "y 读得带很重的摩擦，听起来像 r。", "fix": "可以想着“衣”的清爽感觉，一带而过不磨蹭。"},
@@ -2838,8 +2811,8 @@ LEVELS = [
                 {"name": "F2（第二共振峰）", "value": "约 2000–2500 Hz", "note": "前滑音 F2 高，起音后向韵母滑动，因人而异"},
             ],
             "sources": [
-                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
-                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
+                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用"},
+                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用"},
             ],
         },
         "detection": {
@@ -2847,7 +2820,6 @@ LEVELS = [
             "evaluationText": "医",
             "sampleVoice": "female",
             "allowedMetrics": ["score", "pitch_curve", "tone", "initial", "final"],
-            "reliabilityNote": "本关以起音唇形与听感对比为主，判别结果供学习参考，不作个体判定。",
             "fourStepTemplates": [
                 {"tag": "low_overall_score", "phenomenon": "整体相似度分数偏低，读音与参考示范的差距比较明显。", "possibleCause": "可能与起音含糊、唇形不到位有关。", "cue": "咧嘴抬舌，轻轻一带读“医”。", "practiceStepId": "L28-P1"},
                 {"tag": "initial_error", "phenomenon": "本次起音听起来像 r（摩擦过重）或圆唇的 w。", "possibleCause": "可能与带摩擦、嘴唇撮圆有关。", "cue": "嘴角展开，像清爽的“衣”一样起音。", "practiceStepId": "L28-P1"},
@@ -2920,9 +2892,9 @@ LEVELS = [
             },
         ],
         "practice": [
-            {"id": "L29-P1", "title": "乌 拉长再加速", "instruction": "拉长发“乌——”，保持圆唇舌位，再越读越短，变成快速的“乌”。", "repeat": 6, "durationSec": None, "bodyCue": "嘴唇撮圆前突，一带而过不拖泥带水。", "stopNote": "不舒服就停止"},
-            {"id": "L29-P2", "title": "w 开头连读", "instruction": "连读“乌鸦、问题、晚安”，体会圆唇起音的轻滑。", "repeat": 6, "durationSec": None, "bodyCue": "起音圆而轻，没有摩擦杂音。", "stopNote": "不舒服就停止"},
-            {"id": "L29-P3", "title": "王/黄对比", "instruction": "“王—黄”交替读 8 组，手背放在嘴前感受 h 的呵气。", "repeat": 8, "durationSec": None, "bodyCue": "读“王”无风声，读“黄”开头有一股暖气。", "stopNote": "不舒服就停止"},
+            {"id": "L29-P1", "title": "乌 拉长再加速", "instruction": "拉长发“乌——”，保持圆唇舌位，再越读越短，变成快速的“乌”。", "repeat": 6, "durationSec": None, "bodyCue": "嘴唇撮圆前突，一带而过不拖泥带水。"},
+            {"id": "L29-P2", "title": "w 开头连读", "instruction": "连读“乌鸦、问题、晚安”，体会圆唇起音的轻滑。", "repeat": 6, "durationSec": None, "bodyCue": "起音圆而轻，没有摩擦杂音。"},
+            {"id": "L29-P3", "title": "王/黄对比", "instruction": "“王—黄”交替读 8 组，手背放在嘴前感受 h 的呵气。", "repeat": 8, "durationSec": None, "bodyCue": "读“王”无风声，读“黄”开头有一股暖气。"},
         ],
         "misconceptions": [
             {"phenomenon": "w 读得像 v，上牙碰到了下唇。", "fix": "可以照镜子确认双唇撮圆、牙齿完全不碰嘴唇。"},
@@ -2935,8 +2907,8 @@ LEVELS = [
                 {"name": "F2（第二共振峰）", "value": "约 600–850 Hz", "note": "圆唇后位使 F2 低，因人而异"},
             ],
             "sources": [
-                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
-                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
+                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用"},
+                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用"},
             ],
         },
         "detection": {
@@ -2944,7 +2916,6 @@ LEVELS = [
             "evaluationText": "乌",
             "sampleVoice": "male",
             "allowedMetrics": ["score", "pitch_curve", "tone", "initial", "final"],
-            "reliabilityNote": "本关以圆唇起音与听感对比为主，判别结果供学习参考，不作个体判定。",
             "fourStepTemplates": [
                 {"tag": "low_overall_score", "phenomenon": "整体相似度分数偏低，读音与参考示范的差距比较明显。", "possibleCause": "可能与起音唇形不到位、牙齿碰唇有关。", "cue": "双唇撮圆，轻轻一带读“乌”。", "practiceStepId": "L29-P1"},
                 {"tag": "initial_error", "phenomenon": "本次起音听起来像 v（咬唇）或 h（先呵气）。", "possibleCause": "可能与上齿碰下唇、喉咙先行送气有关。", "cue": "只动双唇撮圆，牙齿不碰嘴唇直接出声。", "practiceStepId": "L29-P1"},
@@ -3038,10 +3009,10 @@ LEVELS = [
             },
         ],
         "practice": [
-            {"id": "L30-P1", "title": "闭嘴到张嘴一气呵成", "instruction": "闭唇哼 m 不停顿，直接张嘴滑到 a，连读“妈”6 次。", "repeat": 6, "durationSec": None, "bodyCue": "嘴一开声音立刻变亮，中间没有断开。", "stopNote": "不舒服就停止"},
-            {"id": "L30-P2", "title": "四声手势跟读", "instruction": "手跟着画：一声横、二声上扬、三声打钩、四声下劈，边画边读妈、麻、马、骂。", "repeat": 8, "durationSec": None, "bodyCue": "手到哪声音到哪，音高和手势同步。", "stopNote": "不舒服就停止"},
-            {"id": "L30-P3", "title": "一声四声对比", "instruction": "“妈—骂”交替读 8 组，体会高平与全降的差别。", "repeat": 8, "durationSec": None, "bodyCue": "一声稳住不动，四声果断落下。", "stopNote": "不舒服就停止"},
-            {"id": "L30-P4", "title": "四声连读", "instruction": "慢速连读“妈麻马骂”两遍，再逐渐加速，声调不断档。", "repeat": None, "durationSec": 60, "bodyCue": "换声调时喉咙灵活切换，气息不断。", "stopNote": "头晕就坐下休息"},
+            {"id": "L30-P1", "title": "闭嘴到张嘴一气呵成", "instruction": "闭唇哼 m 不停顿，直接张嘴滑到 a，连读“妈”6 次。", "repeat": 6, "durationSec": None, "bodyCue": "嘴一开声音立刻变亮，中间没有断开。"},
+            {"id": "L30-P2", "title": "四声手势跟读", "instruction": "手跟着画：一声横、二声上扬、三声打钩、四声下劈，边画边读妈、麻、马、骂。", "repeat": 8, "durationSec": None, "bodyCue": "手到哪声音到哪，音高和手势同步。"},
+            {"id": "L30-P3", "title": "一声四声对比", "instruction": "“妈—骂”交替读 8 组，体会高平与全降的差别。", "repeat": 8, "durationSec": None, "bodyCue": "一声稳住不动，四声果断落下。"},
+            {"id": "L30-P4", "title": "四声连读", "instruction": "慢速连读“妈麻马骂”两遍，再逐渐加速，声调不断档。", "repeat": None, "durationSec": 60, "bodyCue": "换声调时喉咙灵活切换，气息不断。"},
         ],
         "misconceptions": [
             {"phenomenon": "四个声调听起来都差不多平，像都在一个音高上。", "fix": "可以先把一声定得高、四声降到底，夸张地读出差距，再慢慢收小。"},
@@ -3056,8 +3027,8 @@ LEVELS = [
                 {"name": "去声基频走向", "value": "从接近阴平高度降至个人音域底部", "note": "下降幅度覆盖全调域，因人而异"},
             ],
             "sources": [
-                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
-                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用", "boundary": "声学参考值为常见范围，因人而异，不构成个体正常/异常判定"},
+                {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用"},
+                {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用"},
             ],
         },
         "detection": {
@@ -3065,7 +3036,6 @@ LEVELS = [
             "evaluationText": "妈麻马骂",
             "sampleVoice": "female",
             "allowedMetrics": ["score", "pitch_curve", "tone", "initial", "final"],
-            "reliabilityNote": "本关声调曲线对比已初步验证，四声判定供学习参考，个体音域差异较大。",
             "fourStepTemplates": [
                 {"tag": "low_overall_score", "phenomenon": "整体相似度分数偏低，四个字的读音与参考示范差距较明显。", "possibleCause": "可能与拼读不连贯、声调不完整有关。", "cue": "先慢后快，把“妈麻马骂”逐字读完整。", "practiceStepId": "L30-P1"},
                 {"tag": "initial_error", "phenomenon": "本次声母 m 不够清晰，闭唇鼻音太短或丢失。", "possibleCause": "可能与闭唇停留太短、直接张嘴有关。", "cue": "先闭嘴哼半拍再张开，鼻翼能摸到震动。", "practiceStepId": "L30-P1"},
@@ -3152,7 +3122,7 @@ ARTICLES = [
             {"title": "数枣", "instruction": "一口气匀速数“一个枣、两个枣、三个枣……”，看能数到几，每天多加一个。"},
         ],
         "references": [
-            {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用", "boundary": "呼吸练习为一般性动作建议，如有呼吸系统不适请咨询医生"},
+            {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用"},
         ],
         "relatedLevelIds": ["L01", "L05", "L30"],
         "author": "内容组（示例种子）",
@@ -3196,7 +3166,7 @@ ARTICLES = [
             {"title": "长音直线", "instruction": "分别用 a、o、i 各拉一个 5 秒长音，追求从头到尾一样稳。"},
         ],
         "references": [
-            {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用", "boundary": "练习强度为一般性建议，头晕时立即坐下休息"},
+            {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用"},
         ],
         "relatedLevelIds": ["L02", "L06", "L30"],
         "author": "内容组（示例种子）",
@@ -3239,7 +3209,7 @@ ARTICLES = [
             {"title": "跟读四声", "instruction": "跟着示范音频慢速跟读“妈麻马骂”3 遍，注意音高的走向。"},
         ],
         "references": [
-            {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用", "boundary": "调值为教学通说，个体音域差异较大，不构成个体正常/异常判定"},
+            {"title": "《汉语拼音方案》", "source": "1958 年全国人民代表大会批准公布", "license": "公开法令文本，仅作教学参考引用"},
         ],
         "relatedLevelIds": ["L30", "L09"],
         "author": "内容组（示例种子）",
@@ -3286,7 +3256,7 @@ ARTICLES = [
             {"title": "单字换调", "instruction": "用“妈”轮流换四个声调读，每换一个调换一个手势。"},
         ],
         "references": [
-            {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用", "boundary": "手势为一般教学辅助方法，效果因人而异"},
+            {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用"},
         ],
         "relatedLevelIds": ["L30", "L01"],
         "author": "内容组（示例种子）",
@@ -3330,7 +3300,7 @@ ARTICLES = [
             {"title": "舒服长音", "instruction": "用叹气找到的音高发“啊——”5 秒，全程保持同一高度。"},
         ],
         "references": [
-            {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用", "boundary": "本文为一般性嗓音使用建议，持续嗓音不适请咨询医生"},
+            {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用"},
         ],
         "relatedLevelIds": ["L01", "L30", "L28"],
         "author": "内容组（示例种子）",
@@ -3377,7 +3347,7 @@ ARTICLES = [
             {"title": "圆扁开关", "instruction": "保持舌头不动，嘴角咧开发 i，再撮圆变成 ü，来回 5 次。"},
         ],
         "references": [
-            {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用", "boundary": "口型描述为教学简化模型，个体解剖差异客观存在"},
+            {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用"},
         ],
         "relatedLevelIds": ["L01", "L02", "L04", "L05"],
         "author": "内容组（示例种子）",
@@ -3425,7 +3395,7 @@ ARTICLES = [
             {"title": "平翘对照", "instruction": "对着镜子交替读“思—诗”各 6 次，观察舌尖从平伸到卷起的变化。"},
         ],
         "references": [
-            {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用", "boundary": "镜面观察为一般练习建议，不能替代专业听辨评测"},
+            {"title": "《语音学教程》（林焘、王理嘉）", "source": "北京大学出版社", "license": "公开出版物，仅作教学参考引用"},
         ],
         "relatedLevelIds": ["L01", "L09", "L21"],
         "author": "内容组（示例种子）",

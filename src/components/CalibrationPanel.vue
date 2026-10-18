@@ -37,12 +37,12 @@ watch(
   },
 )
 
+// 录音结束（手动停止或 40 秒上限）只能从 recorder 状态感知：
+// 监听 phase 本身永远不会触发（phase 正是要靠这里推进）
 watch(
-  () => calibration.phase.value,
-  (phase) => {
-    if (phase === 'recording') return
-    if (calibration.recorder.status === 'recording') calibration.recorder.stop()
-    if (phase === 'recorded') calibration.onStop()
+  () => calibration.recorder.status,
+  (status) => {
+    if (status === 'recorded') calibration.onStop()
   },
 )
 

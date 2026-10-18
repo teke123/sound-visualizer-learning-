@@ -9,14 +9,14 @@
 
 | 页面 | 路由 | 职责 | 数据来源 |
 | ---- | ---- | ---- | ---- |
-| P01 首页 | `/` | 四个主按钮、搜索框、已发布关入口、下一关推荐、边界句 | levels、me/context；进度门面（本地或 me/progress） |
+| P01 首页 | `/` | 四个主按钮、搜索框、已发布关入口、下一关推荐 | levels、me/context；进度门面（本地或 me/progress） |
 | P02 搜索 | `/search?q=` | 找关、相近关推荐、希望增加 | GET /api/search?q=、POST /api/wishes |
 | P03 发音地图 | `/map` | 三层闯关进度、未开放骨架、易混关并排入口 | levels + 进度门面 |
 | P04 原理子站 | `/principles`、`/principles/:slug` | 分类目录与文章正文 | article-categories、articles、articles/{slug} |
 | P05 关卡页 | `/learn/:id` | 结论、构形、示范、听辨、练习、误区、专业折叠、本关录音 | levels/{id}；学习事件 |
 | P06 发音库 | `/library` | 已发布关目录、试听、任选两关比较 | levels |
 | P08 检测中心 | `/test`、`/test/:levelId` | 选关、标定、录音与提交 | levels、levels/{id}.detection、audio/uploads、pitch-calibration、recordings |
-| P09 结果 | `/result/:id` | 质量、曲线、分数、现象、四步、回放、反馈、下一步 | recordings/{id}、audio/{audioId}/file、audio/{audioId}/f0 与 formants（声学细节）、levels/{id}（示范） |
+| P09 结果 | `/result/:id` | 质量、曲线、分数、现象、四步、回放、下一步 | recordings/{id}、audio/{audioId}/file、audio/{audioId}/f0 与 formants（声学细节）、levels/{id}（示范） |
 | P10 声音档案 | `/archive`、`/archive/compare?a=&b=` | 本人存档列表、删除、同关比较；未同意时显示无档案说明与本会话临时记录 | me/recordings、me/recordings/compare、session/recordings |
 | P11 账号 | `/account`、`/account/login`、`/account/register` | 注册登录、同意、撤回、注销、本会话临时记录、重新标定 | auth/*、me/*、session/*、pitch-calibration |
 
@@ -55,7 +55,6 @@ echarts、markdown-it、three.js 按路由或组件懒加载，不进入首屏�
 | ---- | ---- | ---- |
 | 外壳 | AppShell、TopNav、BottomTabs | 桌面顶部导航与手机底部标签 |
 | 外壳 | PageState / usePageCopy | 加载、空、错误、无权限、不可见状态与统一文案；错误显示 requestId |
-| 外壳 | BoundaryNotice | 首页与 P09 常驻边界句 |
 | 关卡展示 | LevelCard | P01/P02/P06 共用卡片：名称、拼音、代表字、一句话结论、试听、进入 |
 | 关卡展示 | LayerMap | P03 三层地图、骨架「未开放」、完成标记 |
 | 关卡展示 | ConfusablePairList | 易混关并排入口，仅双方已发布 |
@@ -66,11 +65,11 @@ echarts、markdown-it、three.js 按路由或组件懒加载，不进入首屏�
 | 关卡学习 | SagittalView | 按关键帧参数绘制声道剖面，帧间插值，播放 / 暂停 / 单帧 |
 | 关卡学习 | DemoPlayer | 正式示范播放（正常 / 慢速、男声 / 女声、字幕） |
 | 关卡学习 | QuizPanel | 听辨单选，立即判对，答错展示解释并可再答 |
-| 关卡学习 | PracticeStepper | 3–5 步，每步可播放、暂停、重做、标记完成，显示次数或时长与停止提示 |
+| 关卡学习 | PracticeStepper | 3–5 步，每步可播放、暂停、重做、标记完成，显示次数或时长 |
 | 关卡学习 | MisconceptionList、ProFold | 误区；专业折叠（默认收起） |
 | 文章 | ArticleView | Markdown 正文、受控指令、示范、练习、资料与关卡链接；公开与预览共用 |
 | 搜索与反馈 | SearchBox、WishDialog | P01/P02 搜索；希望增加 |
-| 搜索与反馈 | FeedbackWidget | 看懂了 / 还不明白、纠错 subtype、结果评价 rating 三种模式 |
+| 搜索与反馈 | FeedbackWidget | 纠错 subtype |
 | 检测 | RecorderPanel | 录音控制、实时波形、试听、重录、提交，P05/P08 共用 |
 | 检测 | CalibrationPanel | 标定文本、录音、结果与重录指引；检测前强制，P11 可重新标定 |
 | 检测 | RecordingTips、MicPermissionGuide | 环境与用途说明；按浏览器给出麦克风开启指引 |
@@ -82,7 +81,6 @@ echarts、markdown-it、three.js 按路由或组件懒加载，不进入首屏�
 | 结果 | SaveStatusBanner | 临时（到期时间）/ 已保存 / 登录并同意后保存的入口 |
 | 账号档案 | LoginForm、RegisterForm | 登录页写明不提供找回、保存需同意 |
 | 账号档案 | ConsentDialog | 保存说明、将转存条数、本地进度不导入说明；同意 / 拒绝 / 暂不 |
-| 账号档案 | ConsentTimeline | 同意决定历史 |
 | 账号档案 | SessionRecordsPanel | 本会话临时记录、单删、清空并重新开始 |
 | 账号档案 | ArchiveList、ArchiveCompareView | 存档列表与同关两条比较（并排播放、曲线、可比范围、主要差异） |
 | 账号档案 | DangerConfirmDialog | 删除、清空、撤回二次确认；注销输入密码 |
@@ -136,7 +134,7 @@ P04 使用分类、文章目录及详情接口，正文支持受控 practice/aud
 
 **提交**：上传 multipart 得到 audioId，再发送 `{audioId, levelId, contentVersion, submissionId}`；一次录音对应一个 audioId 与 submissionId，重录两者都重新生成。拿到 recordingId（200 或 202）后跳转 `/result/:id`。提交页面内遇到可重试失败，用原 submissionId 与原负载重试；离开页面后查看失败记录只提供重新录音。CONTENT_VERSION_CHANGED 时刷新任务、丢弃旧录音并提示按新内容重录；DETECTION_OFF 显示故障说明并保留学习入口。
 
-**结果**：P09 读取 `/api/recordings/{id}`；202 时显示 stage，按 Retry-After 轮询，页面隐藏时暂停、恢复可见时立即查询；504 或 failed 显示失败原因与重新录音。质量不合格（QUALITY_FAIL）显示「本次不能评」与重录指引，不显示分数。主对比曲线与共振峰来自结果快照（ToneCurveChart、FormantChart），曲线 not_available 时说明原因，不伪造。本次录音回放、原始 F0 与共振峰图片统一通过 audioId 读取（`/api/audio/{audioId}/file`、`/f0`、`/formants`、`/formants.png`），原始特征位于折叠区，展开时才请求。示范按 levelId 读取当前公开版本；关卡已下架时示范与「回关卡练习」显示不可用。
+**结果**：P09 读取 `/api/recordings/{id}`；202 时显示 stage，按 Retry-After 轮询，页面隐藏时暂停、恢复可见时立即查询；504 或 failed 显示失败原因与重新录音。质量不合格（QUALITY_FAIL）显示「本次不能评」与重录指引，不显示分数。主对比曲线与共振峰来自结果快照（ToneCurveChart、FormantChart），曲线 not_available 时说明原因，不伪造。合格时在共振峰后展示频谱图区块，按 audioId 直接引用 `/api/audio/{audioId}/spectrogram.png`（懒加载 `<img>`，读取失败时文字说明）。本次录音回放、原始 F0 与共振峰图片统一通过 audioId 读取（`/api/audio/{audioId}/file`、`/f0`、`/formants`、`/formants.png`），原始特征位于折叠区，展开时才请求。示范按 levelId 读取当前公开版本；关卡已下架时示范与「回关卡练习」显示不可用。
 
 **HTTP**：JSON 按 envelope、requestId 处理；QUALITY_FAIL 与 CALIBRATION_FAIL 为 HTTP 200 的业务结果；失败与限流保留真实状态码。媒体直接作为 `<audio>`/`<img>` 地址使用，Range 由浏览器处理。写请求同源发送，不需要 CSRF 令牌。
 

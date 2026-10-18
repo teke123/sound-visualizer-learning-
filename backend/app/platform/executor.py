@@ -37,7 +37,18 @@ class BoundedExecutor:
                     self._in_flight -= 1
                 self._sem.release()
 
-        return self._pool.submit(_wrapped)
+        future = self._pool.submit(_wrapped)
+
+        def _release_if_cancelled(f) -> None:  # noqa: ANN001
+            # 排队中被取消的任务永远不会运行 _wrapped，而信号量与排队计数
+            # 只在 _wrapped 内归还——这里补上，防止容量永久泄漏
+            if f.cancelled():
+                with self._lock:
+                    self._queued -= 1
+                self._sem.release()
+
+        future.add_done_callback(_release_if_cancelled)
+        return future
 
     def stats(self) -> dict[str, int]:
         with self._lock:

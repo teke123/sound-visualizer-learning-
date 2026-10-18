@@ -79,7 +79,7 @@ CSRF：同源部署，写请求校验 Origin（缺失时校验 Referer）为本�
 | GET /api/health | 公开健康状态，不泄露内部配置 |
 | GET /api/me/context | 访客可读；{authenticated, accountId?, username?, consent: {status: none / granted / rejected / revoked, consentTextVersion}, currentConsentTextVersion, calibration: {status: none / session / personal, expiresAt?}, dataEpoch?, pendingTransfer?, nextLevelId}；登录且同意时 nextLevelId 按 D-24 由服务端进度派生，否则为第一已发布关（前端用本地进度覆盖） |
 | GET /api/levels | 已发布摘要（id、order、layer、type、targetSound、pinyin、representativeChar、title、oneLiner、demoMediaId、availability、completionKeys: {quizIds[], practiceStepIds[]}，供前端本地按 D-24 计算完成度）+ 骨架（仅 CMS 标记 skeletonPublic 的未发布关，只含 id/order/layer/targetSound、availability=closed）+ confusablePairs（仅双方均已发布）；availability 为 open / temporarily_unavailable（应急熔断）/ closed；tag 为 2.0 扩展 |
-| GET /api/levels/{id} | 仅已发布详情，含 contentVersion、nav、构形 articulation（见下）、听辨题与答案（访客须本地判对）、练习、误区、专业折叠、detection（promptText、sampleMediaId、allowedMetrics、reliabilityNote、available）；规则阈值与四步内部模板不下发 |
+| GET /api/levels/{id} | 仅已发布详情，含 contentVersion、nav、构形 articulation（见下）、听辨题与答案（访客须本地判对）、练习、误区、专业折叠、detection（promptText、sampleMediaId、allowedMetrics、available）；规则阈值与四步内部模板不下发 |
 | GET /api/search?q= | 仅已发布匹配与相近关；汉字经拼音拆分为声母/韵母映射到关卡，学习标签匹配「翘舌」类词；不持久化搜索日志 |
 | GET /api/article-categories | 公开分类；基于已发布文章的分类快照 |
 | GET /api/articles?category= | 已发布文章摘要目录 |
@@ -95,7 +95,7 @@ CSRF：同源部署，写请求校验 Origin（缺失时校验 Referer）为本�
 | 字段 | 结构 |
 | ---- | ---- |
 | quiz[] | {id, stimulusMediaId, prompt, options: [{text, mediaId?}], answerIndex, explanation?}；id 跨版本稳定，题目实质变化须换新 id |
-| practice[] | {id, title, instruction, repeat?, durationSec?, bodyCue, mediaId?, stopNote}；id 跨版本稳定 |
+| practice[] | {id, title, instruction, repeat?, durationSec?, bodyCue, mediaId?}；id 跨版本稳定 |
 | articulation | {media: [{mediaId, kind: image / animation / video, altText}], description, sagittal: {keyframes[]}, model3dMediaId?} |
 
 声道剖面参数 `sagittal.keyframes[]`（单帧为静态口型，多帧为过程，如塞音成阻→除阻、L30 的 m→a），按发音器官描述，元音与辅音共用：
@@ -143,7 +143,6 @@ CSRF：同源部署，写请求校验 Origin（缺失时校验 Referer）为本�
 | fourSteps[] | {phenomenon, possibleCause, cue, practice: {levelId, stepRef}, wordingSource: rule_template} |
 | curve | {status: ok / not_available, scale: T, segments[{syllable, toneValue, user[], reference[]}], rangeSnapshotId}；结果的主对比曲线，按受理时音域快照冻结 |
 | formants | 仅单韵母关；{status, space: normalized, user, referenceRegion} |
-| boundaryNote | 固定边界句 |
 
 ### 当前会话
 

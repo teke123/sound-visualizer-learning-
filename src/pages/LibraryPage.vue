@@ -61,7 +61,6 @@ function comparePair(aId: string, bId: string) {
     <header class="lib-head">
       <div>
         <h1>发音库</h1>
-        <p>全部已发布关卡：可试听、可进关，也可以任选两关并排比较。</p>
       </div>
       <button type="button" :class="['pick-toggle', { active: pickMode }]" @click="pickMode = !pickMode; selected = []">
         {{ pickMode ? '退出选择' : '任选两关比较' }}

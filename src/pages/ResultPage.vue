@@ -2,12 +2,12 @@
 /**
  * P09 结果页（FR-1001–1008 / §6.4）：
  * 202 → ProcessingStage 轮询（页面隐藏暂停）；质量先行；合格时分数、现象、
- * 曲线、共振峰（单韵母）、四步、边界句、回放、AcousticDetail、SaveStatusBanner；
+ * 曲线、共振峰（单韵母）、频谱图、四步、回放、AcousticDetail、SaveStatusBanner；
  * 404 → 「记录已过期或不可见」；同键重试仅当从提交页跳转（FD-15）。
  */
-import { computed, defineAsyncComponent } from 'vue'
+import { computed, defineAsyncComponent, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { audioFileUrl } from '@/api'
+import { audioFileUrl, audioSpectrogramPngUrl } from '@/api'
 import { useRecordingResult } from '@/features/result'
 import { usePlayerStore } from '@/stores/player'
 import { useLevelsStore } from '@/stores/levels'
@@ -17,8 +17,6 @@ import PhenomenaList from '@/components/PhenomenaList.vue'
 import FourStepsList from '@/components/FourStepsList.vue'
 import AcousticDetail from '@/components/AcousticDetail.vue'
 import SaveStatusBanner from '@/components/SaveStatusBanner.vue'
-import BoundaryNotice from '@/components/BoundaryNotice.vue'
-import FeedbackWidget from '@/components/FeedbackWidget.vue'
 import ProcessingStage from '@/components/ProcessingStage.vue'
 import PageState from '@/components/PageState.vue'
 
@@ -55,6 +53,9 @@ const levelTitle = computed(() => {
 const retryable = computed(
   () => phase.value === 'failed' && result.entry.value?.recordingId === recordingId.value,
 )
+
+// 频谱图按 audioId 读取派生图片（FR-1005），加载失败时说明而非留破图
+const spectrogramError = ref(false)
 </script>
 
 <template>
@@ -110,6 +111,21 @@ const retryable = computed(
           <FormantChart :formants="assessment.formants" />
         </section>
 
+        <!-- 频谱图（FR-1005：时间×频率能量分布） -->
+        <section class="result-section" aria-label="频谱图">
+          <h2>频谱图</h2>
+          <p class="curve-note">横轴是时间，纵轴是频率，颜色越亮表示这一时刻该频率的能量越强，用来整体查看这次录音的频率能量分布。</p>
+          <img
+            v-if="!spectrogramError"
+            :src="audioSpectrogramPngUrl(recording.audioId)"
+            alt="本次录音频谱图（时间×频率热力图）"
+            loading="lazy"
+            class="spectrogram-img"
+            @error="spectrogramError = true"
+          />
+          <p v-else class="curve-note">频谱图暂时读取不到，可刷新页面重试。</p>
+        </section>
+
         <!-- 现象（FR-1004） -->
         <PhenomenaList v-if="assessment.phenomena" :phenomena="assessment.phenomena" />
 
@@ -136,9 +152,6 @@ const retryable = computed(
 
       <!-- 保存状态（§6.4） -->
       <SaveStatusBanner :storage="assessment.storage" :expires-at="assessment.expiresAt ?? undefined" />
-
-      <FeedbackWidget mode="rating" :source-page="`/result/${recordingId}`" :recording-id="recordingId" />
-      <BoundaryNotice class="result-boundary" />
     </template>
   </div>
 </template>
@@ -164,6 +177,11 @@ const retryable = computed(
   font-size: 13px
   color: #78909c
   margin: 0 0 8px
+
+.spectrogram-img
+  max-width: 100%
+  border-radius: 8px
+  background: #fff
 
 .result-failed
   text-align: center
@@ -199,7 +217,4 @@ const retryable = computed(
     border-color: #00897b
     color: #fff
     font-weight: 600
-
-.result-boundary
-  margin-top: 4px
 </style>

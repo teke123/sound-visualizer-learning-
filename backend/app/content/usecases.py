@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime
+import logging
 
 import numpy as np
 from sqlalchemy.orm import Session
@@ -17,6 +18,9 @@ from app.db import JSONText, now
 from app.ids import new_id
 from app.platform.envelope import ApiError
 from app.pinyin_utils import split_pinyin
+from app.scoring.provider import ProviderError
+
+logger = logging.getLogger("svs.content")
 
 LAYER_LABEL = {"vowel": "单韵母", "initial": "声母", "syllable": "拼读"}
 
@@ -140,8 +144,7 @@ def level_sections(content: dict, *, detection_available: bool) -> dict:
     practice = [
         {"id": p["id"], "title": p.get("title", ""), "instruction": p.get("instruction", ""),
          "repeat": p.get("repeat"), "durationSec": p.get("durationSec"),
-         "bodyCue": p.get("bodyCue", ""), "mediaId": p.get("mediaId"),
-         "stopNote": p.get("stopNote", "不舒服就停止")}
+         "bodyCue": p.get("bodyCue", ""), "mediaId": p.get("mediaId")}
         for p in (content.get("practice") or [])
     ]
     articulation_raw = content.get("articulation") or {}
@@ -160,7 +163,6 @@ def level_sections(content: dict, *, detection_available: bool) -> dict:
         "promptText": detection_raw.get("promptText", ""),
         "sampleMediaId": detection_raw.get("sampleMediaId"),
         "allowedMetrics": detection_raw.get("allowedMetrics", []),
-        "reliabilityNote": detection_raw.get("reliabilityNote", ""),
         "available": detection_available,
     }
     return {
@@ -516,8 +518,19 @@ def compute_standard_curve(db: Session, content: dict) -> dict | None:
         provider = get_provider()
         prov = provider.evaluate(str(path), det.get("evaluationText", ""))
         f0res = acx.extract_f0(path)
+    except ProviderError as e:
+        # Provider 不可用/返回异常：发布无法完成，但这是服务故障而非
+        # 「示范无法提取音高」的内容问题，不能误报 422（FR-1413：
+        # 发布失败保留草稿与原公开版本，事务由上层回滚）
+        if e.kind == "down":
+            raise ApiError(503, "PROVIDER_DOWN",
+                           "评分服务暂不可用，无法预计算标准曲线，请稍后重试发布") from e
+        raise ApiError(502, "PROVIDER_ERROR",
+                       "评分服务返回异常，无法预计算标准曲线，请稍后重试发布") from e
     except Exception:
-        return None
+        logger.exception("标准曲线预计算失败：media=%s speaker=%s text=%r",
+                         media_id, speaker_id, det.get("evaluationText"))
+        raise ApiError(500, "INTERNAL_ERROR", "标准曲线预计算失败，发布已中止")
     if not f0res.reliable:
         return None
     import numpy as np

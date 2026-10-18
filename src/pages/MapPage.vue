@@ -28,7 +28,6 @@ function openPair(pair: { a: string; b: string }) {
   <div class="map-page">
     <header class="map-head">
       <h1>发音地图</h1>
-      <p>从单韵母到声母再到拼读，一关一关往前走；已点亮的关卡都能进去学。</p>
     </header>
 
     <PageState v-if="levelsStore.loading && !levelsStore.loaded" state="loading" />

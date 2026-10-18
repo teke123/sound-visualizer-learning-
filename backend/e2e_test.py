@@ -142,8 +142,6 @@ def main() -> int:
               str(result["curve"])[:200])
         check("result fourSteps wordingSource",
               all(s["wordingSource"] == "rule_template" for s in result.get("fourSteps", [])))
-        check("boundaryNote fixed",
-              result["boundaryNote"] == "学习参考，不作为普通话等级认定或医学诊断。")
         rec_id = body["data"]["recording"]["recordingId"]
 
         # 幂等重放：同 submissionId 同负载

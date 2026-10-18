@@ -293,6 +293,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/audio/{audio_id}/spectrogram.png": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Audio Spectrogram Png */
+        get: operations["audio_spectrogram_png_api_audio__audio_id__spectrogram_png_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/pitch-calibration": {
         parameters: {
             query?: never;
@@ -1252,8 +1269,6 @@ export interface components {
             source: string;
             /** License */
             license: string;
-            /** Boundary */
-            boundary?: string | null;
         };
         /** ArticleSummary */
         ArticleSummary: {
@@ -1332,8 +1347,6 @@ export interface components {
             fourSteps?: components["schemas"]["FourStep"][] | null;
             curve?: components["schemas"]["ResultCurve"] | null;
             formants?: components["schemas"]["ResultFormants"] | null;
-            /** Boundarynote */
-            boundaryNote: string;
         };
         /** AudioUploadResponse */
         AudioUploadResponse: {
@@ -1609,8 +1622,6 @@ export interface components {
             sampleMediaId?: string | null;
             /** Allowedmetrics */
             allowedMetrics: string[];
-            /** Reliabilitynote */
-            reliabilityNote?: string | null;
             /** Available */
             available: boolean;
         };
@@ -2614,8 +2625,6 @@ export interface components {
             bodyCue: string;
             /** Mediaid */
             mediaId?: string | null;
-            /** Stopnote */
-            stopNote: string;
         };
         /** PreviewTokenResponse */
         PreviewTokenResponse: {
@@ -2634,8 +2643,6 @@ export interface components {
             source: string;
             /** License */
             license: string;
-            /** Boundary */
-            boundary?: string | null;
         };
         /** Professional */
         Professional: {
@@ -3492,6 +3499,37 @@ export interface operations {
         };
     };
     audio_formants_png_api_audio__audio_id__formants_png_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                audio_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    audio_spectrogram_png_api_audio__audio_id__spectrogram_png_get: {
         parameters: {
             query?: never;
             header?: never;

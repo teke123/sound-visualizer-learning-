@@ -76,8 +76,6 @@ CONSENT_TEXT: str = (
     "录音仅用于你的学习反馈，不会公开给他人。"
 )
 
-BOUNDARY_NOTE: str = "学习参考，不作为普通话等级认定或医学诊断。"
-
 # --- 上传限制 ---
 MAX_UPLOAD_BYTES: int = 20 * 1024 * 1024   # 20 MB
 MAX_AUDIO_DURATION_SECONDS: float = 60.0   # 单条上传时长上限（质量维度再判过短/过长）

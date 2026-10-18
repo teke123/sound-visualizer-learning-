@@ -8,12 +8,13 @@ import datetime
 import hashlib
 import logging
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import config
 from app.acoustics import analysis
 from app.acoustics.models import AudioRow
-from app.acoustics.usecases import audio_path
+from app.acoustics.usecases import ARCHIVED_EXPIRES_AT, audio_path
 from app.content.models import DetectionSwitchRow, LevelRow, LevelVersionRow
 from app.content_seed_data import GLOBAL_FOUR_STEP_FALLBACKS
 from app.db import JSONText, get_session, now
@@ -222,7 +223,7 @@ def run_pipeline(recording_id: str) -> None:
             return
         audio = db.get(AudioRow, rec.audio_id)
         if audio is None:
-            _fail(db, rec, "PROVIDER_ERROR", retryable=False)
+            _fail(db, rec, "INTERNAL_ERROR", retryable=False)
             return
         path = audio_path(audio)
         level = db.get(LevelRow, rec.level_id)
@@ -304,7 +305,6 @@ def run_pipeline(recording_id: str) -> None:
             "phenomena": phenomena,
             "fourSteps": four_steps,
             "curve": curve,
-            "boundaryNote": config.BOUNDARY_NOTE,
         }
         if formants_out is not None:
             result["formants"] = formants_out
@@ -312,18 +312,25 @@ def run_pipeline(recording_id: str) -> None:
             "provider": _provider_payload(prov), "reading": reading,
         })
     except Exception:
-        import traceback
-
-        traceback.print_exc()
-        try:
-            db.rollback()
-            rec = db.get(RecordingRow, recording_id)
-            if rec is not None and rec.status == "processing":
-                _fail(db, rec, "PROVIDER_ERROR", retryable=True)
-        except Exception:
-            logger.exception("录音 %s 管线失败后标记 failed 时再出错", recording_id)
+        # 自家分析/规则/写库代码的崩溃不伪装成评分服务故障：INTERNAL_ERROR(500)。
+        # Provider 调用已在 scoring 阶段内联捕获，此处理论上只见内部异常
+        logger.exception("录音 %s 评分管线内部错误", recording_id)
+        _fail_after_pipeline_error(db, recording_id, "INTERNAL_ERROR", retryable=True)
     finally:
         db.close()
+
+
+def _fail_after_pipeline_error(db: Session, recording_id: str, code: str,
+                               *, retryable: bool) -> None:
+    """管线异常收尾：回滚事务；仍处于 processing 的录音标记为可重试失败
+    （重试会重建快照、重跑管线），调度器兜底把漏网的置为 TIMEOUT。"""
+    try:
+        db.rollback()
+        rec = db.get(RecordingRow, recording_id)
+        if rec is not None and rec.status == "processing":
+            _fail(db, rec, code, retryable=retryable)
+    except Exception:
+        logger.exception("录音 %s 管线失败后标记 failed 时再出错", recording_id)
 
 
 def _provider_payload(prov) -> dict:  # noqa: ANN001
@@ -392,7 +399,6 @@ def _finalize_quality_fail(db: Session, rec: RecordingRow, audio: AudioRow,
             "reading": reading_out,
             "retakeAdvice": advice or "请按提示重录一次",
         },
-        "boundaryNote": config.BOUNDARY_NOTE,
     }
     _finalize_completed(db, rec, audio, result, cacheable=None)
 
@@ -428,6 +434,8 @@ def _finalize_completed(db: Session, rec: RecordingRow, audio: AudioRow,
         if consent_granted(db, user):
             rec.storage = "archived"
             rec.expires_at = None
+            # 存档承诺「保留至你删除」：音频随录音脱离 72h 到期
+            audio.expires_at = ARCHIVED_EXPIRES_AT
     verdict = result["quality"]["verdict"]
     rec.status = "completed"
     rec.outcome = "scored" if verdict == "pass" else "quality_fail"
@@ -483,6 +491,7 @@ def _failure_message(code: str) -> str:
         "TIMEOUT": "处理超时，可在此页面用同一提交重试",
         "PROVIDER_DOWN": "评分服务暂不可用，请稍后重试",
         "PROVIDER_ERROR": "评分服务返回异常，请稍后重试",
+        "INTERNAL_ERROR": "处理遇到问题，请重试；若持续失败请重新录音",
     }.get(code, "处理失败，请重试")
 
 
@@ -517,8 +526,16 @@ def expire_temp_records(db: Session) -> int:
             RecordingRow.expires_at < now()).all():
         rec.deleted_at = now()
         n += 1
+    # 仍被未删除存档录音引用的音频不过期（存档保留至用户删除）；
+    # 也兜住修复前已转存、audio.expires_at 未改哨兵的存量数据
+    archived_audio = (
+        select(RecordingRow.audio_id).where(
+            RecordingRow.storage == "archived",
+            RecordingRow.deleted_at.is_(None)).distinct()
+    )
     for audio in db.query(AudioRow).filter(
-            AudioRow.deleted_at.is_(None), AudioRow.expires_at < now()).all():
+            AudioRow.deleted_at.is_(None), AudioRow.expires_at < now(),
+            ~AudioRow.id.in_(archived_audio)).all():
         mark_audio_deleted(db, audio)
         n += 1
     for rng in db.query(PitchRangeRow).filter(

@@ -2,11 +2,17 @@
 当前会话临时记录、学习事件与 D-24 只读派生进度、数据清理编排。"""
 from __future__ import annotations
 
+import base64
+import datetime
+
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
 from app import config
 from app.acoustics.models import AudioRow
-from app.acoustics.usecases import mark_deleted as mark_audio_deleted
+from app.acoustics.usecases import (
+    ARCHIVED_EXPIRES_AT, mark_deleted as mark_audio_deleted,
+)
 from app.archive.models import LearningEventRow
 from app.content.models import LevelRow, LevelVersionRow
 from app.db import JSONText, now
@@ -43,6 +49,10 @@ def transfer_session_records(db: Session, *, sid: str, user_id: str,
         row.expires_at = None
         if consent_id:
             row.consent_id = consent_id
+        # 音频随录音脱离 72h 到期：存档回放与音域滚动重算都依赖音频存活
+        audio = db.get(AudioRow, row.audio_id)
+        if audio is not None:
+            audio.expires_at = ARCHIVED_EXPIRES_AT
         transferred += 1
     upgraded = upgrade_session_range_on_transfer(db, sid=sid, user_id=user_id)
     # 转存后按「标定基线 + 最近存档合格录音」滚动更新
@@ -72,6 +82,23 @@ def recording_summary(rec: RecordingRow, result: AssessmentResultRow | None) -> 
     }
 
 
+def _page_cursor(rec: RecordingRow) -> str:
+    """不透明分页游标：客户端原样回传 nextCursor，不解读内容。"""
+    payload = f"{rec.created_at.isoformat()}|{rec.id}"
+    return base64.urlsafe_b64encode(payload.encode("utf-8")).decode("ascii")
+
+
+def _parse_page_cursor(cursor: str) -> tuple[datetime.datetime, str]:
+    try:
+        payload = base64.urlsafe_b64decode(cursor.encode("ascii")).decode("utf-8")
+        created_at, _, rec_id = payload.rpartition("|")
+        if not created_at or not rec_id:
+            raise ValueError(cursor)
+        return datetime.datetime.fromisoformat(created_at), rec_id
+    except (ValueError, UnicodeError) as e:
+        raise ApiError(422, "VALIDATION_ERROR", "分页游标无效") from e
+
+
 def my_recordings(db: Session, *, user: UserRow, level_id: str | None,
                   cursor: str | None, limit: int = 20) -> dict:
     q = (db.query(RecordingRow)
@@ -80,17 +107,24 @@ def my_recordings(db: Session, *, user: UserRow, level_id: str | None,
                  RecordingRow.deleted_at.is_(None)))
     if level_id:
         q = q.filter(RecordingRow.level_id == level_id)
-    q = q.order_by(RecordingRow.created_at.desc())
-    rows = q.limit(limit + 1).all()
-    next_cursor = rows[-1].id if len(rows) > limit else None
-    rows = rows[:limit]
+    # created_at 不唯一：以 id 并列排序，按 (created_at, id) 键集分页，
+    # 游标过滤必须在 LIMIT 之前，否则第二页永远取回最新一页
+    q = q.order_by(RecordingRow.created_at.desc(), RecordingRow.id.desc())
     if cursor:
-        rows = [r for r in rows if r.id < cursor] or rows
+        marker_at, marker_id = _parse_page_cursor(cursor)
+        q = q.filter(or_(
+            RecordingRow.created_at < marker_at,
+            and_(RecordingRow.created_at == marker_at, RecordingRow.id < marker_id),
+        ))
+    rows = q.limit(limit + 1).all()
+    has_more = len(rows) > limit
+    rows = rows[:limit]
     items = []
     for rec in rows:
         result = db.query(AssessmentResultRow).filter(
             AssessmentResultRow.recording_id == rec.id).one_or_none()
         items.append(recording_summary(rec, result))
+    next_cursor = _page_cursor(rows[-1]) if has_more and rows else None
     return {"recordings": items, "nextCursor": next_cursor}
 
 

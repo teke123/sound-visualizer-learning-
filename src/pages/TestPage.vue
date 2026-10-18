@@ -5,8 +5,8 @@
  */
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { ApiError, type LevelDetail } from '@/api'
-import { levelDetailCache, loadLevelDetail } from '@/features/compare'
+import { ApiError, contentApi, type LevelDetail } from '@/api'
+import { levelDetailCache } from '@/features/compare'
 import { useLevelsStore } from '@/stores/levels'
 import { useProgressStore } from '@/stores/progress'
 import { useRecorderStore } from '@/stores/recorder'
@@ -42,7 +42,11 @@ async function load(): Promise<void> {
   try {
     const cached = levelDetailCache.get(levelId.value)
     if (cached) level.value = cached
-    level.value = await loadLevelDetail(levelId.value)
+    // 缓存先行渲染、始终重新校验：CONTENT_VERSION_CHANGED 后的 reload 也走
+    // 这里拿到新 contentVersion 与提示词（与 P05 的 LevelPage 同款口径）
+    const res = await contentApi.level(levelId.value)
+    level.value = res.data
+    levelDetailCache.set(levelId.value, res.data)
   } catch (err) {
     level.value = null
     if (
@@ -81,7 +85,6 @@ const detectionOff = computed(
     <template v-if="isPicker">
       <header class="test-head">
         <h1>检测中心</h1>
-        <p>选一关，按要求朗读并提交；与关卡页录音是同一套任务和评分口径。</p>
       </header>
 
       <p v-if="recommended && levelsStore.byId.get(recommended)" class="recommend">
@@ -128,7 +131,7 @@ const detectionOff = computed(
           <p>检测服务正在维护，恢复后可以照常录音评分；学习内容不受影响。</p>
           <RouterLink :to="`/learn/${level.id}`" class="off-link">先去学习这一关 →</RouterLink>
         </div>
-        <TestTaskSection v-else :key="level.id" :level="level" />
+        <TestTaskSection v-else :key="level.id" :level="level" @reload="load" />
       </template>
     </template>
   </div>

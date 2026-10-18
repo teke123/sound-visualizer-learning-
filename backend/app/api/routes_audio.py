@@ -33,7 +33,20 @@ async def upload_audio(request: Request, purpose: str = Form(...),
                        file: UploadFile = File(...),
                        actor: Actor = Depends(get_actor)):
     actor.rate_limit("upload")
-    raw = await file.read()
+    # 分块读并在超限时立即中止：一次性 file.read() 会把整个文件载入内存，
+    # 超大上传会先吃满 RAM 才被 20MB 上限拒绝
+    chunks: list[bytes] = []
+    total = 0
+    while True:
+        chunk = await file.read(1024 * 1024)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > config.MAX_UPLOAD_BYTES:
+            raise ApiError(413, "FILE_TOO_LARGE",
+                           f"文件过大（上限 {config.MAX_UPLOAD_BYTES // (1024 * 1024)} MB）")
+        chunks.append(chunk)
+    raw = b"".join(chunks)
     if not raw:
         raise ApiError(400, "DECODE_FAILED", "没有收到音频内容，请重试")
     result = await asyncio.get_running_loop().run_in_executor(
@@ -143,19 +156,26 @@ async def post_calibration(request: Request, body: CalibrationBody,
                      and identity_uc.consent_granted(actor.db, actor.user))
     from app.platform.executor import executor
 
+    # 任务线程内自建会话（compute_calibration），不持有请求作用域 actor.db：
+    # 504/断连后请求会话先行关闭，线程继续用它写库是未定义行为
     future = executor.try_submit(
-        scoring_uc.compute_calibration, actor.db, audio=audio,
+        scoring_uc.compute_calibration, audio_id=audio.id,
         syllables=json.loads(text_row.syllables),
         owner_type=actor.owner_type, owner_id=actor.owner_id,
         consent_valid=consent_valid)
     if future is None:
         raise ApiError(503, "SERVER_BUSY", "当前处理排队已满，请稍后重试",
                        headers={"Retry-After": "5"})
-    try:
-        result = await asyncio.wait_for(asyncio.wrap_future(future),
-                                        timeout=config.CALIBRATION_TIMEOUT_SECONDS)
-    except asyncio.TimeoutError:
+    # 超时只结束等待、绝不取消执行器任务：wait_for 的超时取消会顺着
+    # wrap_future 杀死排队中的任务（信号量槽永久泄漏），迟到的任务自行
+    # 收尾（与检测 wait_sync_window 同款约束）
+    wrapped = asyncio.wrap_future(future)
+    wrapped.add_done_callback(
+        lambda f: None if f.cancelled() else f.exception())
+    done, _ = await asyncio.wait({wrapped}, timeout=config.CALIBRATION_TIMEOUT_SECONDS)
+    if not done:
         raise ApiError(504, "TIMEOUT", "标定处理超时，请重试") from None
+    result = wrapped.result()
     if not result.get("ok"):
         return envelope(request, {"reason": result["reason"],
                                   "signal": result.get("signal")},

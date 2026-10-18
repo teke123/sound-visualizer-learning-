@@ -125,7 +125,6 @@ export function buildResult(levelId: string, audioId: string, qualityFail: boole
         reading: {},
         retakeAdvice: '找一个安静的地方，嘴巴离麦克风约一拳距离，用平常说话的音量再读一遍。',
       },
-      boundaryNote: '学习参考，不作为普通话等级认定或医学诊断。',
     }
   }
   return {
@@ -168,7 +167,6 @@ export function buildResult(levelId: string, audioId: string, qualityFail: boole
     ],
     curve: buildCurve(levelId, audioId),
     formants: level?.layer === 'vowel' ? buildFormants() : undefined,
-    boundaryNote: '学习参考，不作为普通话等级认定或医学诊断。',
   }
 }
 

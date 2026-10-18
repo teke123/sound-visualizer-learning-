@@ -5,12 +5,6 @@
  */
 import { ApiError } from '@/api'
 
-/** 边界句（NFR「边界句」：结果页与首页持续可见） */
-export const BOUNDARY_NOTE = '学习参考，不作为普通话等级认定或医学诊断。'
-
-export const SITE_FOOTER_NOTE =
-  '「看得见的声音」是一个普通话发音学习平台：看懂口型、听清示范、跟着练、录一录。所有结果仅供学习参考。'
-
 export interface PageStateCopy {
   loading: string
   empty: string
@@ -126,8 +120,6 @@ export function requestIdOf(error: unknown): string | undefined {
 /** 页面级状态文案 + 错误映射（composable 形态，保持与文档命名一致） */
 export function usePageCopy() {
   return {
-    boundaryNote: BOUNDARY_NOTE,
-    footerNote: SITE_FOOTER_NOTE,
     state: PAGE_STATE_COPY,
     errorCopy,
     requestIdOf,

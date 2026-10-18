@@ -96,7 +96,6 @@ onBeforeUnmount(() => recorder.release())
           <p class="task-prompt">
             朗读内容：<strong>{{ level.detection?.promptText }}</strong>
           </p>
-          <p v-if="level.detection?.reliabilityNote" class="task-note">{{ level.detection?.reliabilityNote }}</p>
         </template>
       </template>
     </LevelView>
@@ -115,8 +114,7 @@ onBeforeUnmount(() => recorder.release())
       </button>
     </section>
 
-    <FeedbackWidget mode="understanding" :source-page="`/learn/${level.id}`" :level-id="level.id" />
-    <FeedbackWidget mode="correction" :source-page="`/learn/${level.id}`" :level-id="level.id" />
+    <FeedbackWidget :source-page="`/learn/${level.id}`" :level-id="level.id" />
 
     <CalibrationPanel
       :open="calibrating"
@@ -155,10 +153,6 @@ onBeforeUnmount(() => recorder.release())
   border: 1px solid #ffe082
   border-radius: 8px
   padding: 10px 14px
-
-.task-note
-  font-size: 12px
-  color: #90a4ae
 
 .confusable-entry
   margin-top: 18px

@@ -10,12 +10,19 @@ import CalibrationPanel from '@/components/CalibrationPanel.vue'
 import RecordingTips from '@/components/RecordingTips.vue'
 
 const props = defineProps<{ level: LevelDetail }>()
+const emit = defineEmits<{ (e: 'reload'): void }>()
 
 const player = usePlayerStore()
 const recorder = useRecorderStore()
 
 const levelRef = toRef(props, 'level')
-const flow = useAssessmentFlow({ level: levelRef, reloadLevel: async () => undefined })
+const flow = useAssessmentFlow({
+  level: levelRef,
+  // CONTENT_VERSION_CHANGED 后由 TestPage 重新拉取关卡详情（FR-907：按新任务重录）
+  reloadLevel: async () => {
+    emit('reload')
+  },
+})
 const calibrating = computed(() => flow.state.value === 'calibrating')
 
 const sampleKey = computed(() => `demo:${props.level.detection?.sampleMediaId ?? ''}`)
@@ -38,7 +45,6 @@ onBeforeUnmount(() => recorder.release())
       <button v-if="level.detection?.sampleMediaId" type="button" class="sample-btn" @click="playSample">
         {{ player.isCurrent(sampleKey) ? '⏸ 暂停参考示范' : '▶ 听参考示范' }}
       </button>
-      <p v-if="level.detection?.reliabilityNote" class="task-note">{{ level.detection?.reliabilityNote }}</p>
     </section>
 
     <RecordingTips />
@@ -98,11 +104,6 @@ onBeforeUnmount(() => recorder.release())
   background: #e0f2f1
   color: #00695c
   cursor: pointer
-
-.task-note
-  font-size: 12px
-  color: #90a4ae
-  margin: 10px 0 0
 
 .to-learn
   color: #00897b

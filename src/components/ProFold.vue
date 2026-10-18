@@ -1,5 +1,5 @@
 <script setup lang="ts">
-/** ProFold：专业折叠（FR-610 / FD-13）：专业解释、声学参考值、来源与适用边界，默认收起 */
+/** ProFold：专业折叠（FR-610 / FD-13）：专业解释、声学参考值、来源，默认收起 */
 import { ref } from 'vue'
 import type { Professional } from '@/api'
 
@@ -24,10 +24,10 @@ const expanded = ref(false)
         </ul>
       </div>
       <div v-if="pro.sources?.length" class="pro-references">
-        <h4>来源与适用边界</h4>
+        <h4>来源</h4>
         <ul>
           <li v-for="source in pro.sources" :key="source.title">
-            {{ source.title }} — {{ source.source }}（许可：{{ source.license }}<template v-if="source.boundary">；适用：{{ source.boundary }}</template>）
+            {{ source.title }} — {{ source.source }}（许可：{{ source.license }}）
           </li>
         </ul>
       </div>

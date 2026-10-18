@@ -205,7 +205,7 @@ def extract_f0(wav_path: Path) -> F0Result:
     note = None
     if not reliable:
         note = ("录音里稳定的嗓音太少，画不出可靠曲线" if voiced_ratio < 0.5
-                else "音高曲线跳动较大，仅供参考")
+                else "音高曲线跳动较大")
     return F0Result(frames=frames, voiced_ranges=ranges, voiced_ratio=voiced_ratio,
                     jump_density=jump_density, reliable=reliable, note=note)
 

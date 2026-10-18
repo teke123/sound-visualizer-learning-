@@ -329,7 +329,6 @@ export const LEVEL_DETAILS: Record<string, LevelDetail> = Object.fromEntries(
             repeat: 5,
             bodyCue: '嘴唇和舌头的位置有明确感觉，不勉强用力',
             mediaId: `aud-${seed.id}-demo`,
-            stopNote: '嘴唇或下巴发酸就停下休息。',
           },
           {
             id: `${seed.id}-s2`,
@@ -338,7 +337,6 @@ export const LEVEL_DETAILS: Record<string, LevelDetail> = Object.fromEntries(
             repeat: 5,
             bodyCue: '喉咙放松，声音自然',
             mediaId: `aud-${seed.id}-demo-slow`,
-            stopNote: '嗓子不舒服立即停止。',
           },
           {
             id: `${seed.id}-s3`,
@@ -346,7 +344,6 @@ export const LEVEL_DETAILS: Record<string, LevelDetail> = Object.fromEntries(
             instruction: `把「${seed.representativeChar ?? seed.targetSound}」连说三遍，中间不换气。`,
             durationSec: 10,
             bodyCue: '呼吸平稳',
-            stopNote: '头晕或气短就停。',
           },
         ],
         misconceptions: [
@@ -370,7 +367,6 @@ export const LEVEL_DETAILS: Record<string, LevelDetail> = Object.fromEntries(
               title: '普通话语音学基础资料（示例）',
               source: '教学团队提供',
               license: '仅本站教学使用',
-              boundary: '面向大众学习参考，不作为等级认定依据',
             },
           ],
         },
@@ -380,7 +376,6 @@ export const LEVEL_DETAILS: Record<string, LevelDetail> = Object.fromEntries(
           allowedMetrics: isVowel
             ? ['score', 'tone_curve', 'formants', 'phenomena', 'four_steps']
             : ['score', 'tone_curve', 'phenomena', 'four_steps'],
-          reliabilityNote: '结果供学习参考，不作为普通话等级认定或医学诊断。',
           available: true,
         },
       } satisfies LevelDetail,
@@ -428,7 +423,7 @@ export const ARTICLES: ArticleDetail[] = [
       { title: '嘶音保持', instruction: '轻发「嘶——」10 秒保持气流稳定' },
     ],
     references: [
-      { title: '呼吸与发声（示例资料）', source: '教学团队', license: '仅本站教学使用', boundary: '大众科普口径' },
+      { title: '呼吸与发声（示例资料）', source: '教学团队', license: '仅本站教学使用' },
     ],
     relatedLevels: [{ levelId: 'L01', available: true }],
   },
@@ -460,7 +455,7 @@ export const ARTICLES: ArticleDetail[] = [
       { title: '对比清浊', instruction: '对比发「嘶」（不振动）与「啊」（振动）' },
     ],
     references: [
-      { title: '发声原理（示例资料）', source: '教学团队', license: '仅本站教学使用', boundary: '大众科普口径' },
+      { title: '发声原理（示例资料）', source: '教学团队', license: '仅本站教学使用' },
     ],
     relatedLevels: [{ levelId: 'L07', available: true }],
   },
@@ -494,7 +489,7 @@ export const ARTICLES: ArticleDetail[] = [
       { title: '舌尖位置', instruction: 'n / l 舌尖位置轮换各 5 次' },
     ],
     references: [
-      { title: '普通话口型图集（示例）', source: '教学团队', license: '仅本站教学使用', boundary: '大众科普口径' },
+      { title: '普通话口型图集（示例）', source: '教学团队', license: '仅本站教学使用' },
     ],
     relatedLevels: [
       { levelId: 'L01', available: true },

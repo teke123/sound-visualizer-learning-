@@ -67,7 +67,6 @@ function levelTitle(levelId: string): string {
       >
         清空并重新开始会话
       </button>
-      <p class="sr-foot-note">共用设备时可先清空，避免他人看到你的录音。</p>
     </footer>
 
     <DangerConfirmDialog
@@ -195,8 +194,4 @@ function levelTitle(levelId: string): string {
   &:disabled
     opacity: 0.45
     cursor: default
-
-.sr-foot-note
-  font-size: 12px
-  color: #b0bec5
 </style>

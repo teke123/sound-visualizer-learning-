@@ -76,6 +76,21 @@ function play(item: ArchiveRecordingSummary) {
       </div>
     </section>
 
+    <!-- 键集分页：超过一页（默认 20 条）时加载更多，避免列表被静默截断 -->
+    <div v-if="archive.hasMore.value" class="al-more-row">
+      <button
+        type="button"
+        class="al-more"
+        :disabled="archive.loadingMore.value"
+        @click="archive.loadMore()"
+      >
+        {{ archive.loadingMore.value ? '加载中…' : '加载更多记录' }}
+      </button>
+      <span v-if="archive.loadMoreError.value" class="al-error">
+        加载更多失败，请再试一次。
+      </span>
+    </div>
+
     <DangerConfirmDialog
       :open="deleting !== null"
       title="删除这条录音？"
@@ -202,4 +217,22 @@ function play(item: ArchiveRecordingSummary) {
 
 .al-compare-row
   margin-top: 10px
+
+.al-more-row
+  margin-top: 14px
+  display: flex
+  align-items: center
+  gap: 12px
+
+.al-more
+  min-height: 40px
+  padding: 2px 18px
+  border: 1px solid #b0bec5
+  border-radius: 999px
+  background: #fff
+  color: #37474f
+  cursor: pointer
+  &:disabled
+    color: #90a4ae
+    cursor: default
 </style>

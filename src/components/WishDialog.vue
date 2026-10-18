@@ -1,5 +1,5 @@
 <script setup lang="ts">
-/** WishDialog：希望增加的音/字（FR-1503 / FR-304），提交带 searchQuery；429 显示等待时间 */
+/** WishDialog：希望增加的音/字（FR-1501 / FR-304），提交带 searchQuery；429 显示等待时间 */
 import { ref, watch } from 'vue'
 import { QDialog } from 'quasar'
 import { errorCopy } from '@/copy/usePageCopy'

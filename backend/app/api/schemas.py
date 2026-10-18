@@ -176,7 +176,6 @@ class PracticeStep(BaseModel):
     durationSec: Optional[float] = None
     bodyCue: str
     mediaId: Optional[str] = None
-    stopNote: str
 
 
 class Misconception(BaseModel):
@@ -194,7 +193,6 @@ class ProSource(BaseModel):
     title: str
     source: str
     license: str
-    boundary: Optional[str] = None
 
 
 class Professional(BaseModel):
@@ -207,7 +205,6 @@ class DetectionTask(BaseModel):
     promptText: str
     sampleMediaId: Optional[str] = None
     allowedMetrics: List[str]
-    reliabilityNote: Optional[str] = None
     available: bool
 
 
@@ -273,7 +270,6 @@ class ArticleReference(BaseModel):
     title: str
     source: str
     license: str
-    boundary: Optional[str] = None
 
 
 class ArticlePracticeItem(BaseModel):
@@ -534,7 +530,6 @@ class AssessmentResult(BaseModel):
     fourSteps: Optional[List[FourStep]] = None
     curve: Optional[ResultCurve] = None
     formants: Optional[ResultFormants] = None
-    boundaryNote: str
 
 
 class RecordingWithResult(BaseModel):

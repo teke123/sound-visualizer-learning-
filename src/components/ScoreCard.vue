@@ -17,7 +17,6 @@ const band = computed(() => {
     <div class="score-number" :style="{ color: band.color }">{{ Math.round(score) }}</div>
     <div class="score-meta">
       <p class="score-band">{{ band.label }}</p>
-      <p class="score-note">分数只表示本关这一次录音的表现，供学习参考。</p>
     </div>
   </section>
 </template>
@@ -43,9 +42,4 @@ const band = computed(() => {
   margin: 0
   font-size: 16px
   font-weight: 600
-
-.score-note
-  margin: 4px 0 0
-  font-size: 13px
-  color: #90a4ae
 </style>

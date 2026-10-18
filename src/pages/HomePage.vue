@@ -1,15 +1,13 @@
 <script setup lang="ts">
 /**
- * P01 首页（FR-201–206）：四个主按钮、搜索框、已发布关入口、下一关推荐、
- * 边界句与站点说明；无已发布关时后三个按钮显示「暂无已发布内容」。
+ * P01 首页（FR-201–206）：四个主按钮、搜索框、已发布关入口、下一关推荐；
+ * 无已发布关时后三个按钮显示「暂无已发布内容」。
  */
 import { computed, onMounted } from 'vue'
 import { useLevelsStore } from '@/stores/levels'
 import { useProgressStore } from '@/stores/progress'
-import { BOUNDARY_NOTE, SITE_FOOTER_NOTE } from '@/copy/usePageCopy'
 import LevelCard from '@/components/LevelCard.vue'
 import SearchBox from '@/components/SearchBox.vue'
-import BoundaryNotice from '@/components/BoundaryNotice.vue'
 import PageState from '@/components/PageState.vue'
 import { useRouter } from 'vue-router'
 
@@ -82,12 +80,6 @@ function onSearch(q: string) {
         </RouterLink>
       </template>
     </section>
-
-    <BoundaryNotice class="home-boundary" />
-    <footer class="site-footer">
-      <p>{{ SITE_FOOTER_NOTE }}</p>
-      <p class="footer-boundary">{{ BOUNDARY_NOTE }}</p>
-    </footer>
   </div>
 </template>
 
@@ -164,17 +156,4 @@ function onSearch(q: string) {
   color: #00897b
   font-weight: 600
   text-decoration: none
-
-.home-boundary
-  margin-top: 4px
-
-.site-footer
-  text-align: center
-  color: #90a4ae
-  font-size: 13px
-  p
-    margin: 4px 0
-
-.footer-boundary
-  color: #b0bec5
 </style>

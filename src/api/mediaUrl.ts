@@ -39,3 +39,8 @@ export function audioFormantsUrl(audioId: string): string {
 export function audioFormantsPngUrl(audioId: string): string {
   return `/api/audio/${encodeURIComponent(audioId)}/formants.png`
 }
+
+/** 本人录音频谱图图片（时间×频率热力图，FR-1005） */
+export function audioSpectrogramPngUrl(audioId: string): string {
+  return `/api/audio/${encodeURIComponent(audioId)}/spectrogram.png`
+}

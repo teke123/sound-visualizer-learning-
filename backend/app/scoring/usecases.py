@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import datetime
+import logging
 
 import numpy as np
 from sqlalchemy.orm import Session
@@ -10,13 +11,15 @@ from app import config
 from app.acoustics import analysis
 from app.acoustics.models import AudioRow
 from app.acoustics.usecases import audio_path, mark_deleted as mark_audio_deleted
-from app.db import JSONText, now
+from app.db import JSONText, get_session, now
 from app.ids import new_id
 from app.platform.envelope import ApiError
 from app.pinyin_utils import expected_syllables, main_vowel
 from app.scoring.models import PitchRangeRow, PitchRangeSnapshotRow, ScoreCacheRow
 from app.scoring.provider import ProviderError
 from app.scoring.provider_mock import MockProvider
+
+logger = logging.getLogger("svs.scoring")
 
 ROLLING_WINDOW_N = 20   # 最近 N 条存档合格录音
 
@@ -160,53 +163,64 @@ def calibrate_path(path, syllables: list[str]) -> dict:
             "vowelSpace": vowel_space, "signal": signal.to_dict()}
 
 
-def compute_calibration(db: Session, *, audio: AudioRow, syllables: list[str],
+def compute_calibration(*, audio_id: str, syllables: list[str],
                         owner_type: str, owner_id: str, consent_valid: bool) -> dict:
-    """同步处理标定（占用执行器与 30 秒上限由调用方保证）。
+    """同步处理标定（占用执行器与 45 秒上限由调用方保证）。
 
+    在执行器线程内自建数据库会话：请求作用域会话会随 504/断连先行关闭，
+    线程不能依赖它的生命周期（与 run_pipeline 同款约束）。
     成功：按同意状态写个人/会话音域 + 快照，标定音频即删；
     失败：200 CALIBRATION_FAIL + 重录指引，不写音域。
     """
-    result = calibrate_path(audio_path(audio), syllables)
-    if not result.get("ok"):
-        return {"ok": False, "reason": result["reason"], "signal": result.get("signal")}
-    f_lo, f_hi, vowel_space = result["fLo"], result["fHi"], result["vowelSpace"]
+    db = get_session()
+    try:
+        audio = db.get(AudioRow, audio_id)
+        if (audio is None or audio.deleted_at is not None
+                or audio.expires_at < now()):
+            return {"ok": False, "reason": "标定音频已失效，请重新上传后再试",
+                    "signal": None}
+        result = calibrate_path(audio_path(audio), syllables)
+        if not result.get("ok"):
+            return {"ok": False, "reason": result["reason"], "signal": result.get("signal")}
+        f_lo, f_hi, vowel_space = result["fLo"], result["fHi"], result["vowelSpace"]
 
-    # 写入：同意有效 → 个人音域；否则会话临时音域（72h）
-    kind = "personal" if consent_valid else "session"
-    expires = None if consent_valid else audio.expires_at
-    row = (
-        db.query(PitchRangeRow)
-        .filter(PitchRangeRow.owner_type == owner_type, PitchRangeRow.owner_id == owner_id)
-        .one_or_none()
-    )
-    if row is None:
-        row = PitchRangeRow(owner_type=owner_type, owner_id=owner_id)
-        db.add(row)
-    row.kind = kind
-    row.f_lo, row.f_hi = f_lo, f_hi
-    row.vowel_space = JSONText.dump(vowel_space)
-    row.algorithm_version = analysis.ALGORITHM_VERSION
-    row.expires_at = expires
-    row.deleted_at = None
-    row.updated_at = now()
-    snap = create_snapshot(db, owner_type=owner_type, owner_id=owner_id, f_lo=f_lo, f_hi=f_hi,
-                           vowel_space=vowel_space,
-                           created_from={"kind": "calibration", "audioId": audio.id})
-    row.basis_calibration_id = snap.id
-    row.source_recording_ids = JSONText.dump([])
-    # 标定音频算完即删（FR-1006）
-    mark_audio_deleted(db, audio)
-    db.commit()
-    return {
-        "ok": True,
-        "status": "personal" if kind == "personal" else "session",
-        "pitchRange": {"fLo": round(f_lo, 1), "fHi": round(f_hi, 1)},
-        "vowelSpaceReady": True,
-        "rangeSnapshotId": snap.id,
-        "expiresAt": expires.isoformat() if expires else None,
-        "updatedAt": row.updated_at.isoformat(),
-    }
+        # 写入：同意有效 → 个人音域；否则会话临时音域（72h）
+        kind = "personal" if consent_valid else "session"
+        expires = None if consent_valid else audio.expires_at
+        row = (
+            db.query(PitchRangeRow)
+            .filter(PitchRangeRow.owner_type == owner_type, PitchRangeRow.owner_id == owner_id)
+            .one_or_none()
+        )
+        if row is None:
+            row = PitchRangeRow(owner_type=owner_type, owner_id=owner_id)
+            db.add(row)
+        row.kind = kind
+        row.f_lo, row.f_hi = f_lo, f_hi
+        row.vowel_space = JSONText.dump(vowel_space)
+        row.algorithm_version = analysis.ALGORITHM_VERSION
+        row.expires_at = expires
+        row.deleted_at = None
+        row.updated_at = now()
+        snap = create_snapshot(db, owner_type=owner_type, owner_id=owner_id, f_lo=f_lo, f_hi=f_hi,
+                               vowel_space=vowel_space,
+                               created_from={"kind": "calibration", "audioId": audio.id})
+        row.basis_calibration_id = snap.id
+        row.source_recording_ids = JSONText.dump([])
+        # 标定音频算完即删（FR-1006）
+        mark_audio_deleted(db, audio)
+        db.commit()
+        return {
+            "ok": True,
+            "status": "personal" if kind == "personal" else "session",
+            "pitchRange": {"fLo": round(f_lo, 1), "fHi": round(f_hi, 1)},
+            "vowelSpaceReady": True,
+            "rangeSnapshotId": snap.id,
+            "expiresAt": expires.isoformat() if expires else None,
+            "updatedAt": row.updated_at.isoformat(),
+        }
+    finally:
+        db.close()
 
 
 def _signal_advice(signal) -> str:  # noqa: ANN001
@@ -285,6 +299,10 @@ def recompute_personal_range(db: Session, *, user_id: str) -> None:
         try:
             f0res = analysis.extract_f0(audio_path(audio))
         except Exception:
+            # 跳过是对的（单条坏音频不阻断重算），但必须可观测，否则音域
+            # 来源会无痕缩水
+            logger.warning("音域滚动重算：录音 %s 的音频 %s 提取 F0 失败，已跳过",
+                           rec.id, rec.audio_id, exc_info=True)
             continue
         arr = np.array([fr.get("hz", np.nan) for fr in f0res.frames], dtype=float)
         arr = arr[np.isfinite(arr)]

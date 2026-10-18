@@ -1,18 +1,16 @@
 <script setup lang="ts">
 /**
  * P11 账号页（FR-106 / FR-102–108）：
- * 未登录 → 注册 / 登录入口与说明；已登录 → 退出、同意状态 + 历史、撤回、
+ * 未登录 → 注册 / 登录入口与说明；已登录 → 退出、同意状态、撤回、
  * 注销（密码确认）、清空档案入口、重新标定、本会话临时记录。
  */
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { identityApi, type ConsentStateResponse } from '@/api'
 import { useContextStore } from '@/stores/context'
 import { useAuth } from '@/features/auth'
 import { useConsent } from '@/features/consent'
 import { useCalibration } from '@/features/calibration'
 import { errorCopy } from '@/copy/usePageCopy'
-import ConsentTimeline from '@/components/ConsentTimeline.vue'
 import SessionRecordsPanel from '@/components/SessionRecordsPanel.vue'
 import CalibrationPanel from '@/components/CalibrationPanel.vue'
 import DangerConfirmDialog from '@/components/DangerConfirmDialog.vue'
@@ -22,9 +20,6 @@ const contextStore = useContextStore()
 const auth = useAuth()
 const consent = useConsent()
 
-const consentState = ref<ConsentStateResponse | null>(null)
-const consentLoading = ref(false)
-
 const withdrawOpen = ref(false)
 const deleteOpen = ref(false)
 const clearArchiveOpen = ref(false)
@@ -33,28 +28,6 @@ const recalibrateOpen = ref(false)
 const calibration = useCalibration()
 
 const authenticated = computed(() => contextStore.isAuthenticated)
-
-async function loadConsent() {
-  if (!authenticated.value) return
-  consentLoading.value = true
-  try {
-    const res = await identityApi.consentState()
-    consentState.value = res.data
-  } catch {
-    consentState.value = null
-  } finally {
-    consentLoading.value = false
-  }
-}
-
-// 认证可能晚于页面挂载（直接刷新时 context 未就绪）；同意状态变化后也要重取时间线
-watch(
-  [authenticated, () => contextStore.consentStatus],
-  () => {
-    if (authenticated.value) void loadConsent()
-  },
-  { immediate: true },
-)
 
 const CONSENT_STATUS_LABELS: Record<string, string> = {
   none: '未处理',
@@ -72,7 +45,6 @@ async function logout() {
 async function confirmWithdraw() {
   await auth.revokeConsent()
   withdrawOpen.value = false
-  consentState.value = null
   await router.push('/')
 }
 
@@ -141,13 +113,6 @@ function openClearArchive() {
           <button type="button" class="acc-btn" @click="logout">退出登录</button>
           <button type="button" class="acc-btn danger" @click="deleteOpen = true">注销账号</button>
         </div>
-      </section>
-
-      <section class="consent-history">
-        <h2>同意记录</h2>
-        <p v-if="consentLoading">读取中…</p>
-        <ConsentTimeline v-else-if="consentState" :decisions="consentState.timeline" />
-        <p v-else class="history-empty">暂时读不到同意记录。</p>
       </section>
 
       <SessionRecordsPanel class="acc-session" />
@@ -269,19 +234,6 @@ function openClearArchive() {
   &.danger
     border-color: #ef9a9a
     color: #c62828
-
-.consent-history
-  background: #fff
-  border: 1px solid #eceff1
-  border-radius: 14px
-  padding: 16px 20px
-  h2
-    margin: 0 0 6px
-    font-size: 16px
-
-.history-empty
-  color: #90a4ae
-  font-size: 13px
 
 .acc-session
   margin-top: 4px

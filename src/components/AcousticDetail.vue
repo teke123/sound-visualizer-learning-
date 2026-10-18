@@ -33,7 +33,8 @@ function voicedSummary(): string {
   if (!f0.value) return ''
   const ranges = f0.value.voicedRanges
   if (!ranges || ranges.length === 0) return '未检出浊音段'
-  const total = ranges.reduce((sum, [start, end]) => sum + (end - start), 0)
+  // 契约为 [start, end] 对（OpenAPI 只能表达 number[][]），缺项的条目跳过
+  const total = ranges.reduce((sum, r) => (r.length >= 2 ? sum + (r[1]! - r[0]!) : sum), 0)
   return `${ranges.length} 个浊音段，共约 ${total.toFixed(2)} 秒`
 }
 
@@ -70,7 +71,6 @@ const isApiError = (e: unknown) => e instanceof ApiError
       <p v-if="error && !f0" class="ac-error">
         原始数据读取失败{{ isApiError(error) && error.requestId ? `（requestId：${error.requestId}）` : '' }}。
       </p>
-      <p class="ac-note">说明：以上为原始声学数据，仅供了解；页面主对比曲线已按你的音域换算。</p>
     </div>
   </section>
 </template>
@@ -111,8 +111,4 @@ const isApiError = (e: unknown) => e instanceof ApiError
   max-width: 100%
   border-radius: 8px
   background: #fff
-
-.ac-note
-  margin-top: 8px !important
-  color: #b0bec5 !important
 </style>

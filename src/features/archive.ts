@@ -14,6 +14,8 @@ const items = ref<ArchiveRecordingSummary[]>([])
 const loading = ref(false)
 const error = ref<unknown>(null)
 const nextCursor = ref<string | undefined>(undefined)
+const loadingMore = ref(false)
+const loadMoreError = ref<unknown>(null)
 const compareData = ref<ArchiveCompareResponse | null>(null)
 const compareLoading = ref(false)
 const compareError = ref<unknown>(null)
@@ -46,10 +48,18 @@ export function useArchive() {
   }
 
   async function loadMore(): Promise<void> {
-    if (!nextCursor.value) return
-    const res = await archiveApi.listMine(undefined, nextCursor.value)
-    items.value = [...items.value, ...(res.data.recordings ?? [])]
-    nextCursor.value = res.data.nextCursor ?? undefined
+    if (!nextCursor.value || loadingMore.value) return
+    loadingMore.value = true
+    loadMoreError.value = null
+    try {
+      const res = await archiveApi.listMine(undefined, nextCursor.value)
+      items.value = [...items.value, ...(res.data.recordings ?? [])]
+      nextCursor.value = res.data.nextCursor ?? undefined
+    } catch (err) {
+      loadMoreError.value = err
+    } finally {
+      loadingMore.value = false
+    }
   }
 
   async function removeOne(recordingId: string): Promise<boolean> {
@@ -105,12 +115,18 @@ export function useArchive() {
     return levelsStore.byId.get(levelId)?.title ?? levelId
   }
 
+  /** 是否还有下一页（服务端按 (createdAt, id) 键集分页） */
+  const hasMore = computed(() => nextCursor.value != null)
+
   return {
     view,
     items,
     loading,
     error,
     byLevel,
+    hasMore,
+    loadingMore,
+    loadMoreError,
     compareData,
     compareLoading,
     compareError,

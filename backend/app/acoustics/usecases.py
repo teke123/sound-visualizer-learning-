@@ -15,6 +15,9 @@ from app.ids import new_id
 from app.platform.envelope import ApiError
 
 TEMP_TTL = datetime.timedelta(hours=config.TEMP_DATA_TTL_HOURS)
+# 存档音频不再到期：置远期哨兵而非 NULL（expires_at 列有非空约束，
+# 且无迁移机制可改列约束）；到期 sweep 与读取守卫均视为未过期
+ARCHIVED_EXPIRES_AT = datetime.datetime.max
 
 
 def register_upload(db: Session, *, owner_type: str, owner_id: str, purpose: str,

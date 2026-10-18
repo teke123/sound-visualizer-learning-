@@ -241,6 +241,10 @@ export const handlers = [
     new HttpResponse(TINY_PNG, { headers: { 'Content-Type': 'image/png', 'Cache-Control': 'private, no-store' } }),
   ),
 
+  http.get('/api/audio/:id/spectrogram.png', () =>
+    new HttpResponse(TINY_PNG, { headers: { 'Content-Type': 'image/png', 'Cache-Control': 'private, no-store' } }),
+  ),
+
   http.get('/api/pitch-calibration', () =>
     envelope({
       text: CALIBRATION_TEXT.text,

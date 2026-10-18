@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * PracticeStepper：跟着练（FR-605）：3–5 步，每步可播放、暂停、重做、标记完成，
- * 显示次数或时长与停止提示；步骤卡片锚点 #step-{stepId}。
+ * 显示次数或时长；步骤卡片锚点 #step-{stepId}。
  */
 import type { PracticeStep } from '@/api'
 import { usePlayerStore } from '@/stores/player'
@@ -50,7 +50,6 @@ function workload(step: PracticeStep): string {
         </div>
         <p class="step-instruction">{{ step.instruction }}</p>
         <p class="step-meta">建议 {{ workload(step) }} · 身体感受：{{ step.bodyCue }}</p>
-        <p class="step-stop">⚠ {{ step.stopNote }}</p>
         <div class="step-actions">
           <button v-if="step.mediaId" type="button" class="step-btn" @click="playStep(step)">
             {{ player.isCurrent(`practice:${step.id}`) ? '暂停' : '播放' }}
@@ -127,11 +126,6 @@ function workload(step: PracticeStep): string {
   margin: 0
   font-size: 13px
   color: #00838f
-
-.step-stop
-  margin: 6px 0
-  font-size: 13px
-  color: #ef6c00
 
 .step-actions
   display: flex

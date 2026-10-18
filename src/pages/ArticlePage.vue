@@ -1,12 +1,11 @@
 <script setup lang="ts">
-/** P04 文章页（FR-501–506）：ArticleView + 反馈 + 进入已发布关卡；404 落统一不可见状态 */
+/** P04 文章页（FR-501–506）：ArticleView + 进入已发布关卡；404 落统一不可见状态 */
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ApiError, contentApi, mediaUrl, type ArticleDetail } from '@/api'
 import { usePlayerStore } from '@/stores/player'
 import { useLevelsStore } from '@/stores/levels'
 import ArticleView from '@/renderers/ArticleView.vue'
-import FeedbackWidget from '@/components/FeedbackWidget.vue'
 import PageState from '@/components/PageState.vue'
 
 const route = useRoute()
@@ -66,7 +65,6 @@ function openLevel(levelId: string) {
         @play-media="playMedia"
         @open-level="openLevel"
       />
-      <FeedbackWidget mode="understanding" :source-page="`/principles/${slug}`" :article-slug="slug" />
     </template>
   </div>
 </template>
