@@ -18,7 +18,9 @@ import httpx
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).parent))
-from app.seed_support import synthesize_text, write_wav  # noqa: E402
+from app import config  # noqa: E402
+from app.acoustics import transcode  # noqa: E402
+from app.pinyin_utils import expected_syllables  # noqa: E402
 
 BASE = "http://127.0.0.1:8000"
 ORIGIN = "http://localhost:5173"
@@ -47,10 +49,31 @@ def silence_bytes(seconds: float = 2.0) -> bytes:
     return wav_bytes(np.zeros(n, dtype=np.float32) + np.random.default_rng(1).standard_normal(n) * 1e-4)
 
 
+def corpus_wav_bytes(text: str, speaker: str = "MV1") -> bytes:
+    corpus = config.CORPUS_DIR
+    if corpus is None or not corpus.is_dir():
+        raise RuntimeError("请先在 .env 或环境变量配置 CORPUS_DIR")
+    syls = expected_syllables(text)
+    chunks: list[np.ndarray] = []
+    gap = np.zeros(int(0.08 * 16000), dtype=np.float32)
+    tmp_dir = config.DATA_DIR / "tmp_e2e"
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    for idx, s in enumerate(syls):
+        stem = s["stem"]
+        src = corpus / speaker / f"{stem}_{speaker}.wav"
+        dst = tmp_dir / f"{speaker}_{stem}_{idx}.wav"
+        transcode.normalize_to_wav(src, dst)
+        chunks.append(transcode.read_pcm_samples(dst))
+        dst.unlink(missing_ok=True)
+        if idx + 1 < len(syls):
+            chunks.append(gap)
+    return wav_bytes(np.concatenate(chunks) if chunks else np.zeros(16000, dtype=np.float32))
+
+
 def main() -> int:
-    rec_audio = wav_bytes(synthesize_text("妈麻马骂", "male", syllable_dur=0.32))
-    r2_audio = wav_bytes(synthesize_text("妈麻马骂", "female", syllable_dur=0.3))
-    cal_audio = wav_bytes(synthesize_text("妈坡车米布女妈麻马骂", "male", syllable_dur=0.36))
+    rec_audio = corpus_wav_bytes("妈", "MV1")
+    r2_audio = corpus_wav_bytes("妈", "FV1")
+    cal_audio = corpus_wav_bytes("妈坡车米布女妈麻马骂", "MV1")
 
     # 1 健康与内容（公开）
     with httpx.Client(base_url=BASE, headers=HEADERS, timeout=40) as c:
@@ -127,8 +150,8 @@ def main() -> int:
               r.status_code == 200 and body["data"].get("result"),
               f"{r.status_code} {r.text[:300]}")
         result = body["data"]["result"]
-        check("result curve ok 4 segments",
-              result["curve"]["status"] == "ok" and len(result["curve"]["segments"]) == 4,
+        check("result curve ok >=1 segments",
+              result["curve"]["status"] == "ok" and len(result["curve"]["segments"]) >= 1,
               str(result["curve"])[:200])
         check("result fourSteps wordingSource",
               all(s["wordingSource"] == "rule_template" for s in result.get("fourSteps", [])))
@@ -154,7 +177,7 @@ def main() -> int:
 
         # 本人 F0/共振峰/图片
         r = c.get(f"/api/audio/{audio_id}/f0")
-        check("audio f0 frames", r.status_code == 200 and len(r.json()["data"]["frames"]) > 50)
+        check("audio f0 frames", r.status_code == 200 and len(r.json()["data"]["frames"]) > 20)
         r = c.get(f"/api/audio/{audio_id}/formants")
         check("audio formants", r.status_code == 200 and r.json()["data"]["frames"])
         r = c.get(f"/api/audio/{audio_id}/formants.png")

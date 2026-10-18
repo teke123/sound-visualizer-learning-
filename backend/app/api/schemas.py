@@ -37,6 +37,7 @@ class MeContext(BaseModel):
     authenticated: bool
     accountId: Optional[str] = None
     username: Optional[str] = None
+    dialectBackground: Optional[str] = None
     calibration: CalibrationInfo
     nextLevelId: Optional[str] = None
 
@@ -618,6 +619,14 @@ class MeProgress(BaseModel):
 class RegisterResponse(BaseModel):
     accountId: str
     username: str
+    dialectBackground: Optional[str] = None
+
+
+class ProfileResponse(BaseModel):
+    """PATCH /api/me/profile 响应：方言区/母语背景设置结果"""
+    accountId: str
+    username: str
+    dialectBackground: Optional[str] = None
 
 
 class LoginContextPartial(BaseModel):

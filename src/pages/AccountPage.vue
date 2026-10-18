@@ -1,17 +1,18 @@
 <script setup lang="ts">
 /**
  * P11 账号页（FR-106 / FR-102–108）：
- * 未登录 → 注册 / 登录入口与说明；已登录 → 退出、重新标定、
- * 清空档案入口、注销（密码确认 + 二次确认）。
+ * 未登录 → 注册 / 登录入口与说明；已登录 → 方言区/母语背景设置（FR-107）、
+ * 退出、重新标定、清空档案入口、注销（密码确认 + 二次确认）。
  */
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useContextStore } from '@/stores/context'
-import { useAuth } from '@/features/auth'
+import { dialectLabel, useAuth } from '@/features/auth'
 import { useCalibration } from '@/features/calibration'
 import { errorCopy } from '@/copy/usePageCopy'
 import CalibrationPanel from '@/components/CalibrationPanel.vue'
 import DangerConfirmDialog from '@/components/DangerConfirmDialog.vue'
+import DialectSelector from '@/components/DialectSelector.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -21,6 +22,24 @@ const auth = useAuth()
 const deleteOpen = ref(false)
 const clearArchiveOpen = ref(false)
 const recalibrateOpen = ref(false)
+
+// 方言区/母语背景（FR-107）：随 context 下发，本地编辑后保存
+const dialectDraft = ref('')
+const dialectSaved = ref(false)
+watch(
+  () => contextStore.context.dialectBackground,
+  (code) => {
+    dialectDraft.value = code ?? ''
+    dialectSaved.value = false
+  },
+  { immediate: true },
+)
+const dialectDirty = computed(() => (dialectDraft.value || null) !== (contextStore.context.dialectBackground ?? null))
+
+async function saveDialect() {
+  const ok = await auth.updateDialectBackground(dialectDraft.value || null)
+  if (ok) dialectSaved.value = true
+}
 
 // FR-1006：结果页「去标定」直达 #calibration 锚点时自动打开标定面板
 watch(
@@ -79,6 +98,23 @@ function openClearArchive() {
       <p class="cal-status">
         音域：{{ contextStore.context.calibration.status === 'personal' ? '已标定（个人音域）' : '未标定（可在录音前标定，也可跳过）' }}
       </p>
+      <p class="dialect-status">
+        方言区 / 母语背景：{{ contextStore.context.dialectBackground ? dialectLabel(contextStore.context.dialectBackground) : '未填写' }}
+        <span class="dialect-note">（反馈提示会结合你的背景给出更贴切的建议）</span>
+      </p>
+      <div class="dialect-edit">
+        <DialectSelector v-model="dialectDraft" />
+        <button
+          type="button"
+          class="acc-btn"
+          :disabled="!dialectDirty || auth.busy.value"
+          @click="saveDialect"
+        >
+          {{ auth.busy.value ? '保存中…' : '保存背景' }}
+        </button>
+      </div>
+      <p v-if="dialectSaved" class="dialect-saved">✅ 已更新。</p>
+      <p v-if="auth.error.value" class="dialect-error">{{ errorCopy(auth.error.value).title }}</p>
 
       <div class="profile-actions">
         <button type="button" class="acc-btn" @click="recalibrateOpen = true">重新标定音域</button>
@@ -162,6 +198,32 @@ function openClearArchive() {
   margin: 4px 0
   font-size: 14px
   color: #546e7a
+
+.dialect-status
+  margin: 4px 0
+  font-size: 14px
+  color: #546e7a
+
+.dialect-note
+  color: #90a4ae
+  font-size: 12px
+
+.dialect-edit
+  display: flex
+  gap: 10px
+  align-items: flex-end
+  margin-top: 8px
+  flex-wrap: wrap
+
+.dialect-saved
+  margin: 6px 0 0
+  font-size: 13px
+  color: #1b5e20
+
+.dialect-error
+  margin: 6px 0 0
+  font-size: 13px
+  color: #c62828
 
 .profile-actions
   display: flex

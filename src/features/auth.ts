@@ -13,6 +13,27 @@ import { useRecorderStore } from '@/stores/recorder'
 export const USERNAME_PATTERN = /^[\w\u4e00-\u9fa5]{3,32}$/
 export const PASSWORD_MIN_LENGTH = 8
 
+/** 方言区/母语背景选项（FR-107）：代码与后端 DIALECT_CODES 对齐，用于
+ * 针对性提示（FR-1007）与后续分组统计；纯选填 */
+export const DIALECT_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
+  { value: 'mandarin_north', label: '北方官话' },
+  { value: 'mandarin_southwest', label: '西南官话（川渝）' },
+  { value: 'wu', label: '吴语' },
+  { value: 'yue', label: '粤语' },
+  { value: 'min', label: '闽语' },
+  { value: 'xiang', label: '湘语' },
+  { value: 'gan', label: '赣语' },
+  { value: 'hakka', label: '客家话' },
+  { value: 'english', label: '英语（母语）' },
+  { value: 'japanese', label: '日语（母语）' },
+  { value: 'korean', label: '韩语（母语）' },
+  { value: 'other', label: '其他' },
+]
+
+export function dialectLabel(code?: string | null): string {
+  return DIALECT_OPTIONS.find((option) => option.value === code)?.label ?? code ?? ''
+}
+
 export function validateUsername(username: string): string | null {
   if (!USERNAME_PATTERN.test(username)) {
     return '用户名需 3–32 个字符，可用字母、数字、下划线或中文'
@@ -34,12 +55,32 @@ export function useAuth() {
   const busy = ref(false)
   const error = ref<unknown>(null)
 
-  async function register(payload: { username: string; password: string }): Promise<boolean> {
+  async function register(payload: {
+    username: string
+    password: string
+    dialectBackground?: string | null
+  }): Promise<boolean> {
     busy.value = true
     error.value = null
     try {
       // 注册不自动登录（后端契约）
       await identityApi.register(payload)
+      return true
+    } catch (err) {
+      error.value = err
+      return false
+    } finally {
+      busy.value = false
+    }
+  }
+
+  /** 设置/修改方言区背景（FR-107）：成功后刷新 context 使其随身份下发 */
+  async function updateDialectBackground(value: string | null): Promise<boolean> {
+    busy.value = true
+    error.value = null
+    try {
+      await identityApi.updateProfile({ dialectBackground: value })
+      await contextStore.refresh()
       return true
     } catch (err) {
       error.value = err
@@ -109,5 +150,5 @@ export function useAuth() {
     void contextStore.refresh()
   }
 
-  return { busy, error, register, login, logout, deleteAccount, finishAccountDeletion }
+  return { busy, error, register, updateDialectBackground, login, logout, deleteAccount, finishAccountDeletion }
 }

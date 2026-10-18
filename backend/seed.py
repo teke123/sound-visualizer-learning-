@@ -1,11 +1,9 @@
-"""种子脚本：30 关内容 + 文章 + 标定文本 + 合成示范媒体 + 参考发音人。
+"""种子脚本：30 关内容 + 文章 + 标定文本 + 真人语料库示范媒体（FV1~3、MV1~3）+ 参考发音人。
 
-用法（backend/ 目录下）：
+用法（backend/ 目录下，须先在 .env 或环境变量配置 CORPUS_DIR）：
     python seed.py            # 幂等补种（已存在的不重做）
     python seed.py --reset    # 清库重建（删除 data/app.db 与媒体目录）
     python seed.py --open N   # 只开放前 N 关（默认全部 30 关）
-
-合成音频说明见 app/seed_support.py 模块注释。
 """
 from __future__ import annotations
 
@@ -14,17 +12,65 @@ import shutil
 import sys
 from pathlib import Path
 
+import numpy as np
+
 from app import config
+from app.acoustics import analysis, transcode
+from app.content import usecases as content_uc
 from app.content.models import (
     ArticleRow, CalibrationTextRow, CategoryRow, LevelRow, MediaAssetRow,
     ReferenceSpeakerRow, SagittalPresetRow,
 )
-from app.content import usecases as content_uc
 from app.db import JSONText, create_all, get_session, now
 from app.ids import new_id
-from app.seed_support import synthesize_text, write_wav
+from app.pinyin_utils import expected_syllables
 
 SEED_ACTOR = "seed"
+
+# 六位真人发音人：(语料库子目录/编号, 展示名称, 性别, 示范 voice 标签)
+CORPUS_SPEAKERS: list[tuple[str, str, str, str]] = [
+    ("FV1", "女声 1（FV1）", "female", "FV1"),
+    ("FV2", "女声 2（FV2）", "female", "FV2"),
+    ("FV3", "女声 3（FV3）", "female", "FV3"),
+    ("MV1", "男声 1（MV1）", "male", "MV1"),
+    ("MV2", "男声 2（MV2）", "male", "MV2"),
+    ("MV3", "男声 3（MV3）", "male", "MV3"),
+]
+
+# 每位发音人用于计算真实五度音域 [f_lo, f_hi] 的代表音节池（覆盖四声与主要元音）
+_PITCH_POOL_STEMS = (
+    "a1", "a2", "a3", "a4",
+    "yi1", "yi2", "yi3", "yi4",
+    "wu1", "wu2", "wu3", "wu4",
+    "ma1", "ma2", "ma3", "ma4",
+    "po1", "che1", "mi3", "bu4", "nv3",
+)
+
+# 六个单韵母 → 语料库纯单韵母词干（用于提取不受声母干扰的标准元音空间靶区）
+_VOWEL_ANCHOR_STEMS: dict[str, tuple[str, ...]] = {
+    "a": ("a1", "a2", "a4"),
+    "o": ("o1", "o2", "o4"),
+    "e": ("e1", "e2", "e4"),
+    "i": ("yi1", "yi2", "yi4"),
+    "u": ("wu1", "wu2", "wu4"),
+    "ü": ("yu1", "yu2", "yu4"),
+}
+
+
+def _require_corpus_dir() -> Path:
+    corpus = config.CORPUS_DIR
+    if corpus is None or not corpus.is_dir():
+        raise SystemExit(
+            "[seed][ERROR] 未找到真人语音语料库目录。\n"
+            "请在仓库根目录 `.env` 或环境变量中设置 CORPUS_DIR（指向包含 FV1~3、MV1~3 的目录），\n"
+            "参见 README.md 与 `.env.example`。"
+        )
+    missing = [code for code, *_ in CORPUS_SPEAKERS if not (corpus / code).is_dir()]
+    if missing:
+        raise SystemExit(
+            f"[seed][ERROR] 语料库目录 {corpus} 下缺少发音人子目录：{', '.join(missing)}"
+        )
+    return corpus
 
 
 def _reset() -> None:
@@ -42,29 +88,52 @@ def _reset() -> None:
     print("[seed] 已重置数据库与文件存储")
 
 
-def _register_media(db, *, kind: str, purpose: str, path: Path, filename: str,
-                    text: str | None, license_note: str, duration: float | None) -> str:
+def _corpus_wav(corpus: Path, speaker_code: str, stem: str) -> Path:
+    path = corpus / speaker_code / f"{stem}_{speaker_code}.wav"
+    if not path.is_file():
+        raise FileNotFoundError(f"语料库文件不存在：{path}")
+    return path
+
+
+def _stem_for_text(text: str) -> str:
+    syls = expected_syllables(text)
+    if not syls:
+        raise ValueError(f"无法从文本解析标准音节：{text!r}")
+    return syls[0]["stem"]
+
+
+# 规范化缓存：(speaker_code, stem) → (dest_wav_path, duration_sec, sha256)
+_norm_cache: dict[tuple[str, str], tuple[Path, float, str]] = {}
+
+
+def _ensure_normalized_media_file(corpus: Path, speaker_code: str, stem: str) -> tuple[Path, float, str]:
+    key = (speaker_code, stem)
+    cached = _norm_cache.get(key)
+    if cached is not None and cached[0].exists():
+        return cached
+    src = _corpus_wav(corpus, speaker_code, stem)
+    dest = config.MEDIA_DIR / f"corpus_{speaker_code}_{stem}.wav"
+    norm = transcode.normalize_to_wav(src, dest)
+    digest = hashlib.sha256(dest.read_bytes()).hexdigest()
+    res = (dest, norm.duration_sec, digest)
+    _norm_cache[key] = res
+    return res
+
+
+def _import_corpus_media(db, corpus: Path, *, text: str, speaker_code: str,
+                         purpose: str, license_note: str) -> str:
+    stem = _stem_for_text(text)
+    wav_path, duration, digest = _ensure_normalized_media_file(corpus, speaker_code, stem)
     media_id = new_id("md_")
     db.add(MediaAssetRow(
-        id=media_id, kind=kind, filename=filename,
-        storage_path=str(path.relative_to(config.DATA_DIR)),
-        mime="audio/wav", size_bytes=path.stat().st_size, purpose=purpose,
-        license_note=license_note, author=SEED_ACTOR,
-        sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
-        duration_sec=duration, text=text, uploaded_by=SEED_ACTOR, created_at=now(),
+        id=media_id, kind="audio", filename=f"{stem}_{speaker_code}.wav",
+        storage_path=str(wav_path.relative_to(config.DATA_DIR)),
+        mime="audio/wav", size_bytes=wav_path.stat().st_size, purpose=purpose,
+        license_note=license_note, author=speaker_code,
+        sha256=digest, duration_sec=duration, text=text,
+        uploaded_by=SEED_ACTOR, created_at=now(),
     ))
     return media_id
-
-
-def _synthesize_media(db, *, text: str, voice: str, purpose: str, ref_name: str,
-                      license_note: str) -> str:
-    wav = config.MEDIA_DIR / f"seed_{ref_name}_{voice}.wav"
-    write_wav(wav, synthesize_text(text, voice))
-    from app.acoustics.transcode import probe_duration
-
-    return _register_media(
-        db, kind="audio", purpose=purpose, path=wav, filename=f"{ref_name}_{voice}.wav",
-        text=text, license_note=license_note, duration=probe_duration(wav))
 
 
 def seed_calibration_text(db) -> None:
@@ -85,86 +154,140 @@ def seed_calibration_text(db) -> None:
     print(f"[seed] 标定文本：{CALIBRATION_TEXT['text']}")
 
 
-def seed_reference_speakers(db) -> dict[str, str]:
-    """合成男女声朗读标定文本 → 同一标定计算 → 登记参考发音人。"""
-    from app.content_seed_data import CALIBRATION_TEXT
-    from app.scoring.usecases import calibrate_path
+def _compute_speaker_baseline(corpus: Path, speaker_code: str) -> tuple[float, float, dict]:
+    """用发音人真实语料计算稳健五度音域 (f_lo, f_hi) 与六单韵母元音空间 vowel_space。"""
+    hz_all: list[float] = []
+    for stem in _PITCH_POOL_STEMS:
+        wav_path, _, _ = _ensure_normalized_media_file(corpus, speaker_code, stem)
+        f0res = analysis.extract_f0(wav_path)
+        hz_all.extend(fr["hz"] for fr in f0res.frames if "hz" in fr)
+    rng = analysis.robust_pitch_range(np.array(hz_all, dtype=float))
+    if rng is None:
+        raise RuntimeError(f"发音人 {speaker_code} 音域统计失败")
+    f_lo, f_hi = rng
+
+    vowel_space: dict = {}
+    f1_all: list[float] = []
+    f2_all: list[float] = []
+    for vowel, stems in _VOWEL_ANCHOR_STEMS.items():
+        v_f1s: list[float] = []
+        v_f2s: list[float] = []
+        for stem in stems:
+            wav_path, _, _ = _ensure_normalized_media_file(corpus, speaker_code, stem)
+            fm = analysis.extract_formants(wav_path)
+            stats = analysis.formant_stats_in_segments(fm, fm.vowel_segments)
+            if stats:
+                v_f1s.append(stats["f1Mean"])
+                v_f2s.append(stats["f2Mean"])
+        if v_f1s:
+            f1_m = round(float(np.mean(v_f1s)), 1)
+            f2_m = round(float(np.mean(v_f2s)), 1)
+            vowel_space[vowel] = {"f1Mean": f1_m, "f2Mean": f2_m}
+            f1_all.append(f1_m)
+            f2_all.append(f2_m)
+
+    vowel_space["overall"] = {
+        "f1Mean": round(float(np.mean(f1_all)), 1),
+        "f2Mean": round(float(np.mean(f2_all)), 1),
+        "f1Std": round(float(np.std(f1_all)), 1) or 1.0,
+        "f2Std": round(float(np.std(f2_all)), 1) or 1.0,
+    }
+    return f_lo, f_hi, vowel_space
+
+
+def seed_reference_speakers(db, corpus: Path) -> dict[str, str]:
+    """登记 FV1~3、MV1~3 六位真实参考发音人，返回 speaker_code/gender → id 映射。"""
+    existing_rows = db.query(ReferenceSpeakerRow).all()
+    if len(existing_rows) >= len(CORPUS_SPEAKERS):
+        mapping: dict[str, str] = {}
+        for r in existing_rows:
+            for code, *_ in CORPUS_SPEAKERS:
+                if code in r.name:
+                    mapping[code] = r.id
+            mapping.setdefault(r.gender, r.id)
+        print(f"[seed] 参考发音人已存在：{list(mapping.keys())}")
+        return mapping
+
+    # 清理残缺旧行重建
+    for r in existing_rows:
+        db.delete(r)
+    db.flush()
 
     speakers: dict[str, str] = {}
-    existing = {r.gender: r.id for r in db.query(ReferenceSpeakerRow).all()}
-    if existing:
-        print(f"[seed] 参考发音人已存在：{existing}")
-        return existing
-    text_row = content_uc.get_active_calibration_text(db)
-    syllables = JSONText.load(text_row.syllables)
-    for gender, name in (("male", "标准男声（合成）"), ("female", "标准女声（合成）")):
-        wav = config.MEDIA_DIR / f"seed_calibration_{gender}.wav"
-        write_wav(wav, synthesize_text("".join(syllables), gender, syllable_dur=0.36))
-        result = calibrate_path(wav, syllables)
-        if not result.get("ok"):
-            print(f"[seed][WARN] {gender} 参考发音人标定失败：{result['reason']}")
-            continue
+    for code, display_name, gender, _ in CORPUS_SPEAKERS:
+        f_lo, f_hi, vowel_space = _compute_speaker_baseline(corpus, code)
         row = ReferenceSpeakerRow(
-            id=new_id("spk_"), name=name, gender=gender,
-            f_lo=result["fLo"], f_hi=result["fHi"],
-            vowel_space=JSONText.dump(result["vowelSpace"]),
+            id=new_id("spk_"), name=display_name, gender=gender,
+            f_lo=f_lo, f_hi=f_hi,
+            vowel_space=JSONText.dump(vowel_space),
             algorithm_version=config.ALGORITHM_VERSION,
-            registered_at=now(), note="种子合成音频登记",
+            registered_at=now(), note=f"真人标准音节语料库（{code}）标定登记",
         )
         db.add(row)
-        speakers[gender] = row.id
-        print(f"[seed] 参考发音人 {gender}: {result['fLo']}–{result['fHi']} Hz")
+        speakers[code] = row.id
+        # male 默认指向 MV1，female 默认指向 FV1
+        speakers.setdefault(gender, row.id)
+        print(f"[seed] 参考发音人 {code} ({gender}): {f_lo}–{f_hi} Hz")
     db.commit()
     return speakers
 
 
-def seed_levels(db, speakers: dict[str, str], open_count: int) -> None:
+def seed_levels(db, corpus: Path, speakers: dict[str, str], open_count: int) -> None:
     from app.content_seed_data import LEVELS
 
-    male_speaker = speakers.get("male")
     for item in LEVELS[:open_count]:
         level_id = item["id"]
         if db.get(LevelRow, level_id) is not None:
             print(f"[seed] {level_id} 已存在，跳过")
             continue
         content = dict(item)
-        license_note = item.get("license", "内部演示授权（合成音频）")
+        license_note = item.get("license", "真人标准音节语料库授权")
 
-        # 示范音频（男/女正常语速）
         demo_text = item.get("detection", {}).get("evaluationText") or \
             item.get("representativeChar", item["targetSound"])
+
+        # 示范音频：将 FV1~3、MV1~3 全部放入关卡 demos 供学习者切换试听
         demos = []
-        for d in content.get("demos", []):
-            voice = d.get("voice", "male")
-            media_id = _synthesize_media(
-                db, text=d.get("text", demo_text), voice=voice,
-                purpose="demo", ref_name=f"{level_id}_{d.get('speed', 'normal')}",
-                license_note=license_note)
-            demos.append({**d, "mediaId": media_id})
+        for code, _, _, voice_tag in CORPUS_SPEAKERS:
+            media_id = _import_corpus_media(
+                db, corpus, text=demo_text, speaker_code=code,
+                purpose="demo", license_note=license_note,
+            )
+            demos.append({
+                "ref": f"{level_id}_demo_normal_{code}",
+                "speed": "normal",
+                "voice": voice_tag,
+                "text": demo_text,
+                "mediaId": media_id,
+            })
         content["demos"] = demos
 
-        # 听辨题刺激音频
+        # 听辨题刺激音频（交替使用 FV2 / MV2 真人发音，避免与默认参考音完全重合同一个文件）
         quizzes = []
-        for q in content.get("quizzes", []):
-            media_id = _synthesize_media(
-                db, text=q.get("stimulusText", demo_text), voice="female",
-                purpose="quiz", ref_name=f"{level_id}_{q['id']}",
-                license_note=license_note)
+        for idx, q in enumerate(content.get("quizzes", [])):
+            q_spk = "FV2" if idx % 2 == 0 else "MV2"
+            stim_text = q.get("stimulusText", demo_text)
+            media_id = _import_corpus_media(
+                db, corpus, text=stim_text, speaker_code=q_spk,
+                purpose="quiz", license_note=license_note,
+            )
             quizzes.append({**q, "stimulusMediaId": media_id})
         content["quizzes"] = quizzes
 
-        # 检测任务：参考示范 + 参考发音人
+        # 检测任务：参考示范 + 对应真实参考发音人（male → MV1，female → FV1）
         det = dict(content.get("detection", {}))
         sample_voice = det.get("sampleVoice", "male")
-        det["sampleMediaId"] = _synthesize_media(
-            db, text=det.get("evaluationText", demo_text), voice=sample_voice,
-            purpose="demo", ref_name=f"{level_id}_sample",
-            license_note=license_note)
-        det["referenceSpeakerId"] = male_speaker if sample_voice == "male" \
-            else speakers.get("female")
+        sample_spk = sample_voice if sample_voice in speakers and sample_voice not in ("male", "female") \
+            else ("MV1" if sample_voice == "male" else "FV1")
+        eval_text = det.get("evaluationText", demo_text)
+        det["sampleMediaId"] = _import_corpus_media(
+            db, corpus, text=eval_text, speaker_code=sample_spk,
+            purpose="demo", license_note=license_note,
+        )
+        det["referenceSpeakerId"] = speakers[sample_spk]
         content["detection"] = det
 
-        # 标准曲线（提取不到则该关曲线对比降级为不可用）
+        # 标准曲线（基于真实参考示范与真实发音人基线计算）
         content = content_uc.prepare_level_content(db, content)
         curve_segments = len((content.get("standardCurve") or {}).get("segments") or [])
 
@@ -173,15 +296,14 @@ def seed_levels(db, speakers: dict[str, str], open_count: int) -> None:
                         skeleton_public=bool(item.get("skeletonPublic", True)),
                         content=JSONText.dump(content),
                         created_at=now(), updated_at=now()))
-        # 声道剖面预设（后台起步微调用）
         db.add(SagittalPresetRow(
             key=level_id, layer=item["layer"], target_sound=item["targetSound"],
             keyframes=JSONText.dump(content["articulation"]["sagittal"]["keyframes"])))
         db.commit()
-        print(f"[seed] {level_id} 已开放（{item['targetSound']}，标准曲线 {curve_segments} 段）")
+        print(f"[seed] {level_id} 已开放（{item['targetSound']}，6 发音人示范，标准曲线 {curve_segments} 段）")
 
 
-def seed_articles(db) -> None:
+def seed_articles(db, corpus: Path) -> None:
     from app.content_seed_data import ARTICLES, ARTICLE_CATEGORIES
 
     for i, name in enumerate(ARTICLE_CATEGORIES):
@@ -189,20 +311,22 @@ def seed_articles(db) -> None:
             db.add(CategoryRow(name=name, sort=i, created_at=now()))
     db.commit()
 
-    for a in ARTICLES:
+    for idx, a in enumerate(ARTICLES):
         slug = a["slug"]
         if db.get(ArticleRow, slug) is not None:
             continue
         content = dict(a)
-        demo_text = a.get("demoText") or a["title"]
-        content["demoMediaId"] = _synthesize_media(
-            db, text=demo_text, voice="male", purpose="article",
-            ref_name=f"article_{slug}", license_note=a.get("license", "内部演示授权"))
+        demo_text = a.get("demoText") or "啊"
+        spk = "FV1" if idx % 2 == 0 else "MV1"
+        content["demoMediaId"] = _import_corpus_media(
+            db, corpus, text=demo_text, speaker_code=spk,
+            purpose="article", license_note=a.get("license", "真人标准音节语料库授权"),
+        )
         db.add(ArticleRow(slug=slug, published=True,
                           content=JSONText.dump(content),
                           created_at=now(), updated_at=now()))
         db.commit()
-        print(f"[seed] 文章就绪：{slug}")
+        print(f"[seed] 文章就绪：{slug}（示范：{demo_text} · {spk}）")
 
 
 def main() -> None:
@@ -213,17 +337,18 @@ def main() -> None:
     if "--open" in args:
         open_count = int(args[args.index("--open") + 1])
 
+    corpus = _require_corpus_dir()
     config.ensure_dirs()
     create_all()
     db = get_session()
     try:
         seed_calibration_text(db)
-        speakers = seed_reference_speakers(db)
+        speakers = seed_reference_speakers(db, corpus)
         if not speakers:
             print("[seed][ERROR] 参考发音人登记失败，标准曲线无法生成，终止")
             return
-        seed_levels(db, speakers, open_count)
-        seed_articles(db)
+        seed_levels(db, corpus, speakers, open_count)
+        seed_articles(db, corpus)
         print("[seed] 完成。默认管理员：admin / admin12345（可用环境变量覆盖）")
     finally:
         db.close()

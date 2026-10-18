@@ -18,6 +18,9 @@ class UserRow(Base):
     password_hash: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime)
     deleted_at: Mapped[datetime.datetime | None] = mapped_column(DateTime)
+    # 方言区/母语背景（FR-107，可选）：取值见 identity.usecases.DIALECT_CODES；
+    # 用于针对性提示（FR-1007）与后续分组统计，注销时随账号一起失效
+    dialect_background: Mapped[str | None] = mapped_column(String(32))
 
 
 class AuthSessionRow(Base):

@@ -13,6 +13,8 @@ import { LEVEL_DETAILS, LEVEL_SUMMARIES } from './fixtures'
 export interface MockUser {
   username: string
   password: string
+  /** 方言区/母语背景（FR-107，可选） */
+  dialectBackground?: string | null
 }
 
 export interface MockSession {

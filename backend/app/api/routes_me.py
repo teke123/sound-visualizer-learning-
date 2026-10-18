@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from app.api.deps import Actor, get_actor, require_user
 from app.api.schemas import (
     ArchiveCompareResponse, ArchiveListResponse, ClearArchiveResponse, DeletedResponse,
-    Envelope, LearningEventsResponse, MeProgress,
+    Envelope, LearningEventsResponse, MeProgress, ProfileResponse,
 )
 from app.archive import usecases as archive_uc
 from app.identity import usecases as identity_uc
@@ -71,6 +71,22 @@ async def learning_events(request: Request, body: LearningEventsBody,
 async def my_progress(request: Request, actor: Actor = Depends(get_actor)):
     user = require_user(actor)
     return envelope(request, archive_uc.derive_progress(actor.db, user=user))
+
+
+# ---------------- 个人资料 ----------------
+
+class ProfileBody(BaseModel):
+    """dialectBackground 传 null 或空串清除（FR-106 / FR-107）"""
+    dialectBackground: str | None = None
+
+
+@router.patch("/me/profile", response_model=Envelope[ProfileResponse])
+async def update_profile(request: Request, body: ProfileBody,
+                         actor: Actor = Depends(get_actor)):
+    user = require_user(actor)
+    result = identity_uc.update_profile(actor.db, user=user,
+                                        dialect_background=body.dialectBackground)
+    return envelope(request, result)
 
 
 # ---------------- 注销 ----------------

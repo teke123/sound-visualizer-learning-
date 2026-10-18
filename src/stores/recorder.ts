@@ -1,10 +1,15 @@
 /**
- * recorder store：唯一 MediaRecorder 封装（授权、格式选择、实时波形、时长上限、释放）。
+ * recorder store：唯一 MediaRecorder 封装（授权、格式选择、时长上限、释放）。
  * 采集参数关闭回声消除 / 降噪 / 自动增益（若浏览器允许），避免改变音高与能量；
  * iOS：AudioContext 在首次手势时 resume（docs/architecture/04 §8）。
+ *
+ * 职责边界（FR-907）：本 store 只管录音状态机与产出音频 Blob；
+ * 实时声学分析与绘制由 RealtimeAcousticCanvas 通过 getAnalyser() /
+ * sampleRate 自取 AnalyserNode 完成，挂载即连、卸载即断，互不共享生命周期。
  */
 import { computed, ref, shallowRef } from 'vue'
 import { defineStore } from 'pinia'
+import { ANALYSIS_FFT_SIZE } from '@/utils/realtimeAcoustics'
 
 export type RecorderStatus =
   | 'idle'
@@ -45,26 +50,17 @@ export const useRecorderStore = defineStore('recorder', () => {
   const blobUrl = ref<string | null>(null)
   const elapsedMs = ref(0)
   const error = ref<string | null>(null)
-  /** 实时波形采样（RMS 0–1），RecorderPanel 用 canvas 绘制 */
-  const waveform = ref<number[]>([])
 
   let stream: MediaStream | null = null
   let recorder: MediaRecorder | null = null
   let audioContext: AudioContext | null = null
   let analyser: AnalyserNode | null = null
-  let sampleBuffer: Uint8Array<ArrayBuffer> | null = null
   let timerHandle: number | null = null
-  let rafHandle: number | null = null
   let autoStopAt = 0
   let onAutoStop: (() => void) | null = null
 
   const supported = computed(() => typeof MediaRecorder !== 'undefined' && pickMimeType() !== undefined)
   const hasPendingTake = computed(() => blob.value !== null)
-
-  function stopWaveformLoop() {
-    if (rafHandle !== null) cancelAnimationFrame(rafHandle)
-    rafHandle = null
-  }
 
   function stopTimer() {
     if (timerHandle !== null) window.clearInterval(timerHandle)
@@ -77,7 +73,6 @@ export const useRecorderStore = defineStore('recorder', () => {
     if (audioContext && audioContext.state !== 'closed') void audioContext.close()
     audioContext = null
     analyser = null
-    sampleBuffer = null
   }
 
   function discardTake() {
@@ -85,7 +80,6 @@ export const useRecorderStore = defineStore('recorder', () => {
     blob.value = null
     blobUrl.value = null
     elapsedMs.value = 0
-    waveform.value = []
   }
 
   /** 请求麦克风授权；成功后保持待机（不立刻录音） */
@@ -112,9 +106,9 @@ export const useRecorderStore = defineStore('recorder', () => {
       if (audioContext.state === 'suspended') await audioContext.resume()
       const source = audioContext.createMediaStreamSource(stream)
       analyser = audioContext.createAnalyser()
-      analyser.fftSize = 1024
+      // 2048 点窗口（约 43ms）：65Hz 男低声也含 2 个以上基音周期，1024 不够
+      analyser.fftSize = ANALYSIS_FFT_SIZE
       source.connect(analyser)
-      sampleBuffer = new Uint8Array(new ArrayBuffer(analyser.fftSize))
       status.value = 'ready'
       return true
     } catch (err) {
@@ -131,20 +125,9 @@ export const useRecorderStore = defineStore('recorder', () => {
     }
   }
 
-  function sampleWaveform() {
-    if (!analyser || !sampleBuffer) return
-    analyser.getByteTimeDomainData(sampleBuffer)
-    let sum = 0
-    for (let i = 0; i < sampleBuffer.length; i += 1) {
-      const v = (sampleBuffer[i]! - 128) / 128
-      sum += v * v
-    }
-    const rms = Math.sqrt(sum / sampleBuffer.length)
-    waveform.value.push(rms)
-    if (waveform.value.length > 240) waveform.value.shift()
-    if (status.value === 'recording') {
-      rafHandle = requestAnimationFrame(sampleWaveform)
-    }
+  /** 实时分析入口：录音就绪后非空；释放麦克风后置空（画布组件据此停画） */
+  function getAnalyser(): AnalyserNode | null {
+    return analyser
   }
 
   /** 开始录音；maxMs 到上限自动停止（§6.2：关卡 15 秒、标定 40 秒） */
@@ -164,7 +147,6 @@ export const useRecorderStore = defineStore('recorder', () => {
     }
     recorder.onstop = () => {
       stopTimer()
-      stopWaveformLoop()
       const type = mimeType.value ?? 'audio/webm'
       blob.value = new Blob(chunks, { type })
       blobUrl.value = URL.createObjectURL(blob.value)
@@ -173,14 +155,12 @@ export const useRecorderStore = defineStore('recorder', () => {
     recorder.start(250)
     status.value = 'recording'
     elapsedMs.value = 0
-    waveform.value = []
     timerHandle = window.setInterval(() => {
       elapsedMs.value = Date.now() - (autoStopAt - options.maxMs)
       if (Date.now() >= autoStopAt) {
         stop()
       }
     }, 100)
-    rafHandle = requestAnimationFrame(sampleWaveform)
     return true
   }
 
@@ -207,7 +187,6 @@ export const useRecorderStore = defineStore('recorder', () => {
     }
     recorder = null
     stopTimer()
-    stopWaveformLoop()
     discardTake()
     releaseMic()
     status.value = 'idle'
@@ -221,7 +200,6 @@ export const useRecorderStore = defineStore('recorder', () => {
     blob,
     blobUrl,
     elapsedMs,
-    waveform,
     error,
     hasPendingTake,
     request,
@@ -230,5 +208,6 @@ export const useRecorderStore = defineStore('recorder', () => {
     reRecord,
     release,
     discardTake,
+    getAnalyser,
   }
 })

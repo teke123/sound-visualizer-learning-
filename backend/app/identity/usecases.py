@@ -19,13 +19,31 @@ USERNAME_RE = re.compile(r"^[\w\u4e00-\u9fff]{3,32}$", re.UNICODE)
 
 AUTH_SESSION_TTL = datetime.timedelta(days=30)
 
+# 方言区/母语背景代码集（FR-107）：稳定代码便于分组统计与提示匹配；
+# 标签文案由前端维护，后端只认代码
+DIALECT_CODES = frozenset({
+    "mandarin_north", "mandarin_southwest", "wu", "yue", "min", "xiang", "gan",
+    "hakka", "english", "japanese", "korean", "other",
+})
 
-def register_user(db: Session, *, username: str, password: str) -> dict:
+
+def _validated_dialect(value: str | None) -> str | None:
+    if value in (None, ""):
+        return None
+    if value not in DIALECT_CODES:
+        raise ApiError(422, "VALIDATION_ERROR",
+                       "方言区/母语背景取值不在支持列表内")
+    return value
+
+
+def register_user(db: Session, *, username: str, password: str,
+                  dialect_background: str | None = None) -> dict:
     if not USERNAME_RE.match(username or ""):
         raise ApiError(422, "VALIDATION_ERROR",
                        "用户名须为 3–32 位字母、数字、下划线或中文")
     if not password or len(password) < 8:
         raise ApiError(422, "VALIDATION_ERROR", "密码至少 8 位")
+    dialect = _validated_dialect(dialect_background)
     lower = username.lower()
     if db.query(UserRow).filter(UserRow.username_lower == lower,
                                 UserRow.deleted_at.is_(None)).count():
@@ -33,10 +51,21 @@ def register_user(db: Session, *, username: str, password: str) -> dict:
     user = UserRow(
         id=new_id("u_"), username=username, username_lower=lower,
         password_hash=_ph.hash(password), created_at=now(),
+        dialect_background=dialect,
     )
     db.add(user)
     db.commit()
-    return {"accountId": user.id, "username": user.username}
+    return {"accountId": user.id, "username": user.username,
+            "dialectBackground": user.dialect_background}
+
+
+def update_profile(db: Session, *, user: UserRow,
+                   dialect_background: str | None) -> dict:
+    """设置/修改/清除方言区背景（FR-106 / FR-107）；传 null 或空串即清除。"""
+    user.dialect_background = _validated_dialect(dialect_background)
+    db.commit()
+    return {"accountId": user.id, "username": user.username,
+            "dialectBackground": user.dialect_background}
 
 
 def verify_login(db: Session, *, username: str, password: str) -> UserRow:
@@ -97,4 +126,5 @@ def delete_account(db: Session, *, user: UserRow, password: str) -> None:
     user.username = f"deleted_{user.id[:8]}"
     user.username_lower = user.username
     user.password_hash = ""
+    user.dialect_background = None
     db.commit()

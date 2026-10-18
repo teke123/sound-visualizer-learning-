@@ -24,13 +24,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+from app import config  # noqa: E402
 from app.acoustics.transcode import normalize_to_wav  # noqa: E402
+from app.pinyin_utils import expected_syllables  # noqa: E402
 from app.scoring.provider import ProviderError  # noqa: E402
 from app.scoring.provider_xfyun import evaluate_raw  # noqa: E402
-from app.seed_support import synthesize_text, write_wav  # noqa: E402
 
 SR = 16000
-RECORDINGS_DIR = Path(__file__).resolve().parents[2] / "录音"   # 真实单音节录音库
+RECORDINGS_DIR = config.CORPUS_DIR or (Path(__file__).resolve().parents[2] / "录音")
 CREDENTIAL_VARS = ("XFYUN_APP_ID", "XFYUN_API_KEY", "XFYUN_API_SECRET")
 
 results: list[tuple[str, bool, str]] = []
@@ -76,10 +77,11 @@ def prepare_audio(wavs: list[str] | None, text: str, workdir: Path, tag: str) ->
         _write_pcm(out, pcm)
         info["kind"] = "recordings"
     else:
-        out = workdir / f"{tag}_synth.wav"
-        write_wav(out, synthesize_text(text))
-        pcm = out.read_bytes()
-        info = {"kind": "synthesized"}
+        if RECORDINGS_DIR is None or not RECORDINGS_DIR.is_dir():
+            raise SystemExit("未指定 --wav 且未配置 CORPUS_DIR 语料库目录")
+        syls = expected_syllables(text)
+        auto_wavs = [str(RECORDINGS_DIR / "MV1" / f"{s['stem']}_MV1.wav") for s in syls]
+        return prepare_audio(auto_wavs, text, workdir, tag)
     info["wavPath"] = str(out)
     info["pcmBytes"] = len(pcm)
     info["durationSec"] = round(len(pcm) / (SR * 2), 3)

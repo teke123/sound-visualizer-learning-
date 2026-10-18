@@ -1,9 +1,11 @@
 <script setup lang="ts">
-/** RegisterForm：注册（FR-107）：用户名 3–32 唯一、密码 ≥8；注册即代表同意服务条款、不自动登录；USERNAME_TAKEN 表单内错误 */
+/** RegisterForm：注册（FR-107）：用户名 3–32 唯一、密码 ≥8、可选填方言区/母语背景；
+ * 注册即代表同意服务条款、不自动登录；USERNAME_TAKEN 表单内错误 */
 import { ref } from 'vue'
 import { ApiError } from '@/api'
 import { errorCopy } from '@/copy/usePageCopy'
 import { useAuth, validatePassword, validateUsername } from '@/features/auth'
+import DialectSelector from './DialectSelector.vue'
 
 const props = defineProps<{
   redirect?: string | null
@@ -15,6 +17,7 @@ const auth = useAuth()
 const username = ref('')
 const password = ref('')
 const password2 = ref('')
+const dialect = ref('')
 const usernameError = ref<string | null>(null)
 const passwordError = ref<string | null>(null)
 const password2Error = ref<string | null>(null)
@@ -25,7 +28,11 @@ async function submit() {
   passwordError.value = validatePassword(password.value)
   password2Error.value = password.value === password2.value ? null : '两次输入的密码不一致'
   if (usernameError.value || passwordError.value || password2Error.value) return
-  const ok = await auth.register({ username: username.value, password: password.value })
+  const ok = await auth.register({
+    username: username.value,
+    password: password.value,
+    dialectBackground: dialect.value || null,
+  })
   if (ok) registered.value = true
 }
 
@@ -64,6 +71,7 @@ const usernameTaken = () => auth.error.value instanceof ApiError && auth.error.v
         <input v-model="password2" type="password" autocomplete="new-password" />
         <em v-if="password2Error">{{ password2Error }}</em>
       </label>
+      <DialectSelector v-model="dialect" />
 
       <p v-if="auth.error.value && !usernameTaken()" class="form-error">{{ errorCopy(auth.error.value).title }}</p>
 

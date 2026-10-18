@@ -64,12 +64,27 @@ def get_session() -> Session:
     return _SessionLocal()
 
 
+def _ensure_column(table: str, column: str, ddl_type: str) -> None:
+    """老库补列（1.0 无迁移历史，create_all 不会给已存在的表加列）。"""
+    from sqlalchemy import inspect, text
+
+    assert _engine is not None
+    insp = inspect(_engine)
+    if table not in insp.get_table_names():
+        return
+    if column in {c["name"] for c in insp.get_columns(table)}:
+        return
+    with _engine.begin() as conn:
+        conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {ddl_type}"))
+
+
 def create_all() -> None:
     # 1.0 以 create_all 建库（新库、无迁移历史）；引入 Alembic 是 2.0 演进项
     from app import models_registry  # noqa: F401  确保全部表已注册
 
     init_engine()
     Base.metadata.create_all(_engine)
+    _ensure_column("user", "dialect_background", "VARCHAR(32)")
 
 
 # --- JSON 便捷序列化（SQLite 存 JSON 文本列）---

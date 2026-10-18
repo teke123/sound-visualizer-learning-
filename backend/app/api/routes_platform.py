@@ -31,6 +31,8 @@ async def me_context(request: Request, actor: Actor = Depends(get_actor)):
     if actor.user is not None:
         data["accountId"] = actor.user.id
         data["username"] = actor.user.username
+        if actor.user.dialect_background:
+            data["dialectBackground"] = actor.user.dialect_background
     effective = (scoring_uc.get_personal_range(db, user_id=actor.user.id)
                  if actor.user is not None else None)
     if effective is None:

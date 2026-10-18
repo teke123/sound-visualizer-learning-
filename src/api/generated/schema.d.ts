@@ -432,6 +432,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/me/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Profile */
+        patch: operations["update_profile_api_me_profile_patch"];
+        trace?: never;
+    };
     "/api/me/account": {
         parameters: {
             query?: never;
@@ -1594,6 +1611,24 @@ export interface components {
             /** Nextstep */
             nextStep?: string | null;
         };
+        /** Envelope[ProfileResponse] */
+        Envelope_ProfileResponse_: {
+            /**
+             * Code
+             * @default OK
+             */
+            code: string;
+            /**
+             * Message
+             * @default ok
+             */
+            message: string;
+            data: components["schemas"]["ProfileResponse"];
+            /** Requestid */
+            requestId?: string | null;
+            /** Nextstep */
+            nextStep?: string | null;
+        };
         /** Envelope[RecordingDeleted] */
         Envelope_RecordingDeleted_: {
             /**
@@ -2030,6 +2065,8 @@ export interface components {
             accountId?: string | null;
             /** Username */
             username?: string | null;
+            /** Dialectbackground */
+            dialectBackground?: string | null;
             calibration: components["schemas"]["CalibrationInfo"];
             /** Nextlevelid */
             nextLevelId?: string | null;
@@ -2132,6 +2169,26 @@ export interface components {
             acousticRefs?: components["schemas"]["AcousticRef"][] | null;
             /** Sources */
             sources?: components["schemas"]["ProSource"][] | null;
+        };
+        /**
+         * ProfileBody
+         * @description dialectBackground 传 null 或空串清除（FR-106 / FR-107）
+         */
+        ProfileBody: {
+            /** Dialectbackground */
+            dialectBackground?: string | null;
+        };
+        /**
+         * ProfileResponse
+         * @description PATCH /api/me/profile 响应：方言区/母语背景设置结果
+         */
+        ProfileResponse: {
+            /** Accountid */
+            accountId: string;
+            /** Username */
+            username: string;
+            /** Dialectbackground */
+            dialectBackground?: string | null;
         };
         /** ProgressLevel */
         ProgressLevel: {
@@ -2277,6 +2334,8 @@ export interface components {
             username: string;
             /** Password */
             password: string;
+            /** Dialectbackground */
+            dialectBackground?: string | null;
         };
         /** RegisterResponse */
         RegisterResponse: {
@@ -2284,6 +2343,8 @@ export interface components {
             accountId: string;
             /** Username */
             username: string;
+            /** Dialectbackground */
+            dialectBackground?: string | null;
         };
         /** RelatedLevel */
         RelatedLevel: {
@@ -3287,6 +3348,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_MeProgress_"];
+                };
+            };
+        };
+    };
+    update_profile_api_me_profile_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfileBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_ProfileResponse_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

@@ -5,7 +5,9 @@ from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 
 from app.api.deps import Actor, get_actor
-from app.api.schemas import AuthLoginResponse, Envelope, LoggedOutResponse, RegisterResponse
+from app.api.schemas import (
+    AuthLoginResponse, Envelope, LoggedOutResponse, ProfileResponse, RegisterResponse,
+)
 from app.identity import usecases as identity_uc
 from app.platform.envelope import envelope
 
@@ -15,6 +17,7 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 class RegisterBody(BaseModel):
     username: str
     password: str
+    dialectBackground: str | None = None
 
 
 @router.post("/register", response_model=Envelope[RegisterResponse])
@@ -22,7 +25,8 @@ async def register(request: Request, body: RegisterBody,
                    actor: Actor = Depends(get_actor)):
     actor.rate_limit("register")
     result = identity_uc.register_user(actor.db, username=body.username,
-                                       password=body.password)
+                                       password=body.password,
+                                       dialect_background=body.dialectBackground)
     return envelope(request, result)
 
 

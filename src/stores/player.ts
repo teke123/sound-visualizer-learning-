@@ -21,14 +21,28 @@ export const usePlayerStore = defineStore('player', () => {
   const current = shallowRef<PlayerSource | null>(null)
   const state = ref<PlayerState>('idle')
   const errorMessage = ref<string | null>(null)
+  /** 当前源的播放进度与时长（试听游标等 UI 按帧读取；仅 playing 期间由 rAF 推进） */
+  const currentTime = ref(0)
+  const durationSec = ref(0)
 
   let audio: HTMLAudioElement | null = null
   let loadingTimer: number | null = null
+  let progressRaf: number | null = null
 
   const isCurrent = computed(
     () => (key: string) => current.value?.key === key && (state.value === 'playing' || state.value === 'loading'),
   )
   const playing = computed(() => state.value === 'playing')
+
+  function tickProgress() {
+    if (audio) currentTime.value = audio.currentTime
+    progressRaf = requestAnimationFrame(tickProgress)
+  }
+
+  function stopProgressTicker() {
+    if (progressRaf !== null) cancelAnimationFrame(progressRaf)
+    progressRaf = null
+  }
 
   function ensureAudio(): HTMLAudioElement {
     if (!audio) {
@@ -37,12 +51,19 @@ export const usePlayerStore = defineStore('player', () => {
       audio.addEventListener('playing', () => {
         clearLoadingTimer()
         state.value = 'playing'
+        stopProgressTicker()
+        progressRaf = requestAnimationFrame(tickProgress)
       })
       audio.addEventListener('pause', () => {
         if (state.value === 'playing') state.value = 'paused'
+        stopProgressTicker()
       })
       audio.addEventListener('ended', () => {
         state.value = 'ended'
+        stopProgressTicker()
+      })
+      audio.addEventListener('loadedmetadata', () => {
+        durationSec.value = Number.isFinite(audio!.duration) ? audio!.duration : 0
       })
       audio.addEventListener('error', () => {
         clearLoadingTimer()
@@ -69,6 +90,8 @@ export const usePlayerStore = defineStore('player', () => {
     errorMessage.value = null
     current.value = source
     state.value = 'loading'
+    currentTime.value = 0
+    durationSec.value = 0
     el.src = source.url
     el.load()
     loadingTimer = window.setTimeout(() => {
@@ -92,12 +115,15 @@ export const usePlayerStore = defineStore('player', () => {
   function stop() {
     if (!audio) return
     clearLoadingTimer()
+    stopProgressTicker()
     audio.pause()
     audio.removeAttribute('src')
     state.value = 'idle'
     current.value = null
+    currentTime.value = 0
+    durationSec.value = 0
     errorMessage.value = null
   }
 
-  return { current, state, errorMessage, playing, isCurrent, play, stop }
+  return { current, state, errorMessage, currentTime, durationSec, playing, isCurrent, play, stop }
 })

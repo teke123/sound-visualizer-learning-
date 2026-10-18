@@ -289,6 +289,7 @@ def run_pipeline(recording_id: str) -> None:
             provider=prov, curve_phenomena_items=curve_tags,
             formant_deviation=formant_dev, level_content=content,
             fallback_templates=GLOBAL_FOUR_STEP_FALLBACKS,
+            dialect_background=user_dialect(db, rec.user_id),
         )
 
         set_stage("finalizing")
@@ -316,6 +317,14 @@ def run_pipeline(recording_id: str) -> None:
         _fail_after_pipeline_error(db, recording_id, "INTERNAL_ERROR", retryable=True)
     finally:
         db.close()
+
+
+def user_dialect(db: Session, user_id: str) -> str | None:
+    """用户方言区/母语背景（FR-1007 提示用）；注销痕迹读取为空。"""
+    from app.identity.models import UserRow
+
+    user = db.get(UserRow, user_id)
+    return user.dialect_background if user is not None and user.deleted_at is None else None
 
 
 def _quality_payload(signal: dict, reading: dict | None) -> dict:

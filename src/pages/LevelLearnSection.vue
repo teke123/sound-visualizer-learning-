@@ -18,6 +18,7 @@ import ComparePanel from '@/components/ComparePanel.vue'
 import RecorderPanel from '@/components/RecorderPanel.vue'
 import CalibrationPanel from '@/components/CalibrationPanel.vue'
 import FeedbackWidget from '@/components/FeedbackWidget.vue'
+import { toneOfPinyin } from '@/utils/realtimeAcoustics'
 
 const props = defineProps<{ level: LevelDetail }>()
 const emit = defineEmits<{ (e: 'reload'): void }>()
@@ -63,6 +64,11 @@ function otherId(pair: { a: string; b: string }): string {
   return pair.a === props.level.id ? pair.b : pair.a
 }
 
+/** 实时反馈主视图按关卡层聚焦：声母关看送气/摩擦包络，其余看音高轨迹（FR-907） */
+const realtimeFocus = computed<'pitch' | 'onset'>(() => (props.level.layer === 'initial' ? 'onset' : 'pitch'))
+/** 目标调型：从关卡 pinyin 声调符号推导，推不出则不画引导带 */
+const realtimeTargetTone = computed(() => toneOfPinyin(props.level.pinyin))
+
 onBeforeUnmount(() => recorder.release())
 </script>
 
@@ -96,10 +102,11 @@ onBeforeUnmount(() => recorder.release())
           :elapsed-ms="recorder.elapsedMs"
           :blob-url="recorder.blobUrl"
           :has-take="recorder.hasPendingTake"
-          :waveform="recorder.waveform"
           :error="flow.flowError.value"
           :busy="flow.busy.value"
           :recorder-error="recorder.error"
+          :focus="realtimeFocus"
+          :target-tone="realtimeTargetTone"
           @begin="flow.begin"
           @retry-mic="flow.requestMic"
           @start="flow.startRecording"

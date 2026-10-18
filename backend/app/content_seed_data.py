@@ -256,10 +256,10 @@ LEVELS = [
             {
                 "id": "L03-Q2",
                 "prompt": "听词辨音：读到的是哪个字？",
-                "options": [{"text": "鹅 ē"}, {"text": "喔 ō"}],
+                "options": [{"text": "鹅 é"}, {"text": "喔 ō"}],
                 "answerIndex": 0,
                 "stimulusRef": "L03_quiz_Q2",
-                "stimulusText": "鹅 ē",
+                "stimulusText": "鹅 é",
                 "explanation": "展唇、声音略扁的是“鹅”；圆唇、声音圆润的是“喔”。",
             },
         ],
@@ -291,7 +291,7 @@ LEVELS = [
             "fourStepTemplates": [
                 {"tag": "low_overall_score", "phenomenon": "整体相似度分数偏低，读音与参考示范的差距比较明显。", "possibleCause": "可能与展唇不够、舌位偏移有关。", "cue": "先摆好微笑口型，再自然发出 e。", "practiceStepId": "L03-P1"},
                 {"tag": "final_error", "phenomenon": "本次韵母听起来跑到了相近的音上，比如 e 读起来更像 o。", "possibleCause": "可能与嘴唇不自觉收圆有关。", "cue": "嘴角向两边展开，别让嘴唇变圆。", "practiceStepId": "L03-P1"},
-                {"tag": "tone_error", "phenomenon": "本次声调与“鹅”的一声不够一致，音高走向出现偏差。", "possibleCause": "可能与起音太冲、音高没站稳有关。", "cue": "轻轻起音，音高像滑出一条平线。", "practiceStepId": "L03-P2"},
+                {"tag": "tone_error", "phenomenon": "本次声调与“鹅”的二声不够一致，音高走向出现偏差。", "possibleCause": "可能与起音太冲、后半段没有上扬有关。", "cue": "从舒服的中音起，轻轻往上扬。", "practiceStepId": "L03-P2"},
                 {"tag": "missing_syllable", "phenomenon": "本次没有检测到完整读音，声音过短或中途停住。", "possibleCause": "可能与准备不足就开口有关。", "cue": "吸口气，把“鹅”读满 2 秒再停。", "practiceStepId": "L03-P2"},
                 {"tag": "extra_syllable", "phenomenon": "本次检测到多读或回读了一个音。", "possibleCause": "可能与习惯性回读有关。", "cue": "只读一次，读完安静等 1 秒。", "practiceStepId": "L03-P2"},
                 {"tag": "formant_deviation", "phenomenon": "本次 e 的共振峰位置偏离常见参考区，唇形或舌位与参考不同。", "possibleCause": "可能与展唇不足、舌位太前有关。", "cue": "嘴角展开、舌头稍向后缩一点再发。", "practiceStepId": "L03-P1"},
@@ -2975,9 +2975,8 @@ LEVELS = [
             },
         },
         "demos": [
-            {"ref": "L30_demo_normal_male", "speed": "normal", "voice": "male", "text": "妈麻马骂"},
-            {"ref": "L30_demo_normal_female", "speed": "normal", "voice": "female", "text": "妈麻马骂"},
-            {"ref": "L30_demo_slow_female", "speed": "slow", "voice": "female", "text": "妈麻马骂"},
+            {"ref": "L30_demo_normal_male", "speed": "normal", "voice": "male", "text": "妈"},
+            {"ref": "L30_demo_normal_female", "speed": "normal", "voice": "female", "text": "妈"},
         ],
         "quizzes": [
             {
@@ -3032,8 +3031,8 @@ LEVELS = [
             ],
         },
         "detection": {
-            "promptText": "请自然朗读：妈麻马骂",
-            "evaluationText": "妈麻马骂",
+            "promptText": "请自然朗读：妈",
+            "evaluationText": "妈",
             "sampleVoice": "female",
             "allowedMetrics": ["score", "pitch_curve", "tone", "initial", "final"],
             "fourStepTemplates": [
@@ -3203,7 +3202,7 @@ ARTICLES = [
 汉语语音学传统用五度标记法描写调值：阴平 55、阳平 35、上声 214、去声 51。声调由音节基频（F0）随时间的轮廓实现，与声母韵母相对独立。上声在词语中常发生连读变调（如两个上声相连时前字变阳平）。
 ```""",
         "demoRef": "article_voice_1",
-        "demoText": "妈、麻、马、骂",
+        "demoText": "妈",
         "practice": [
             {"title": "听调举手", "instruction": "请家人随机读妈麻马骂中的一个字，听到一声举左手、四声举右手，二声三声分别握拳和比钩。"},
             {"title": "跟读四声", "instruction": "跟着示范音频慢速跟读“妈麻马骂”3 遍，注意音高的走向。"},
@@ -3250,7 +3249,7 @@ ARTICLES = [
 研究表明，伴随 pitch 方向的手势（音高手势）能帮助学习者建立调型的空间表征，对声调范畴感知和产出均有促进作用。手势提示是教学辅助手段，并非声学测量方法。
 ```""",
         "demoRef": "article_voice_2",
-        "demoText": "妈麻马骂（跟手势读）",
+        "demoText": "妈（跟手势读）",
         "practice": [
             {"title": "手势四声", "instruction": "边画四个手势边读“妈麻马骂”，每天 3 遍，先慢后快。"},
             {"title": "单字换调", "instruction": "用“妈”轮流换四个声调读，每换一个调换一个手势。"},
@@ -3341,7 +3340,7 @@ ARTICLES = [
 元音的音色由声道形状决定，可用下颌开度、唇形（圆/展）、舌位（高低、前后）描述，声学上对应共振峰 F1（主要受开度与舌高影响）与 F2（主要受舌位前后与唇形影响）的变化。
 ```""",
         "demoRef": "article_mouth_1",
-        "demoText": "啊、噢、衣、乌",
+        "demoText": "啊",
         "practice": [
             {"title": "口型滑音", "instruction": "对镜子连续发声，把嘴从“啊”慢慢收到“乌”，来回 5 次，听声音连续变化。"},
             {"title": "圆扁开关", "instruction": "保持舌头不动，嘴角咧开发 i，再撮圆变成 ü，来回 5 次。"},
@@ -3389,7 +3388,7 @@ ARTICLES = [
 发音教学的视觉反馈（镜面观察、声道动画）能帮助学习者建立正确的发音部位表征，尤其对唇形、下颌开度、舌位前后等可观察或可图示的特征有效。视觉反馈是辅助手段，最终仍需以听辨和产出的准确性为准。
 ```""",
         "demoRef": "article_mouth_2",
-        "demoText": "啊、摸、知",
+        "demoText": "知",
         "practice": [
             {"title": "三处巡检", "instruction": "对着镜子各读“啊、乌、知”三遍，每次检查下巴、嘴唇、舌尖是否到位。"},
             {"title": "平翘对照", "instruction": "对着镜子交替读“思—诗”各 6 次，观察舌尖从平伸到卷起的变化。"},

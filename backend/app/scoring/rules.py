@@ -23,6 +23,76 @@ TAGS = [
 
 _PART_LABEL = {"initial": "声母", "final": "韵母", "tone": "声调", "overall": "整体"}
 
+# 现象标签 → 发音环节归类：决定追加哪类方言背景提示（FR-1007）
+_TAG_FAMILY = {
+    "tone_error": "tone", "tone_shape_flat": "tone", "tone_start_high": "tone",
+    "tone_start_low": "tone", "tone_rise_insufficient": "tone",
+    "tone_fall_insufficient": "tone", "tone_end_unstable": "tone",
+    "initial_error": "initial",
+    "final_error": "final", "formant_deviation": "final",
+}
+
+# 方言区/母语背景 → 常见偏误提示（内容组审定前的种子版；代码集见
+# identity.usecases.DIALECT_CODES）。仅在出现对应环节现象时追加一句，
+# 不改变现象与分数本身；未登记的背景不追加。
+DIALECT_CUES: dict[str, dict[str, str]] = {
+    "mandarin_north": {
+        "tone": "北方官话区常见：儿化与轻声习惯会让调型走样，按本字调值读满。",
+        "final": "北方官话区常见：儿化容易改变韵母，本关先不儿化。",
+        "initial": "北方官话区常见：语速快时平翘舌容易滑过，放慢把舌尖位置做足。",
+    },
+    "mandarin_southwest": {
+        "tone": "西南官话区常见：第二声容易读得偏平或下行，保持一路上扬。",
+        "final": "西南官话区常见：前后鼻音容易不分（in/ing、en/eng），收尾舌位区分开。",
+        "initial": "西南官话区常见：n/l 容易相混，注意舌尖位置与气流走向的差别。",
+    },
+    "wu": {
+        "tone": "吴语区常见：调域整体偏窄、起伏偏小，故意把高低拉开会更像普通话。",
+        "final": "吴语区常见：单元音化与鼻化明显，韵母口型保持到位、别提前收鼻。",
+        "initial": "吴语区常见：清声母容易带上浊音起头，b/d/g 起音只送气不带音。",
+    },
+    "yue": {
+        "tone": "粤语母语者常见：第三声结尾容易上挑，先把降调读完、尾巴收在低处。",
+        "final": "粤语母语者常见：前后鼻音与圆唇度容易弱化，注意韵母收尾口型保持。",
+        "initial": "粤语母语者常见：翘舌音 zh/ch/sh 容易发成平舌，舌尖往后卷一点。",
+    },
+    "min": {
+        "tone": "闽语区常见：调值容易整体漂移，盯着目标调型逐字定型。",
+        "final": "闽语区常见：撮口呼 ü 容易发成齐齿呼 i，嘴唇拢圆再发音。",
+        "initial": "闽语区常见：f/h 与翘舌音容易混，上齿轻碰下唇发 f，舌尖后卷发 zh 组。",
+    },
+    "xiang": {
+        "tone": "湘语区常见：调值整体偏低，试着把起点抬高一点再走调型。",
+        "final": "湘语区常见：前后鼻音容易混，前鼻音收尾时舌尖抵住上齿龈。",
+        "initial": "湘语区常见：翘舌音容易发平，舌尖卷起对准硬腭前部。",
+    },
+    "gan": {
+        "tone": "赣语区常见：送气调习惯会影响调型走向，先按普通话调型慢慢读。",
+        "final": "赣语区常见：鼻化与儿化习惯不同，韵母按标准口型收尾。",
+        "initial": "赣语区常见：送气量容易迁移，注意本声母该送多少气。",
+    },
+    "hakka": {
+        "tone": "客家话区常见：入声习惯会让音节收得急，声调后半段容易被截短。",
+        "final": "客家话区常见：鼻音韵尾偏重，前后鼻音区分时别把韵尾拖长。",
+        "initial": "客家话区常见：送气与不送气对立敏感，注意别把不送气音发成送气。",
+    },
+    "english": {
+        "tone": "英语母语者常见：英语没有固定字调，调型容易自由滑动，按目标调型定型练习。",
+        "final": "英语母语者常见：元音容易双元音化（如 a 滑向 ai），口型稳定到音节结束。",
+        "initial": "英语母语者常见：送气习惯与汉语不同，注意本声母该不该送气。",
+    },
+    "japanese": {
+        "tone": "日语母语者常见：音高重音容易读成阶梯式，按目标曲线连着滑。",
+        "final": "日语母语者常见：元音偏短促，韵母拉长、口型保持住。",
+        "initial": "日语母语者常见：r 容易发成闪音，卷舌接近但不要弹一下。",
+    },
+    "korean": {
+        "tone": "韩语母语者常见：声调概念弱，先用夸张的高低起伏找调型，再收自然。",
+        "final": "韩语母语者常见：圆唇与展唇的区分要留意，按普通话韵母的唇形来。",
+        "initial": "韩语母语者常见：送气与紧音习惯不同，对准本声母的送气强度。",
+    },
+}
+
 
 def reading_report(provider: ProviderResult) -> dict:
     """朗读检错信息（漏读/增读/回读/替换/乱读）＋改善建议，
@@ -55,6 +125,11 @@ def _t_curve_in_segment(f0: F0Result, seg: tuple[float, float],
     hz = np.array([fr.get("hz", np.nan) for fr in f0.frames], dtype=float)
     mask = (ts >= seg[0]) & (ts <= seg[1]) & np.isfinite(hz)
     t_sel, hz_sel = ts[mask], hz[mask]
+    if t_sel.size >= 8:
+        t_sel, hz_sel = t_sel[1:-1], hz_sel[1:-1]
+        from scipy.signal import medfilt
+
+        hz_sel = medfilt(hz_sel, kernel_size=3)
     if t_sel.size < 3:
         return []
     span = t_sel[-1] - t_sel[0]
@@ -219,10 +294,13 @@ def build_phenomena_and_four_steps(
     formant_deviation: float | None,
     level_content: dict,
     fallback_templates: list[dict],
+    dialect_background: str | None = None,
 ) -> tuple[list[dict], list[dict], float | None]:
     """现象（本关允许标签）→ 四步（本关模板优先，全局兜底）→ 分数。
 
     分数只在 "score" 属于本关 allowedMetrics 时输出。
+    dialect_background（FR-1007）：登记过的背景在对应环节现象的 cue 后追加
+    一句常见偏误提示，不改现象与分数；未登记背景不追加。
     """
     allowed = set(level_content.get("detection", {}).get("allowedMetrics", ["score"]))
     templates: dict[str, dict] = {}
@@ -235,6 +313,8 @@ def build_phenomena_and_four_steps(
     steps: list[dict] = []
     used_tags: set[str] = set()
 
+    dialect_cues = DIALECT_CUES.get(dialect_background or "", {})
+
     def emit(tag: str, phenomenon_obj: dict) -> None:
         if tag in used_tags or tag not in templates:
             return
@@ -245,10 +325,14 @@ def build_phenomena_and_four_steps(
         if not step_ref:
             practice = level_content.get("practice") or []
             step_ref = practice[0]["id"] if practice else None
+        cue = tpl["cue"]
+        dialect_hint = dialect_cues.get(_TAG_FAMILY.get(tag, ""))
+        if dialect_hint:
+            cue = f"{cue}{dialect_hint}"
         steps.append({
             "phenomenon": tpl["phenomenon"],
             "possibleCause": tpl["possibleCause"],
-            "cue": tpl["cue"],
+            "cue": cue,
             "practice": {"levelId": level_content.get("id"), "stepRef": step_ref},
             "wordingSource": "rule_template",
         })

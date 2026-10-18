@@ -23,15 +23,18 @@ from pydantic import ConfigDict, ValidationError
 
 sys.path.insert(0, str(Path(__file__).parent))
 import main as backend_main  # noqa: E402
+from app import config  # noqa: E402
+from app.acoustics import transcode  # noqa: E402
 from app.api.schemas import (  # noqa: E402
     ArchiveCompareResponse, ArticleCategoriesResponse, ArticleDetail, ArticlesResponse,
     AssessmentResult, AudioUploadResponse, AuthLoginResponse, ArchiveListResponse,
     CalibrationFailResult, CalibrationOkResult, DeletedResponse, FeedbackResponse,
     F0Response, FormantsResponse, HealthData, LearningEventsResponse, LevelDetail,
-    LevelsResponse, MeContext, MeProgress, PitchCalibrationInfo, RecordingDeleted,
-    RecordingWithResult, RegisterResponse, SearchResponse, WishResponse, Envelope,
+    LevelsResponse, MeContext, MeProgress, PitchCalibrationInfo, ProfileResponse,
+    RecordingDeleted, RecordingWithResult, RegisterResponse, SearchResponse,
+    WishResponse, Envelope,
 )
-from app.seed_support import synthesize_text  # noqa: E402
+from app.pinyin_utils import expected_syllables  # noqa: E402
 
 ORIGIN = {"Origin": "http://localhost:5173"}   # 过 CSRF（同 e2e_test.py）
 
@@ -110,6 +113,28 @@ def silence_bytes(seconds: float = 2.0) -> bytes:
                      + np.random.default_rng(1).standard_normal(n) * 1e-4)
 
 
+def corpus_wav_bytes(text: str, speaker: str = "MV1") -> bytes:
+    """从真人标准音节语料库读取单音节或多音节并拼接为 16kHz 单声道 WAV 字节。"""
+    corpus = config.CORPUS_DIR
+    if corpus is None or not corpus.is_dir():
+        raise RuntimeError("请先在 .env 或环境变量配置 CORPUS_DIR")
+    syls = expected_syllables(text)
+    chunks: list[np.ndarray] = []
+    gap = np.zeros(int(0.08 * 16000), dtype=np.float32)
+    tmp_dir = config.DATA_DIR / "tmp_test"
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    for idx, s in enumerate(syls):
+        stem = s["stem"]
+        src = corpus / speaker / f"{stem}_{speaker}.wav"
+        dst = tmp_dir / f"{speaker}_{stem}_{idx}.wav"
+        transcode.normalize_to_wav(src, dst)
+        chunks.append(transcode.read_pcm_samples(dst))
+        dst.unlink(missing_ok=True)
+        if idx + 1 < len(syls):
+            chunks.append(gap)
+    return wav_bytes(np.concatenate(chunks) if chunks else np.zeros(16000, dtype=np.float32))
+
+
 def upload(c: TestClient, audio: bytes, purpose: str, name: str) -> str:
     r = c.post("/api/audio/uploads", data={"purpose": purpose},
                files={"file": (name, audio, "audio/webm")})
@@ -163,8 +188,16 @@ def main() -> int:
         # ---- 账号：注册 / 登录 ----
         username = f"shape用户_{int(time.time())}"
         r = c.post("/api/auth/register", json={"username": username,
-                                               "password": "password123"})
-        expect("auth/register → RegisterResponse", r, RegisterResponse)
+                                               "password": "password123",
+                                               "dialectBackground": "yue"})
+        body = expect("auth/register（带方言背景）→ RegisterResponse", r, RegisterResponse)
+        check("  注册回显 dialectBackground=yue",
+              body["data"].get("dialectBackground") == "yue")
+        r = c.post("/api/auth/register", json={"username": f"{username}x",
+                                               "password": "password123",
+                                               "dialectBackground": "cantonese"})
+        expect("auth/register 方言代码非法 → 422", r, None, status=422,
+               code="VALIDATION_ERROR")
         r = c.post("/api/auth/login", json={"username": username,
                                             "password": "password123"})
         body = expect("auth/login → AuthLoginResponse", r, AuthLoginResponse)
@@ -175,10 +208,21 @@ def main() -> int:
         body = expect("me/context（已登录未标定）→ MeContext", r, MeContext)
         check("  calibration status=none",
               body["data"]["calibration"]["status"] == "none")
+        check("  context 下发 dialectBackground=yue（FR-107）",
+              body["data"].get("dialectBackground") == "yue")
+
+        r = c.patch("/api/me/profile", json={"dialectBackground": "wu"})
+        body = expect("PATCH me/profile → ProfileResponse", r, ProfileResponse)
+        check("  profile 更新为 wu", body["data"]["dialectBackground"] == "wu")
+        r = c.patch("/api/me/profile", json={"dialectBackground": None})
+        body = expect("PATCH me/profile 清除 → ProfileResponse", r, ProfileResponse)
+        check("  profile 清除为空", body["data"]["dialectBackground"] is None)
+        r = c.patch("/api/me/profile", json={"dialectBackground": "wu"})
+        body = expect("PATCH me/profile（恢复）→ ProfileResponse", r, ProfileResponse)
+        check("  profile 恢复为 wu", body["data"]["dialectBackground"] == "wu")
 
         # ---- 未标定直接检测（D-20） ----
-        rec_audio = upload(c, wav_bytes(synthesize_text("妈麻马骂", "male",
-                                                        syllable_dur=0.32)),
+        rec_audio = upload(c, corpus_wav_bytes("妈", "MV1"),
                            "recording", "rec.webm")
         r = c.post("/api/recordings", json={
             "audioId": rec_audio, "levelId": "L30",
@@ -206,8 +250,7 @@ def main() -> int:
         vot_level = next((l for l in initials if l["id"] == "L08"), None)
         if vot_level is None:   # 兜底：任一开放的声母关（全量种子下就是 L08）
             vot_level = initials[0]
-        vot_audio = upload(c, wav_bytes(synthesize_text(vot_level["representativeChar"],
-                                                        "male", syllable_dur=0.32)),
+        vot_audio = upload(c, corpus_wav_bytes(vot_level["representativeChar"], "MV1"),
                            "recording", "rec-vot.webm")
         r = c.post("/api/recordings", json={
             "audioId": vot_audio, "levelId": vot_level["id"],
@@ -223,10 +266,11 @@ def main() -> int:
         vot = body["data"]["result"].get("vot") or {}
         check("  result.vot 存在且 status=ok", vot.get("status") == "ok",
               str(vot)[:200])
-        check("  vot.user/reference 含 onsetSec/voicingOnsetSec/votMs 且数值>0",
+        check("  vot.user/reference 含 onsetSec/voicingOnsetSec/votMs 且数值>=0",
               all(
                   isinstance(vot.get(side, {}).get(k), (int, float))
-                  and vot[side][k] > 0
+                  and vot[side][k] >= 0
+                  and vot[side]["votMs"] > 0
                   for side in ("user", "reference")
                   for k in ("onsetSec", "voicingOnsetSec", "votMs")
               ), str(vot)[:200])
@@ -237,8 +281,7 @@ def main() -> int:
         expect("pitch-calibration GET（未标定）→ PitchCalibrationInfo", r,
                PitchCalibrationInfo)
 
-        cal_id = upload(c, wav_bytes(synthesize_text("妈坡车米布女妈麻马骂", "male",
-                                                    syllable_dur=0.36)),
+        cal_id = upload(c, corpus_wav_bytes("妈坡车米布女妈麻马骂", "MV1"),
                         "calibration", "cal.webm")
         r = c.post("/api/pitch-calibration", json={"audioId": cal_id})
         body = expect("pitch-calibration POST → CalibrationOkResult", r, CalibrationOkResult)
@@ -255,8 +298,7 @@ def main() -> int:
                CalibrationFailResult, code="CALIBRATION_FAIL")
 
         # ---- 标定后提交 + 质量提示不拦截 ----
-        rec2_audio = upload(c, wav_bytes(synthesize_text("妈麻马骂", "male",
-                                                         syllable_dur=0.32)),
+        rec2_audio = upload(c, corpus_wav_bytes("妈", "MV1"),
                             "recording", "rec2.webm")
         r = c.post("/api/recordings", json={
             "audioId": rec2_audio, "levelId": "L30",

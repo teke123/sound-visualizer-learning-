@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * DemoPlayer：正式示范播放（FR-604）：正常 / 慢速、男声 / 女声、字幕；
+ * DemoPlayer：正式示范播放（FR-604）：正常 / 慢速、支持多发音人（FV1~3 女声 1~3、MV1~3 男声 1~3）切换试听、字幕；
  * 经 player store 全局唯一播放；音频 preload none（§9）。
  */
 import { computed } from 'vue'
@@ -14,13 +14,42 @@ const props = defineProps<{
 
 const player = usePlayerStore()
 
+const VOICE_LABELS: Record<string, string> = {
+  male: '男声',
+  female: '女声',
+  FV1: '女声 1 (FV1)',
+  FV2: '女声 2 (FV2)',
+  FV3: '女声 3 (FV3)',
+  MV1: '男声 1 (MV1)',
+  MV2: '男声 2 (MV2)',
+  MV3: '男声 3 (MV3)',
+}
+
+function voiceLabel(voice?: string | null): string {
+  if (!voice) return ''
+  return VOICE_LABELS[voice] ?? voice
+}
+
 function speedLabel(item: DemoItem): string {
-  const voice = item.voice === 'male' ? '男声' : item.voice === 'female' ? '女声' : ''
-  return `${item.speed === 'slow' ? '慢速' : '正常语速'}${voice ? ` · ${voice}` : ''}`
+  const voice = voiceLabel(item.voice)
+  const prefix = item.speed === 'slow' ? '慢速' : '正常语速'
+  return voice ? `${voice}${item.speed === 'slow' ? ' · 慢速' : ''}` : prefix
+}
+
+function itemKey(item: DemoItem): string {
+  return `demo:${item.mediaId}`
+}
+
+function isPlaying(item: DemoItem): boolean {
+  return player.isCurrent(itemKey(item))
 }
 
 function play(item: DemoItem) {
-  void player.play({ key: `demo:${item.mediaId}`, url: props.mediaResolver(item.mediaId), label: '示范' })
+  void player.play({
+    key: itemKey(item),
+    url: props.mediaResolver(item.mediaId),
+    label: speedLabel(item),
+  })
 }
 
 const grouped = computed(() => ({
@@ -38,9 +67,10 @@ const grouped = computed(() => ({
           :key="item.mediaId"
           type="button"
           class="demo-btn"
+          :class="{ active: isPlaying(item) }"
           @click="play(item)"
         >
-          <span class="demo-icon" aria-hidden="true">▶</span>
+          <span class="demo-icon" aria-hidden="true">{{ isPlaying(item) ? '⏸' : '▶' }}</span>
           <span>{{ speedLabel(item) }}</span>
         </button>
       </div>
@@ -64,6 +94,11 @@ const grouped = computed(() => ({
 
 .demo-groups
   display: flex
+  flex-direction: column
+  gap: 8px
+
+.demo-group
+  display: flex
   flex-wrap: wrap
   gap: 10px
 
@@ -79,8 +114,13 @@ const grouped = computed(() => ({
   color: #00695c
   font-size: 15px
   cursor: pointer
+  transition: background 0.15s ease, color 0.15s ease
   &:hover
     background: #b2dfdb
+  &.active
+    background: #00897b
+    color: #fff
+    font-weight: 600
 
 .demo-icon
   font-size: 12px

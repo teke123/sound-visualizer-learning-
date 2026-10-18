@@ -29,6 +29,12 @@ import { TINY_PNG, freqForMediaId, makeMouthSvg, makeToneWav } from './media'
 
 const requestId = () => `mock-${Math.random().toString(36).slice(2, 10)}`
 
+/** 与后端 identity.usecases.DIALECT_CODES 对齐（FR-107） */
+const DIALECT_CODES = new Set([
+  'mandarin_north', 'mandarin_southwest', 'wu', 'yue', 'min', 'xiang', 'gan',
+  'hakka', 'english', 'japanese', 'korean', 'other',
+])
+
 function envelope<T>(data: T, init: { code?: string; message?: string; status?: number; headers?: Record<string, string> } = {}) {
   const { code = 'OK', message = '', status = 200, headers } = init
   return HttpResponse.json(
@@ -53,6 +59,7 @@ function meContext(): MeContext {
     authenticated: user !== null,
     accountId: user ? `acct-${user.username}` : undefined,
     username: user?.username,
+    dialectBackground: user?.dialectBackground ?? undefined,
     calibration: state.session.calibration,
     nextLevelId: user ? deriveProgress().nextLevelId : LEVEL_SUMMARIES[0]?.id,
   }
@@ -406,14 +413,40 @@ export const handlers = [
   /* ------------------------------ 账号 ------------------------------ */
 
   http.post('/api/auth/register', async ({ request }) => {
-    const body = (await request.json()) as { username: string; password: string }
+    const body = (await request.json()) as { username: string; password: string; dialectBackground?: string | null }
     if (!/^[\w\u4e00-\u9fa5]{3,32}$/.test(body.username)) {
       return fail(422, 'VALIDATION_ERROR', '用户名需 3–32 个字母、数字、下划线或中文')
     }
     if (body.password.length < 8) return fail(422, 'VALIDATION_ERROR', '密码至少 8 位')
+    if (body.dialectBackground && !DIALECT_CODES.has(body.dialectBackground)) {
+      return fail(422, 'VALIDATION_ERROR', '方言区/母语背景取值不在支持列表内')
+    }
     if (state.users.has(body.username)) return fail(409, 'USERNAME_TAKEN', '用户名已被使用')
-    state.users.set(body.username, { username: body.username, password: body.password })
-    return envelope({ accountId: `acct-${body.username}`, username: body.username })
+    state.users.set(body.username, {
+      username: body.username,
+      password: body.password,
+      dialectBackground: body.dialectBackground || null,
+    })
+    return envelope({
+      accountId: `acct-${body.username}`,
+      username: body.username,
+      dialectBackground: body.dialectBackground || null,
+    })
+  }),
+
+  http.patch('/api/me/profile', async ({ request }) => {
+    if (!currentUser()) return fail(401, 'AUTH_REQUIRED', '需要登录')
+    const body = (await request.json()) as { dialectBackground?: string | null }
+    if (body.dialectBackground && !DIALECT_CODES.has(body.dialectBackground)) {
+      return fail(422, 'VALIDATION_ERROR', '方言区/母语背景取值不在支持列表内')
+    }
+    const user = currentUser()!
+    user.dialectBackground = body.dialectBackground || null
+    return envelope({
+      accountId: `acct-${user.username}`,
+      username: user.username,
+      dialectBackground: user.dialectBackground,
+    })
   }),
 
   http.post('/api/auth/login', async ({ request }) => {

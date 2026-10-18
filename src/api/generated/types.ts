@@ -124,6 +124,7 @@ export type MeProgress = Schemas['MeProgress']
 /* -------------------------------- 账号 ------------------------------------ */
 
 export type RegisterResponse = Schemas['RegisterResponse']
+export type ProfileResponse = Schemas['ProfileResponse']
 export type AuthLoginResponse = Schemas['AuthLoginResponse']
 export type LoggedOutResponse = Schemas['LoggedOutResponse']
 export type DeletedResponse = Schemas['DeletedResponse']

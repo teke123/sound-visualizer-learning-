@@ -27,7 +27,9 @@ import httpx
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).parent))
-from app.seed_support import synthesize_text  # noqa: E402
+from app import config  # noqa: E402
+from app.acoustics import transcode  # noqa: E402
+from app.pinyin_utils import expected_syllables  # noqa: E402
 
 BASE = "http://127.0.0.1:8000"
 HEADERS = {"Origin": "http://localhost:5173"}
@@ -58,7 +60,15 @@ def login(c):
 
 
 def upload_rec(c, name="mama"):
-    audio = wav_bytes(synthesize_text("妈麻马骂", "male", syllable_dur=0.32))
+    corpus = config.CORPUS_DIR
+    if corpus is None or not corpus.is_dir():
+        raise RuntimeError("请先在 .env 或环境变量配置 CORPUS_DIR")
+    stem = expected_syllables("妈")[0]["stem"]
+    src = corpus / "MV1" / f"{stem}_MV1.wav"
+    tmp = config.DATA_DIR / "tmp_async.wav"
+    transcode.normalize_to_wav(src, tmp)
+    audio = wav_bytes(transcode.read_pcm_samples(tmp))
+    tmp.unlink(missing_ok=True)
     r = c.post("/api/audio/uploads", data={"purpose": "recording"},
                files={"file": (f"{name}.webm", audio, "audio/webm")})
     return r.json()["data"]["audioId"]

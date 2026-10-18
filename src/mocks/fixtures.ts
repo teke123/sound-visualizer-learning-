@@ -292,10 +292,12 @@ export const LEVEL_DETAILS: Record<string, LevelDetail> = Object.fromEntries(
           description: seed.description,
           sagittal: sagittalFor(seed),
         },
-        demos: [
-          { mediaId: `aud-${seed.id}-demo`, speed: 'normal' as const, voice: 'female' as const, text: seed.promptText.replace('请朗读：', '') },
-          { mediaId: `aud-${seed.id}-demo-slow`, speed: 'slow' as const, voice: 'male' as const, text: seed.promptText.replace('请朗读：', '') },
-        ],
+        demos: (['FV1', 'FV2', 'FV3', 'MV1', 'MV2', 'MV3'] as const).map((spk) => ({
+          mediaId: `aud-${seed.id}-demo-${spk}`,
+          speed: 'normal' as const,
+          voice: spk,
+          text: seed.promptText.replace('请朗读：', ''),
+        })),
         quizzes: [
           {
             id: `${seed.id}-q1`,

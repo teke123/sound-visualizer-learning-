@@ -490,9 +490,17 @@ def compute_standard_curve(db: Session, content: dict) -> dict | None:
     for syl in prov.syllables:
         mask = (frames_t >= syl.t0) & (frames_t <= syl.t1) & np.isfinite(frames_hz)
         t_sel, hz_sel = frames_t[mask], frames_hz[mask]
+        if t_sel.size >= 8:
+            # 剔除首尾各 1 帧边缘微扰，并用 3 点中值滤波平滑单帧抖动
+            t_sel, hz_sel = t_sel[1:-1], hz_sel[1:-1]
+            from scipy.signal import medfilt
+
+            hz_sel = medfilt(hz_sel, kernel_size=3)
         if t_sel.size < 3:
             continue
         span = t_sel[-1] - t_sel[0]
+        if span <= 0:
+            continue
         tv = acx.to_t_values(hz_sel, speaker.f_lo, speaker.f_hi)
         points = [{"t": round(float((ti - t_sel[0]) / span), 4), "v": round(float(v), 3)}
                   for ti, v in zip(t_sel, tv) if np.isfinite(v)]

@@ -1,14 +1,17 @@
 <script setup lang="ts">
 /**
- * RecorderPanel：录音控制面板（FR-905，P05 录音区）。
- * 状态由 useAssessmentFlow 提供；实时波形 canvas + AnalyserNode；
+ * RecorderPanel：录音控制面板（FR-905 / FR-907，P05 录音区）。
+ * 状态由 useAssessmentFlow 提供；录音中与已录制阶段常驻
+ * RealtimeAcousticCanvas（实时 → 定格回看，试听时画播放游标）；
  * 上传与提交期间禁用按钮防重复提交；有未提交录音时 beforeunload 由流程挂载。
  */
-import { onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount } from 'vue'
 import type { FlowError, FlowState } from '@/features/assessment'
 import { RECORD_MAX_MS, type RecorderStatus } from '@/stores/recorder'
 import { usePlayerStore } from '@/stores/player'
+import type { ToneValue } from '@/utils/realtimeAcoustics'
 import { errorCopy } from '@/copy/usePageCopy'
+import RealtimeAcousticCanvas from './RealtimeAcousticCanvas.vue'
 import RecordingTips from './RecordingTips.vue'
 import MicPermissionGuide from './MicPermissionGuide.vue'
 
@@ -19,10 +22,13 @@ const props = defineProps<{
   maxMs?: number
   blobUrl: string | null
   hasTake: boolean
-  waveform: number[]
   error: FlowError | null
   busy: boolean
   recorderError: string | null
+  /** 实时反馈主视图：声母关看包络，其余看音高轨迹（FR-907 按关卡聚焦） */
+  focus?: 'pitch' | 'onset'
+  /** 本关目标调型（可推导时），画引导带 */
+  targetTone?: ToneValue | null
 }>()
 
 const emit = defineEmits<{
@@ -35,41 +41,24 @@ const emit = defineEmits<{
 }>()
 
 const player = usePlayerStore()
-const canvas = ref<HTMLCanvasElement | null>(null)
-const showTips = ref(true)
+const showTips = computed(() => props.state !== 'recording')
 
 const maxMs = props.maxMs ?? RECORD_MAX_MS.recording
 
-function draw() {
-  const el = canvas.value
-  if (!el) return
-  const ctx = el.getContext('2d')
-  if (!ctx) return
-  const { width, height } = el
-  ctx.clearRect(0, 0, width, height)
-  const data = props.waveform.slice(-120)
-  const barWidth = width / 120
-  ctx.fillStyle = '#26a69a'
-  data.forEach((value, index) => {
-    const barHeight = Math.max(2, value * height * 1.6)
-    ctx.fillRect(index * barWidth, (height - barHeight) / 2, Math.max(1, barWidth - 1), barHeight)
-  })
-  requestAnimationFrame(draw)
-}
-
-watch(
-  () => props.recorderStatus,
-  (status) => {
-    if (status === 'recording') {
-      showTips.value = false
-      requestAnimationFrame(draw)
-    }
-  },
-  { immediate: true },
+const isRecording = computed(() => props.state === 'recording')
+/** 定格回看：canvas 常驻到提交/重录为止 */
+const canvasVisible = computed(
+  () => props.state === 'recording' || props.state === 'recorded' || props.state === 'uploading' || props.state === 'submitting',
 )
-watch(canvas, (el) => {
-  if (el) requestAnimationFrame(draw)
-})
+
+/** 试听游标：只在本面板试听源上显示 */
+const playheadSec = computed(() =>
+  player.current?.key === 'take-preview' ? player.currentTime : null,
+)
+const takeDurationSec = computed(() =>
+  player.current?.key === 'take-preview' && player.durationSec > 0 ? player.durationSec : props.elapsedMs / 1000,
+)
+
 onBeforeUnmount(() => player.stop())
 
 const elapsedSec = () => (props.elapsedMs / 1000).toFixed(1)
@@ -98,39 +87,45 @@ const progressPercent = () => Math.min(100, (props.elapsedMs / maxMs) * 100)
       <button type="button" class="record-btn primary" @click="emit('start')">● 开始录音</button>
     </div>
 
-    <!-- 录音中 -->
-    <div v-else-if="state === 'recording'" class="recording-box">
-      <p class="recording-hint">录音中…读完提示词后点「停止」，{{ Math.round(maxMs / 1000) }} 秒会自动停止</p>
-      <canvas ref="canvas" class="waveform" width="360" height="72" aria-label="录音音量波形"></canvas>
-      <div class="recording-meta">
+    <!-- 录音中 / 已录制：实时反馈画布常驻 -->
+    <div v-if="canvasVisible" class="recording-box" :class="{ recorded: !isRecording }">
+      <p v-if="isRecording" class="recording-hint">
+        录音中…边发声边看着轨迹调整，读完提示词后点「停止」，{{ Math.round(maxMs / 1000) }} 秒会自动停止
+      </p>
+      <RealtimeAcousticCanvas
+        :active="isRecording"
+        :focus="focus ?? 'pitch'"
+        :target-tone="targetTone ?? null"
+        :playhead-sec="playheadSec"
+        :take-duration-sec="takeDurationSec"
+      />
+      <div v-if="isRecording" class="recording-meta">
         <span class="elapsed">{{ elapsedSec() }}s</span>
         <div class="progress"><div class="progress-fill" :style="{ width: `${progressPercent()}%` }"></div></div>
+        <button type="button" class="record-btn stop" @click="emit('stop')">■ 停止</button>
       </div>
-      <button type="button" class="record-btn stop" @click="emit('stop')">■ 停止</button>
-    </div>
-
-    <!-- 已录制 -->
-    <div v-else-if="state === 'recorded' || state === 'uploading' || state === 'submitting'" class="recorded-box">
-      <p class="recorded-hint">已录好一段（{{ elapsedSec() }} 秒），先试听一下再提交：</p>
-      <div class="panel-row">
+      <template v-else>
+        <p class="recorded-hint">已录好一段（{{ elapsedSec() }} 秒），先试听一下再提交：</p>
+        <div class="panel-row">
+          <button
+            v-if="blobUrl"
+            type="button"
+            class="record-btn"
+            @click="player.play({ key: 'take-preview', url: blobUrl!, label: '试听' })"
+          >
+            {{ player.isCurrent('take-preview') ? '⏸ 暂停试听' : '▶ 试听' }}
+          </button>
+          <button type="button" class="record-btn" :disabled="busy" @click="emit('re-record')">重录</button>
+        </div>
         <button
-          v-if="blobUrl"
           type="button"
-          class="record-btn"
-          @click="player.play({ key: 'take-preview', url: blobUrl!, label: '试听' })"
+          class="record-btn primary submit"
+          :disabled="busy || !hasTake"
+          @click="emit('submit')"
         >
-          {{ player.isCurrent('take-preview') ? '⏸ 暂停试听' : '▶ 试听' }}
+          {{ busy ? '提交中…' : '提交检测' }}
         </button>
-        <button type="button" class="record-btn" :disabled="busy" @click="emit('re-record')">重录</button>
-      </div>
-      <button
-        type="button"
-        class="record-btn primary submit"
-        :disabled="busy || !hasTake"
-        @click="emit('submit')"
-      >
-        {{ busy ? '提交中…' : '提交检测' }}
-      </button>
+      </template>
     </div>
 
     <!-- 版本变化：丢弃旧录音，刷新后回待机 -->
@@ -201,7 +196,7 @@ const progressPercent = () => Math.min(100, (props.elapsedMs / maxMs) * 100)
     opacity: 0.55
     cursor: default
 
-.recording-box, .recorded-box
+.recording-box
   display: flex
   flex-direction: column
   align-items: center
@@ -209,25 +204,20 @@ const progressPercent = () => Math.min(100, (props.elapsedMs / maxMs) * 100)
   border: 2px solid #ffcdd2
   border-radius: 12px
   padding: 14px
+  &.recorded
+    border-color: #b2dfdb
+    background: #ffffff
 
-.recording-hint, .recorded-hint
+.recording-hint
   margin: 0
   font-size: 14px
   color: #5d4037
-
-.waveform
-  width: 100%
-  max-width: 400px
-  height: 72px
-  background: #fafafa
-  border-radius: 8px
 
 .recording-meta
   display: flex
   align-items: center
   gap: 10px
   width: 100%
-  max-width: 400px
 
 .elapsed
   font-variant-numeric: tabular-nums
@@ -246,6 +236,11 @@ const progressPercent = () => Math.min(100, (props.elapsedMs / maxMs) * 100)
   height: 100%
   background: #d32f2f
   transition: width 0.12s linear
+
+.recorded-hint
+  margin: 0
+  font-size: 14px
+  color: #5d4037
 
 .state-note
   margin: 0
