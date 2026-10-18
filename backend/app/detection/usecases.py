@@ -17,7 +17,7 @@ from app import config
 from app.acoustics import analysis
 from app.acoustics.models import AudioRow
 from app.acoustics.usecases import audio_path
-from app.content.models import LevelRow
+from app.content.models import LevelRow, MediaAssetRow
 from app.content_seed_data import GLOBAL_FOUR_STEP_FALLBACKS
 from app.db import JSONText, get_session, now
 from app.detection.models import AssessmentResultRow, RecordingRow
@@ -253,6 +253,14 @@ def run_pipeline(recording_id: str) -> None:
             # 不用兜底音域静默换算，交外层异常处理标可重试失败（重试生成新快照）
             raise RuntimeError(
                 f"range snapshot {rec.range_snapshot_id} missing for recording {rec.id}")
+        # 未标定受理时先落默认成人范围；此处用本次录音有声段 P5–P95 原地升级为
+        # 单次录音自适应（FR-1006 二选一），快照语义不变；不足时保持默认范围
+        if JSONText.load(snapshot_row.created_from, {}).get("kind") == "default_adult_range":
+            adaptive = analysis.adaptive_f0_range(f0res)
+            if adaptive is not None:
+                snapshot_row.f_lo, snapshot_row.f_hi = adaptive
+                snapshot_row.created_from = JSONText.dump({"kind": "recording_adaptive"})
+                db.commit()
         snapshot = scoring_uc.snapshot_dict(snapshot_row)
         curve = scoring_rules.analyze_user_curve(
             f0res, prov, snapshot, content.get("standardCurve"))
@@ -265,6 +273,17 @@ def run_pipeline(recording_id: str) -> None:
                 str(path), prov, snapshot, (content.get("standardCurve") or {}).get("referenceRegion"))
             formants_out = f_out
             formant_dev = f_out.get("deviation")
+
+        # 送气段/VOT 对比（FR-1005）：参考示范取本关检测任务的 sampleMediaId
+        # （seed/CMS 维护），用户侧复用管线已提取的 f0res，避免重复提取音高
+        vot_out = None
+        if level is not None and level.layer == "initial":
+            ref_media_id = det.get("sampleMediaId")
+            ref_asset = db.get(MediaAssetRow, ref_media_id) if ref_media_id else None
+            if ref_asset is not None and ref_asset.deleted_at is None:
+                vot_out = scoring_rules.analyze_vot(
+                    str(path), f0res, str(config.DATA_DIR / ref_asset.storage_path),
+                    content.get("targetSound") or "", ref_asset.id)
 
         phenomena, four_steps, score = scoring_rules.build_phenomena_and_four_steps(
             provider=prov, curve_phenomena_items=curve_tags,
@@ -285,6 +304,8 @@ def run_pipeline(recording_id: str) -> None:
         }
         if formants_out is not None:
             result["formants"] = formants_out
+        if vot_out is not None:
+            result["vot"] = vot_out
         _finalize_completed(db, rec, result, cacheable={
             "provider": _provider_payload(prov), "reading": reading,
         })

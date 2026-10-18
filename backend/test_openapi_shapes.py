@@ -199,6 +199,39 @@ def main() -> int:
         r = c.get(f"/api/audio/{rec_audio}/formants")
         expect("audio formants → FormantsResponse", r, FormantsResponse)
 
+        # ---- 声母关 VOT（FR-1005 送气段对比；未标定 → 同时覆盖自适应音域路径）----
+        levels_body = c.get("/api/levels").json()["data"]["levels"]
+        initials = [l for l in levels_body
+                    if l["layer"] == "initial" and l["availability"] == "open"]
+        vot_level = next((l for l in initials if l["id"] == "L08"), None)
+        if vot_level is None:   # 兜底：任一开放的声母关（全量种子下就是 L08）
+            vot_level = initials[0]
+        vot_audio = upload(c, wav_bytes(synthesize_text(vot_level["representativeChar"],
+                                                        "male", syllable_dur=0.32)),
+                           "recording", "rec-vot.webm")
+        r = c.post("/api/recordings", json={
+            "audioId": vot_audio, "levelId": vot_level["id"],
+            "submissionId": f"shape-vot-{time.time()}"})
+        if r.status_code == 202:
+            pending_id = r.json()["data"]["recording"]["recordingId"]
+            for _ in range(40):
+                r = c.get(f"/api/recordings/{pending_id}")
+                if r.status_code == 200:
+                    break
+                time.sleep(0.3)
+        body = expect("声母关提交（VOT）→ RecordingWithResult", r, RecordingWithResult)
+        vot = body["data"]["result"].get("vot") or {}
+        check("  result.vot 存在且 status=ok", vot.get("status") == "ok",
+              str(vot)[:200])
+        check("  vot.user/reference 含 onsetSec/voicingOnsetSec/votMs 且数值>0",
+              all(
+                  isinstance(vot.get(side, {}).get(k), (int, float))
+                  and vot[side][k] > 0
+                  for side in ("user", "reference")
+                  for k in ("onsetSec", "voicingOnsetSec", "votMs")
+              ), str(vot)[:200])
+        check("  vot.referenceMediaId 非空", bool(vot.get("referenceMediaId")))
+
         # ---- 标定 ----
         r = c.get("/api/pitch-calibration")
         expect("pitch-calibration GET（未标定）→ PitchCalibrationInfo", r,

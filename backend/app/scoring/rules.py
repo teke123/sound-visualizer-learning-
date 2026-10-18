@@ -3,9 +3,13 @@
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 
-from app.acoustics.analysis import F0Result, extract_formants, formant_stats_in_segments, to_t_values
+from app.acoustics.analysis import (
+    F0Result, detect_onset_span, extract_formants, formant_stats_in_segments, to_t_values,
+)
 from app.scoring.provider import ProviderResult
 
 # 现象标签全集（与内容组约定，模板按 tag 匹配）
@@ -170,6 +174,41 @@ def analyze_formants(wav_path: str, provider: ProviderResult, snapshot: dict,
             "vowel": reference_region.get("vowel"),
         },
         "deviation": round(dev, 3),
+    }
+
+
+# 声母送气分类（FR-1005 送气对比；哪些关出该视图由 layer 控制，见 detection 管线）
+INITIAL_ASPIRATION = {
+    "p": "aspirated", "t": "aspirated", "k": "aspirated",
+    "c": "aspirated", "ch": "aspirated", "q": "aspirated",
+    "b": "unaspirated", "d": "unaspirated", "g": "unaspirated",
+    "z": "unaspirated", "zh": "unaspirated", "j": "unaspirated",
+    "f": "fricative", "s": "fricative", "sh": "fricative", "x": "fricative", "h": "fricative",
+    "m": "voiced", "n": "voiced", "l": "voiced", "r": "voiced", "y": "voiced", "w": "voiced",
+}
+
+
+def analyze_vot(user_wav: str, user_f0: F0Result, reference_wav: str,
+                target_sound: str, reference_media_id: str) -> dict:
+    """声母关送气段/VOT 对比（FR-1005）：用户录音与本关参考示范双侧检测，
+    输出时段与 VOT 供前端波形标注。"""
+    user_span = detect_onset_span(Path(user_wav), user_f0)
+    ref_span = detect_onset_span(Path(reference_wav))
+    if user_span is None or ref_span is None:
+        return {"status": "not_available", "targetSound": target_sound,
+                "note": "未能定位清晰的清辅音起始或嗓音起始，暂不做送气段对比"}
+
+    def span_dict(span) -> dict:
+        return {"onsetSec": span.onset_sec, "voicingOnsetSec": span.voicing_sec,
+                "votMs": span.vot_ms}
+
+    return {
+        "status": "ok",
+        "targetSound": target_sound,
+        "aspiration": INITIAL_ASPIRATION.get(target_sound),
+        "user": span_dict(user_span),
+        "reference": span_dict(ref_span),
+        "referenceMediaId": reference_media_id,
     }
 
 

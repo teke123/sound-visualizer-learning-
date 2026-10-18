@@ -495,6 +495,23 @@ class ResultFormants(BaseModel):
     note: Optional[str] = None
 
 
+class VotSpan(BaseModel):
+    """单侧送气段时段：清辅音起始 → 嗓音起始（FR-1005）。"""
+    onsetSec: float                    # 爆破/摩擦噪声起点（秒）
+    voicingOnsetSec: float             # 嗓音起始（秒）
+    votMs: float                       # VOT = 嗓音起始 − 清辅音起始（毫秒）
+
+
+class ResultVot(BaseModel):
+    status: Literal["ok", "not_available"]
+    targetSound: Optional[str] = None
+    aspiration: Optional[Literal["aspirated", "unaspirated", "fricative", "voiced"]] = None
+    user: Optional[VotSpan] = None
+    reference: Optional[VotSpan] = None
+    referenceMediaId: Optional[str] = None   # 参考示范音频（前端拉取波形用）
+    note: Optional[str] = None
+
+
 class AssessmentResult(BaseModel):
     levelId: str
     providerVersion: str
@@ -505,6 +522,7 @@ class AssessmentResult(BaseModel):
     fourSteps: Optional[List[FourStep]] = None
     curve: Optional[ResultCurve] = None
     formants: Optional[ResultFormants] = None
+    vot: Optional[ResultVot] = None
 
 
 class RecordingWithResult(BaseModel):

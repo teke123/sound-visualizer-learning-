@@ -305,6 +305,73 @@ def formant_stats_in_segments(formants: FormantResult, segments: list[list[float
     }
 
 
+# ---------------- 送气段 / VOT ----------------
+
+VOT_FRAME_SEC = 0.005           # 5 ms 帧分辨率（教学对比 ±5 ms 足够）
+VOT_ONSET_RISE_DB = 8.0         # 能量起始判定：高出底噪的分贝数
+VOT_ONSET_SUSTAIN_SEC = 0.015   # 起始需持续时长（防瞬时咔哒声误触发）
+
+
+@dataclass
+class OnsetSpan:
+    onset_sec: float        # 清辅音起始（burst/摩擦噪声起点，秒）
+    voicing_sec: float      # 嗓音起始（首个有声帧，秒）
+    vot_ms: float           # VOT = 嗓音起始 − 清辅音起始（毫秒）
+
+
+def detect_onset_span(wav_path: Path, f0: F0Result | None = None) -> OnsetSpan | None:
+    """送气段/VOT：能量起始（爆破/摩擦噪声）→ 嗓音起始（首个有声帧），
+    清辅音噪声段长度即 VOT（FR-1005）。有声判定复用 F0（unvoiced=NaN 语义，
+    tone_py/Praat）；未传入 f0 时自行提取。任一侧缺失返回 None。"""
+    samples = transcode.read_pcm_samples(wav_path)
+    frame = int(VOT_FRAME_SEC * transcode.SAMPLE_RATE)
+    n_frames = len(samples) // frame
+    if n_frames < 1:
+        return None
+    framed = samples[: n_frames * frame].reshape(n_frames, frame)
+    rms = np.sqrt(np.mean(framed ** 2, axis=1))
+    rms_db = np.array([_dbfs(v) for v in rms])
+
+    floor = float(np.percentile(rms_db, 10))
+    thresh = floor + VOT_ONSET_RISE_DB
+    sustain = max(2, int(VOT_ONSET_SUSTAIN_SEC / VOT_FRAME_SEC))
+    onset_idx = None
+    for i in range(n_frames - sustain + 1):
+        if bool(np.all(rms_db[i: i + sustain] >= thresh)):
+            onset_idx = i
+            break
+    if onset_idx is None:
+        return None
+    onset_t = onset_idx * VOT_FRAME_SEC
+
+    f0 = f0 or extract_f0(wav_path)
+    voicing_t = None
+    for fr in f0.frames:
+        if "hz" in fr and fr["t"] >= onset_t - 0.02:
+            voicing_t = fr["t"]
+            break
+    if voicing_t is None:
+        return None
+    return OnsetSpan(
+        onset_sec=round(onset_t, 3),
+        voicing_sec=round(voicing_t, 3),
+        vot_ms=round(max(0.0, (voicing_t - onset_t) * 1000), 1),
+    )
+
+
+def adaptive_f0_range(f0: F0Result) -> tuple[float, float] | None:
+    """单次录音自适应音域（FR-1006 跳过标定路径）：有声段 F0 的 P5–P95。
+    有声帧不足（<30 帧）或范围过窄（近乎单调，hi <= lo*1.15）时返回 None，
+    由调用方回落默认成人范围。"""
+    hz = np.array([fr["hz"] for fr in f0.frames if "hz" in fr], dtype=float)
+    if hz.size < 30:
+        return None
+    lo, hi = (float(v) for v in np.percentile(hz, [5, 95]))
+    if hi <= lo * 1.15:
+        return None
+    return round(lo, 1), round(hi, 1)
+
+
 # ---------------- 频谱图 ----------------
 
 # Praat 默认参数：Gaussian 窗 5ms / 2ms 帧移 / 20Hz 频率步长

@@ -6,6 +6,7 @@ import type {
   AudioPurpose,
   LearningEvent,
   RecordingDTO,
+  VotSpan,
 } from '@/api'
 import { LEVEL_DETAILS, LEVEL_SUMMARIES } from './fixtures'
 
@@ -87,6 +88,43 @@ function buildFormants(): AssessmentResult['formants'] {
   }
 }
 
+/* 送气段（FR-1005）：按声母是否送气定参考值；user 随 hashOf 在 30–90 ms 波动 */
+const ASPIRATED_INITIALS = ['p', 't', 'k', 'c', 'ch', 'q']
+const FRICATIVE_INITIALS = ['f', 's', 'sh', 'x', 'h']
+const VOICED_INITIALS = ['m', 'n', 'l', 'r']
+
+function votSpan(onsetSec: number, votMs: number): VotSpan {
+  return {
+    onsetSec,
+    voicingOnsetSec: Number((onsetSec + votMs / 1000).toFixed(3)),
+    votMs,
+  }
+}
+
+function buildVot(levelId: string): AssessmentResult['vot'] {
+  const level = LEVEL_DETAILS[levelId]
+  const target = level?.targetSound ?? ''
+  const aspirated = ASPIRATED_INITIALS.includes(target)
+  const referenceMs = !target ? 55 : aspirated ? 62 : 12
+  const userMs = 30 + (hashOf(levelId) % 61)
+  const aspiration: NonNullable<AssessmentResult['vot']>['aspiration'] = aspirated
+    ? 'aspirated'
+    : FRICATIVE_INITIALS.includes(target)
+      ? 'fricative'
+      : VOICED_INITIALS.includes(target)
+        ? 'voiced'
+        : 'unaspirated'
+  return {
+    status: 'ok',
+    targetSound: target || null,
+    aspiration,
+    user: votSpan(0.3, userMs),
+    reference: votSpan(0.15, referenceMs),
+    referenceMediaId: 'md-mock-sample',
+    note: null,
+  }
+}
+
 export function buildResult(levelId: string, audioId: string, qualityTips: boolean): AssessmentResult {
   const level = LEVEL_DETAILS[levelId]
   const scoreBase = 62 + (hashOf(audioId) % 34)
@@ -128,6 +166,7 @@ export function buildResult(levelId: string, audioId: string, qualityTips: boole
       ],
       curve: buildCurve(levelId, audioId),
       formants: level?.layer === 'vowel' ? buildFormants() : undefined,
+      vot: level?.layer === 'initial' ? buildVot(levelId) : undefined,
     }
   }
   return {
@@ -165,6 +204,7 @@ export function buildResult(levelId: string, audioId: string, qualityTips: boole
     ],
     curve: buildCurve(levelId, audioId),
     formants: level?.layer === 'vowel' ? buildFormants() : undefined,
+    vot: level?.layer === 'initial' ? buildVot(levelId) : undefined,
   }
 }
 

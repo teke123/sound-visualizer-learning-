@@ -4,8 +4,8 @@
  * 未登录 → 注册 / 登录入口与说明；已登录 → 退出、重新标定、
  * 清空档案入口、注销（密码确认 + 二次确认）。
  */
-import { computed, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useContextStore } from '@/stores/context'
 import { useAuth } from '@/features/auth'
 import { useCalibration } from '@/features/calibration'
@@ -14,12 +14,22 @@ import CalibrationPanel from '@/components/CalibrationPanel.vue'
 import DangerConfirmDialog from '@/components/DangerConfirmDialog.vue'
 
 const router = useRouter()
+const route = useRoute()
 const contextStore = useContextStore()
 const auth = useAuth()
 
 const deleteOpen = ref(false)
 const clearArchiveOpen = ref(false)
 const recalibrateOpen = ref(false)
+
+// FR-1006：结果页「去标定」直达 #calibration 锚点时自动打开标定面板
+watch(
+  () => route.hash,
+  (hash) => {
+    if (hash === '#calibration' && contextStore.isAuthenticated) recalibrateOpen.value = true
+  },
+  { immediate: true },
+)
 
 const calibration = useCalibration()
 

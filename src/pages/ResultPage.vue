@@ -7,10 +7,11 @@
  */
 import { computed, defineAsyncComponent, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { audioFileUrl, audioSpectrogramPngUrl } from '@/api'
+import { audioFileUrl, audioSpectrogramPngUrl, mediaUrl } from '@/api'
 import { useRecordingResult } from '@/features/result'
 import { usePlayerStore } from '@/stores/player'
 import { useLevelsStore } from '@/stores/levels'
+import { useContextStore } from '@/stores/context'
 import QualityVerdict from '@/components/QualityVerdict.vue'
 import ScoreCard from '@/components/ScoreCard.vue'
 import PhenomenaList from '@/components/PhenomenaList.vue'
@@ -22,10 +23,12 @@ import PageState from '@/components/PageState.vue'
 
 const ToneCurveChart = defineAsyncComponent(() => import('@/renderers/ToneCurveChart.vue'))
 const FormantChart = defineAsyncComponent(() => import('@/renderers/FormantChart.vue'))
+const VotWaveformChart = defineAsyncComponent(() => import('@/renderers/VotWaveformChart.vue'))
 
 const route = useRoute()
 const player = usePlayerStore()
 const levelsStore = useLevelsStore()
+const contextStore = useContextStore()
 
 const recordingId = computed(() => String(route.params.id ?? ''))
 const result = useRecordingResult(recordingId)
@@ -93,6 +96,12 @@ const spectrogramError = ref(false)
       <!-- 录音质量提示（FR-1001：友好提示，不拦截评分与可视化） -->
       <QualityVerdict v-if="quality" :quality="quality" />
 
+      <!-- 未标定 → 个人对比入口（FR-1006） -->
+      <div v-if="contextStore.isAuthenticated && !contextStore.calibrationValid" class="calib-entry">
+        <p>本次结果用的是通用参考范围，还没有你的个人音域与元音空间。</p>
+        <RouterLink to="/account#calibration" class="act-btn primary">去标定以获得更精准个人对比</RouterLink>
+      </div>
+
       <!-- 分数（FR-1002） -->
       <ScoreCard v-if="typeof assessment.score === 'number'" :score="assessment.score" />
 
@@ -107,6 +116,17 @@ const spectrogramError = ref(false)
       <section v-if="assessment.formants" class="result-section" aria-label="共振峰对比">
         <h2>共振峰对比</h2>
         <FormantChart :formants="assessment.formants" />
+      </section>
+
+      <!-- 送气段波形对比（声母关，FR-1005） -->
+      <section v-if="assessment.vot" class="result-section" aria-label="送气段波形对比">
+        <h2>送气段波形对比（VOT）</h2>
+        <p class="curve-note">横轴是时间，高亮区域是清辅音（送气/摩擦）噪声段，竖线是嗓音起始；两者间隔即 VOT——送气声母这段明显更长。</p>
+        <VotWaveformChart
+          :vot="assessment.vot"
+          :user-audio-url="audioFileUrl(recording.audioId)"
+          :reference-audio-url="assessment.vot.referenceMediaId ? mediaUrl(assessment.vot.referenceMediaId) : undefined"
+        />
       </section>
 
       <!-- 频谱图（FR-1005：时间×频率能量分布） -->
@@ -174,6 +194,21 @@ const spectrogramError = ref(false)
   font-size: 13px
   color: #78909c
   margin: 0 0 8px
+
+.calib-entry
+  background: #f1f8f6
+  border: 1px solid #cce7e1
+  border-radius: 14px
+  padding: 14px 18px
+  display: flex
+  align-items: center
+  justify-content: space-between
+  gap: 14px
+  flex-wrap: wrap
+  p
+    margin: 0
+    font-size: 14px
+    color: #546e7a
 
 .spectrogram-img
   max-width: 100%

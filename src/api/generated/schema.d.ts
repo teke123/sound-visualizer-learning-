@@ -1027,6 +1027,7 @@ export interface components {
             fourSteps?: components["schemas"]["FourStep"][] | null;
             curve?: components["schemas"]["ResultCurve"] | null;
             formants?: components["schemas"]["ResultFormants"] | null;
+            vot?: components["schemas"]["ResultVot"] | null;
         };
         /** AudioUploadResponse */
         AudioUploadResponse: {
@@ -2323,6 +2324,24 @@ export interface components {
             /** Note */
             note?: string | null;
         };
+        /** ResultVot */
+        ResultVot: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "not_available";
+            /** Targetsound */
+            targetSound?: string | null;
+            /** Aspiration */
+            aspiration?: ("aspirated" | "unaspirated" | "fricative" | "voiced") | null;
+            user?: components["schemas"]["VotSpan"] | null;
+            reference?: components["schemas"]["VotSpan"] | null;
+            /** Referencemediaid */
+            referenceMediaId?: string | null;
+            /** Note */
+            note?: string | null;
+        };
         /** SagittalKeyframe */
         SagittalKeyframe: {
             /** Label */
@@ -2426,6 +2445,18 @@ export interface components {
             pass?: boolean | null;
             /** Advice */
             advice?: string | null;
+        };
+        /**
+         * VotSpan
+         * @description 单侧送气段时段：清辅音起始 → 嗓音起始（FR-1005）。
+         */
+        VotSpan: {
+            /** Onsetsec */
+            onsetSec: number;
+            /** Voicingonsetsec */
+            voicingOnsetSec: number;
+            /** Votms */
+            votMs: number;
         };
         /** WishBody */
         WishBody: {
