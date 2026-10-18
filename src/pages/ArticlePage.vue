@@ -1,5 +1,5 @@
 <script setup lang="ts">
-/** P04 文章页（FR-501–506）：ArticleView + 进入已发布关卡；404 落统一不可见状态 */
+/** P04 文章页（FR-501–506）：ArticleView + 进入已开放关卡；404 落统一不可见状态 */
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ApiError, contentApi, mediaUrl, type ArticleDetail } from '@/api'

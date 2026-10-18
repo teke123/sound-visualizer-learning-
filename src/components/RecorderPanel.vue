@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * RecorderPanel：录音控制面板（FR-905，P05 / P08 共用）。
+ * RecorderPanel：录音控制面板（FR-905，P05 录音区）。
  * 状态由 useAssessmentFlow 提供；实时波形 canvas + AnalyserNode；
  * 上传与提交期间禁用按钮防重复提交；有未提交录音时 beforeunload 由流程挂载。
  */
@@ -138,15 +138,6 @@ const progressPercent = () => Math.min(100, (props.elapsedMs / maxMs) * 100)
       <p class="state-note">关卡内容刚刚更新，正在刷新任务…请稍后按新内容重录。</p>
     </div>
 
-    <!-- 熔断 / 限流 -->
-    <div v-else-if="state === 'blocked'" class="blocked-box">
-      <p class="state-note err">{{ error?.copy.title ?? '录音检测暂停中' }}</p>
-      <p class="state-sub">{{ error?.copy.hint ?? '学习内容不受影响，可先回到关卡继续学习。' }}</p>
-      <div class="panel-row">
-        <RouterLink v-if="error" to="/library" class="record-btn">先去学习</RouterLink>
-      </div>
-    </div>
-
     <!-- 失败 -->
     <div v-else-if="state === 'failed' || error" class="failed-box">
       <p class="state-note err">{{ error?.copy.title ?? recorderError ?? '出错了' }}</p>
@@ -272,7 +263,7 @@ const progressPercent = () => Math.min(100, (props.elapsedMs / maxMs) * 100)
   font-size: 12px
   color: #b0bec5
 
-.blocked-box, .failed-box
+.failed-box
   display: flex
   flex-direction: column
   align-items: center

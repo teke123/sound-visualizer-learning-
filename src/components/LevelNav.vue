@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * LevelNav：上一关 / 下一关 / 易混关 / 关联关（FR-610）。
- * L30 提供回到 L01 与 L09 的关系；目标未发布时禁用，不产生可进入链接。
+ * L30 提供回到 L01 与 L09 的关系；目标未开放时禁用，不产生可进入链接。
  */
 import { computed } from 'vue'
 import type { LevelDetail } from '@/api'

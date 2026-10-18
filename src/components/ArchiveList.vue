@@ -41,7 +41,7 @@ function play(item: ArchiveRecordingSummary) {
   <div class="archive-list">
     <p v-if="archive.loading.value" class="al-loading">读取中…</p>
     <p v-else-if="groups.length === 0 && !archive.error.value" class="al-empty">
-      还没有保存的录音。去录一关，登录并同意后会自动保存。
+      还没有保存的录音。去关卡页录一关，结果会自动保存到这里。
     </p>
     <p v-else-if="archive.error.value" class="al-error">{{ errorCopy(archive.error.value).title }}</p>
 
@@ -58,9 +58,8 @@ function play(item: ArchiveRecordingSummary) {
         <li v-for="item in group.items" :key="item.recordingId" class="al-item">
           <div class="al-main">
             <span class="al-date">{{ formatDateTime(item.createdAt ?? undefined) }}</span>
-            <span :class="['al-verdict', item.verdict]">{{ item.verdict === 'pass' ? '可评' : '本次不能评' }}</span>
+            <span :class="['al-verdict', item.verdict]">{{ item.verdict === 'pass' ? '录音质量良好' : '录音质量欠佳' }}</span>
             <span v-if="typeof item.score === 'number'" class="al-score">{{ Math.round(item.score) }} 分</span>
-            <span class="al-version">v{{ item.contentVersion }}</span>
           </div>
           <div class="al-actions">
             <button type="button" class="al-btn" @click="play(item)">

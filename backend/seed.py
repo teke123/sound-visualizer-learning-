@@ -1,9 +1,9 @@
-"""种子脚本：30 关内容 + 文章 + 标定文本 + 合成示范媒体 + 参考发音人 + 发布。
+"""种子脚本：30 关内容 + 文章 + 标定文本 + 合成示范媒体 + 参考发音人。
 
 用法（backend/ 目录下）：
     python seed.py            # 幂等补种（已存在的不重做）
     python seed.py --reset    # 清库重建（删除 data/app.db 与媒体目录）
-    python seed.py --publish N  # 只发布前 N 关（默认全部 30 关）
+    python seed.py --open N   # 只开放前 N 关（默认全部 30 关）
 
 合成音频说明见 app/seed_support.py 模块注释。
 """
@@ -16,8 +16,8 @@ from pathlib import Path
 
 from app import config
 from app.content.models import (
-    ArticleDraftRow, ArticleRow, ArticleVersionRow, CalibrationTextRow, CategoryRow,
-    LevelDraftRow, LevelRow, MediaAssetRow, ReferenceSpeakerRow, SagittalPresetRow,
+    ArticleRow, CalibrationTextRow, CategoryRow, LevelRow, MediaAssetRow,
+    ReferenceSpeakerRow, SagittalPresetRow,
 )
 from app.content import usecases as content_uc
 from app.db import JSONText, create_all, get_session, now
@@ -34,7 +34,7 @@ def _reset() -> None:
         p = Path(str(config.DB_PATH) + suffix)
         if p.exists():
             p.unlink()
-    for d in (config.PUBLIC_DIR, config.DRAFT_DIR, config.PRIVATE_DIR):
+    for d in (config.PRIVATE_DIR, config.MEDIA_DIR):
         if d.exists():
             shutil.rmtree(d, ignore_errors=True)
     if config.DELETION_LOG_PATH.exists():
@@ -46,7 +46,7 @@ def _register_media(db, *, kind: str, purpose: str, path: Path, filename: str,
                     text: str | None, license_note: str, duration: float | None) -> str:
     media_id = new_id("md_")
     db.add(MediaAssetRow(
-        id=media_id, kind=kind, storage="draft", filename=filename,
+        id=media_id, kind=kind, filename=filename,
         storage_path=str(path.relative_to(config.DATA_DIR)),
         mime="audio/wav", size_bytes=path.stat().st_size, purpose=purpose,
         license_note=license_note, author=SEED_ACTOR,
@@ -57,15 +57,14 @@ def _register_media(db, *, kind: str, purpose: str, path: Path, filename: str,
 
 
 def _synthesize_media(db, *, text: str, voice: str, purpose: str, ref_name: str,
-                      license_note: str) -> tuple[str, Path]:
-    wav = config.DATA_DIR / "media" / f"seed_{ref_name}_{voice}.wav"
+                      license_note: str) -> str:
+    wav = config.MEDIA_DIR / f"seed_{ref_name}_{voice}.wav"
     write_wav(wav, synthesize_text(text, voice))
     from app.acoustics.transcode import probe_duration
 
-    media_id = _register_media(
+    return _register_media(
         db, kind="audio", purpose=purpose, path=wav, filename=f"{ref_name}_{voice}.wav",
         text=text, license_note=license_note, duration=probe_duration(wav))
-    return media_id, wav
 
 
 def seed_calibration_text(db) -> None:
@@ -99,7 +98,7 @@ def seed_reference_speakers(db) -> dict[str, str]:
     text_row = content_uc.get_active_calibration_text(db)
     syllables = JSONText.load(text_row.syllables)
     for gender, name in (("male", "标准男声（合成）"), ("female", "标准女声（合成）")):
-        wav = config.DATA_DIR / "media" / f"seed_calibration_{gender}.wav"
+        wav = config.MEDIA_DIR / f"seed_calibration_{gender}.wav"
         write_wav(wav, synthesize_text("".join(syllables), gender, syllable_dur=0.36))
         result = calibrate_path(wav, syllables)
         if not result.get("ok"):
@@ -119,11 +118,11 @@ def seed_reference_speakers(db) -> dict[str, str]:
     return speakers
 
 
-def seed_levels(db, speakers: dict[str, str], publish_count: int) -> None:
+def seed_levels(db, speakers: dict[str, str], open_count: int) -> None:
     from app.content_seed_data import LEVELS
 
     male_speaker = speakers.get("male")
-    for item in LEVELS[:publish_count]:
+    for item in LEVELS[:open_count]:
         level_id = item["id"]
         if db.get(LevelRow, level_id) is not None:
             print(f"[seed] {level_id} 已存在，跳过")
@@ -137,7 +136,7 @@ def seed_levels(db, speakers: dict[str, str], publish_count: int) -> None:
         demos = []
         for d in content.get("demos", []):
             voice = d.get("voice", "male")
-            media_id, _ = _synthesize_media(
+            media_id = _synthesize_media(
                 db, text=d.get("text", demo_text), voice=voice,
                 purpose="demo", ref_name=f"{level_id}_{d.get('speed', 'normal')}",
                 license_note=license_note)
@@ -147,7 +146,7 @@ def seed_levels(db, speakers: dict[str, str], publish_count: int) -> None:
         # 听辨题刺激音频
         quizzes = []
         for q in content.get("quizzes", []):
-            media_id, _ = _synthesize_media(
+            media_id = _synthesize_media(
                 db, text=q.get("stimulusText", demo_text), voice="female",
                 purpose="quiz", ref_name=f"{level_id}_{q['id']}",
                 license_note=license_note)
@@ -157,51 +156,29 @@ def seed_levels(db, speakers: dict[str, str], publish_count: int) -> None:
         # 检测任务：参考示范 + 参考发音人
         det = dict(content.get("detection", {}))
         sample_voice = det.get("sampleVoice", "male")
-        sample_media, sample_wav = _synthesize_media(
+        det["sampleMediaId"] = _synthesize_media(
             db, text=det.get("evaluationText", demo_text), voice=sample_voice,
             purpose="demo", ref_name=f"{level_id}_sample",
             license_note=license_note)
-        det["sampleMediaId"] = sample_media
         det["referenceSpeakerId"] = male_speaker if sample_voice == "male" \
             else speakers.get("female")
         content["detection"] = det
 
+        # 标准曲线（提取不到则该关曲线对比降级为不可用）
+        content = content_uc.prepare_level_content(db, content)
+        curve_segments = len((content.get("standardCurve") or {}).get("segments") or [])
+
         db.add(LevelRow(id=level_id, order=item["order"], layer=item["layer"],
-                        status="draft", skeleton_public=bool(item.get("skeletonPublic", True)),
+                        published=True,
+                        skeleton_public=bool(item.get("skeletonPublic", True)),
+                        content=JSONText.dump(content),
                         created_at=now(), updated_at=now()))
-        db.add(LevelDraftRow(level_id=level_id, revision=1,
-                             content=JSONText.dump(content),
-                             updated_at=now(), updated_by=SEED_ACTOR))
         # 声道剖面预设（后台起步微调用）
         db.add(SagittalPresetRow(
             key=level_id, layer=item["layer"], target_sound=item["targetSound"],
             keyframes=JSONText.dump(content["articulation"]["sagittal"]["keyframes"])))
         db.commit()
-        print(f"[seed] {level_id} 草稿就绪（{item['targetSound']}）")
-
-
-def publish_levels(db, publish_count: int) -> None:
-    from app.content_seed_data import LEVELS
-
-    published = 0
-    for item in LEVELS[:publish_count]:
-        level_id = item["id"]
-        lv = db.get(LevelRow, level_id)
-        if lv is None:
-            continue
-        if lv.status == "published":
-            published += 1
-            continue
-        try:
-            result = content_uc.publish_level(db, level_id, admin_actor=SEED_ACTOR,
-                                              request_id="seed",
-                                              change_note="种子初版")
-            published += 1
-            print(f"[seed] {level_id} 发布（v{result['contentVersion']}，"
-                  f"标准曲线 {result['standardCurveSegments']} 段）")
-        except Exception as e:
-            print(f"[seed] {level_id} 发布失败：{e}")
-    print(f"[seed] 已发布关卡：{published}")
+        print(f"[seed] {level_id} 已开放（{item['targetSound']}，标准曲线 {curve_segments} 段）")
 
 
 def seed_articles(db) -> None:
@@ -218,30 +195,23 @@ def seed_articles(db) -> None:
             continue
         content = dict(a)
         demo_text = a.get("demoText") or a["title"]
-        media_id, _ = _synthesize_media(
+        content["demoMediaId"] = _synthesize_media(
             db, text=demo_text, voice="male", purpose="article",
             ref_name=f"article_{slug}", license_note=a.get("license", "内部演示授权"))
-        content["demoMediaId"] = media_id
-        db.add(ArticleRow(slug=slug, status="draft", created_at=now(), updated_at=now()))
-        db.add(ArticleDraftRow(article_slug=slug, revision=1,
-                               content=JSONText.dump(content),
-                               updated_at=now(), updated_by=SEED_ACTOR))
+        db.add(ArticleRow(slug=slug, published=True,
+                          content=JSONText.dump(content),
+                          created_at=now(), updated_at=now()))
         db.commit()
-        try:
-            content_uc.publish_article(db, slug, admin_actor=SEED_ACTOR,
-                                       request_id="seed", change_note="种子初版")
-            print(f"[seed] 文章发布：{slug}")
-        except Exception as e:
-            print(f"[seed] 文章 {slug} 发布失败：{e}")
+        print(f"[seed] 文章就绪：{slug}")
 
 
 def main() -> None:
     args = sys.argv[1:]
     if "--reset" in args:
         _reset()
-    publish_count = 30
-    if "--publish" in args:
-        publish_count = int(args[args.index("--publish") + 1])
+    open_count = 30
+    if "--open" in args:
+        open_count = int(args[args.index("--open") + 1])
 
     config.ensure_dirs()
     create_all()
@@ -252,8 +222,7 @@ def main() -> None:
         if not speakers:
             print("[seed][ERROR] 参考发音人登记失败，标准曲线无法生成，终止")
             return
-        seed_levels(db, speakers, publish_count)
-        publish_levels(db, publish_count)
+        seed_levels(db, speakers, open_count)
         seed_articles(db)
         print("[seed] 完成。默认管理员：admin / admin12345（可用环境变量覆盖）")
     finally:

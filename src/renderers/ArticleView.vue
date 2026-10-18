@@ -1,8 +1,8 @@
 <script setup lang="ts">
 /**
- * ArticleView：文章正文渲染器（P04 与预览共用，FD-12）。
- * Markdown 正文 + 受控指令（practice/audio/image/levels/pro）；
- * 关卡链接只渲染当前已发布关（由 publishedIds 判定）；
+ * ArticleView：文章正文渲染器（P04）。
+ * Markdown 正文 + 受控指令（practice/audio/image/levels/pro，pro 直接展示）；
+ * 关卡链接只渲染当前已开放关（由 publishedIds 判定）；
  * 播放与跳转为回调（renderers 不调 api、不读 store）。
  */
 import { computed, ref, watch } from 'vue'
@@ -11,9 +11,9 @@ import { renderArticleMarkdown } from './markdown'
 
 const props = defineProps<{
   article: ArticleDetail
-  /** mediaId → URL（公开或预览） */
+  /** mediaId → URL */
   mediaResolver: (mediaId: string) => string
-  /** 当前已发布关 ID 集合；未发布关卡链接显示不可用 */
+  /** 当前已开放关 ID 集合；未开放关卡链接显示不可用 */
   publishedLevelIds: ReadonlySet<string>
   interactive?: boolean
 }>()
@@ -38,7 +38,7 @@ async function render() {
 }
 
 watch(
-  () => [props.article.slug, props.article.contentVersion] as const,
+  () => props.article.slug,
   () => {
     void render()
   },

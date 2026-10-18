@@ -1,22 +1,9 @@
 /**
  * 媒体与音频地址拼装（全项目唯一出口）。
- * 预览态媒体一律改写为 /api/preview/media 并附带 token（FD-12 / #21）。
  */
 
-export interface MediaUrlOptions {
-  previewToken?: string
-}
-
-function withToken(url: string, token?: string): string {
-  if (!token) return url
-  return `${url}${url.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`
-}
-
 /** 公开内容媒体（图片/动画/视频/字幕/模型）唯一读取入口 */
-export function mediaUrl(mediaId: string, options: MediaUrlOptions = {}): string {
-  if (options.previewToken) {
-    return withToken(`/api/preview/media/${encodeURIComponent(mediaId)}`, options.previewToken)
-  }
+export function mediaUrl(mediaId: string): string {
   return `/api/media/${encodeURIComponent(mediaId)}`
 }
 

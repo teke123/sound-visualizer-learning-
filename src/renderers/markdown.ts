@@ -2,7 +2,8 @@
  * 受控 Markdown 渲染（FR-501–506 / decision-map-frontend「构形、文章与听辨」）：
  * - 禁用原始 HTML 与脚本（html: false）
  * - 自定义容器指令白名单：practice / audio / image / levels / pro
- * - 媒体只接受由 mediaResolver 生成的 /api/media 或 /api/preview/media 地址
+ * - 专业内容（pro）直接展示，不折叠
+ * - 媒体只接受由 mediaResolver 生成的 /api/media 地址
  * - markdown-it 动态加载，不进首屏包（§9）
  */
 
@@ -102,9 +103,9 @@ async function loadMarkdownIt(): Promise<MarkdownItLike> {
   return mdPromise
 }
 
-/** 是否为受控媒体地址（/api/media 或 /api/preview/media 开头） */
+/** 是否为受控媒体地址（/api/media 开头） */
 export function isControlledMediaUrl(url: string): boolean {
-  return url.startsWith('/api/media/') || url.startsWith('/api/preview/media/')
+  return url.startsWith('/api/media/')
 }
 
 export async function renderArticleMarkdown(source: string, options: MarkdownRenderOptions): Promise<string> {
@@ -147,10 +148,8 @@ export async function renderArticleMarkdown(source: string, options: MarkdownRen
           `<div class="md-practice-body">${md.render(content)}</div></details>`
         )
       case 'pro':
-        return (
-          `<details class="md-directive md-pro"><summary>专业内容</summary>` +
-          `<div class="md-pro-body">${md.render(content)}</div></details>`
-        )
+        // 专业内容直接展示，不做折叠
+        return `<div class="md-directive md-pro"><div class="md-pro-body">${md.render(content)}</div></div>`
       default:
         return ''
     }

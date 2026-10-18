@@ -1,4 +1,4 @@
-/** content 模块端点：关卡、搜索、文章、预览（docs/decision-map-backend.md） */
+/** content 模块端点：关卡、搜索、文章（docs/decision-map-backend.md） */
 import { apiRequest } from '../client'
 import type {
   ArticleCategoriesResponse,
@@ -28,12 +28,5 @@ export const contentApi = {
   },
   article(slug: string, options: { signal?: AbortSignal } = {}) {
     return apiRequest<ArticleDetail>(`/articles/${encodeURIComponent(slug)}`, { signal: options.signal })
-  },
-  /** 管理员草稿预览（与公开详情同结构，来源为草稿） */
-  previewLevel(id: string, token: string) {
-    return apiRequest<LevelDetail>(`/preview/levels/${encodeURIComponent(id)}?token=${encodeURIComponent(token)}`)
-  },
-  previewArticle(slug: string, token: string) {
-    return apiRequest<ArticleDetail>(`/preview/articles/${encodeURIComponent(slug)}?token=${encodeURIComponent(token)}`)
   },
 }

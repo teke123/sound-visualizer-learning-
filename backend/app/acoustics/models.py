@@ -1,4 +1,4 @@
-"""acoustics 模块表：audio（私有上传）、feature_cache（F0/共振峰/图片缓存）。"""
+"""acoustics 模块表：audio（用户上传）、feature_cache（F0/共振峰/图片缓存）。"""
 from __future__ import annotations
 
 import datetime
@@ -13,16 +13,14 @@ class AudioRow(Base):
     __tablename__ = "audio"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
-    owner_type: Mapped[str] = mapped_column(String(8))     # sid | user
-    owner_id: Mapped[str] = mapped_column(String(64), index=True)
+    user_id: Mapped[str] = mapped_column(String(64), index=True)
     purpose: Mapped[str] = mapped_column(String(16))       # recording | calibration
     original_filename: Mapped[str | None] = mapped_column(String(255))
     original_mime: Mapped[str | None] = mapped_column(String(128))
     storage_path: Mapped[str] = mapped_column(String(512))
     duration_sec: Mapped[float] = mapped_column(Float)
     pcm_sha256: Mapped[str] = mapped_column(String(64), index=True)
-    first_uploaded_at: Mapped[datetime.datetime] = mapped_column(DateTime)
-    expires_at: Mapped[datetime.datetime] = mapped_column(DateTime)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime)
     deleted_at: Mapped[datetime.datetime | None] = mapped_column(DateTime)
 
 
@@ -34,7 +32,7 @@ class FeatureCacheRow(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     audio_id: Mapped[str] = mapped_column(String(64), index=True)
-    kind: Mapped[str] = mapped_column(String(16))          # f0 | formants | formants_png
+    kind: Mapped[str] = mapped_column(String(16))          # f0 | formants | formants_png | spectrogram_png
     algorithm_version: Mapped[str] = mapped_column(String(64))
     payload: Mapped[str] = mapped_column(Text)             # JSON（图片则文件相对路径）
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime)

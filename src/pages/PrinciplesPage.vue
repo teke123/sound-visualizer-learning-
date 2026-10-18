@@ -72,7 +72,7 @@ function switchCategory(name: string) {
         </button>
       </nav>
 
-      <p v-if="articles.length === 0" class="no-articles">这一类暂时没有已发布的文章。</p>
+      <p v-if="articles.length === 0" class="no-articles">这一类暂时没有已开放的文章。</p>
       <ul v-else class="article-list">
         <li v-for="article in articles" :key="article.slug" class="article-item">
           <RouterLink :to="`/principles/${article.slug}`" class="article-link">

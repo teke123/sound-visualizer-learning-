@@ -1,4 +1,4 @@
-"""feedback 用例：公开提交（限流在路由层）、本人引用校验、后台处理。"""
+"""feedback 用例：登录用户提交（限流在路由层）、本人引用校验、后台处理。"""
 from __future__ import annotations
 
 from sqlalchemy.orm import Session
@@ -12,8 +12,7 @@ VALID_TYPES = {"clarity", "result_match", "content_error", "wish_more"}
 VALID_SUBTYPES = {"text", "audio", "image", "subtitle"}
 
 
-def submit_feedback(db: Session, *, owner_type: str, owner_id: str, body: dict,
-                    request_id: str | None) -> dict:
+def submit_feedback(db: Session, *, user_id: str, body: dict) -> dict:
     source_page = body.get("sourcePage") or ""
     ftype = body.get("type") or ""
     if ftype not in VALID_TYPES:
@@ -25,16 +24,12 @@ def submit_feedback(db: Session, *, owner_type: str, owner_id: str, body: dict,
         raise ApiError(422, "VALIDATION_ERROR", "纠错子类型不合法")
 
     recording_id = body.get("recordingId")
-    recording_version = None
     if recording_id:
-        # 结果引用校验本人并补记版本（FR-1501-1505 契约）
-        from app.detection.models import RecordingRow, AssessmentResultRow
+        from app.detection.models import RecordingRow
 
         rec = db.get(RecordingRow, recording_id)
-        if (rec is None or rec.deleted_at is not None or rec.owner_type != owner_type
-                or rec.owner_id != owner_id):
+        if rec is None or rec.deleted_at is not None or rec.user_id != user_id:
             raise ApiError(404, "NOT_FOUND", "关联的录音不存在")
-        recording_version = rec.content_version
 
     level_id = body.get("levelId")
     if level_id:
@@ -44,11 +39,11 @@ def submit_feedback(db: Session, *, owner_type: str, owner_id: str, body: dict,
             raise ApiError(404, "NOT_FOUND", "关联的关卡不存在")
 
     row = FeedbackRow(
-        id=new_id("fb_"), owner_type=owner_type, owner_id=owner_id,
+        id=new_id("fb_"), user_id=user_id,
         source_page=source_page[:32], type=ftype, subtype=subtype,
         content=(body.get("content") or "")[:2000],
         article_slug=body.get("articleSlug"), level_id=level_id,
-        recording_id=recording_id, recording_content_version=recording_version,
+        recording_id=recording_id,
         rating=body.get("rating") if isinstance(body.get("rating"), int) else None,
         status="pending", created_at=now(),
     )
@@ -57,12 +52,12 @@ def submit_feedback(db: Session, *, owner_type: str, owner_id: str, body: dict,
     return {"feedbackId": row.id}
 
 
-def submit_wish(db: Session, *, owner_type: str, owner_id: str, body: dict) -> dict:
+def submit_wish(db: Session, *, user_id: str, body: dict) -> dict:
     content = (body.get("content") or "").strip()
     if not content:
         raise ApiError(422, "VALIDATION_ERROR", "请写清希望增加的音或字")
     row = WishRow(
-        id=new_id("w_"), owner_type=owner_type, owner_id=owner_id,
+        id=new_id("w_"), user_id=user_id,
         content=content[:200], search_query=(body.get("searchQuery") or "")[:255],
         status="pending", created_at=now(),
     )

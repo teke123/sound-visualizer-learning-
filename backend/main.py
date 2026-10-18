@@ -57,7 +57,7 @@ def create_app() -> FastAPI:
 
     from app.api import (
         routes_admin, routes_audio, routes_auth, routes_feedback, routes_me,
-        routes_platform, routes_preview,
+        routes_platform,
     )
 
     app.include_router(routes_platform.router)
@@ -65,10 +65,9 @@ def create_app() -> FastAPI:
     app.include_router(routes_audio.router)
     app.include_router(routes_me.router)
     app.include_router(routes_feedback.router)
-    app.include_router(routes_preview.router)
     app.include_router(routes_admin.router)
 
-    # 管理台单页（自建轻量后台，调用同一用例；部署预案见 routes_admin 模块注释）
+    # 团队自用维护后台单页（调用同一用例）
     @app.get("/admin", include_in_schema=False)
     async def admin_page():
         return FileResponse(config.BACKEND_DIR / "app" / "admin_ui" / "index.html")

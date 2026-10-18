@@ -1,10 +1,7 @@
-/** identity 模块端点：context、注册登录、同意、注销（docs/decision-map-backend.md） */
+/** identity 模块端点：context、注册登录、注销（docs/decision-map-backend.md） */
 import { apiRequest } from '../client'
 import type {
   AuthLoginResponse,
-  ConsentPostResponse,
-  ConsentRevokedResponse,
-  ConsentStateResponse,
   DeletedResponse,
   LoggedOutResponse,
   MeContext,
@@ -19,33 +16,18 @@ export const identityApi = {
   register(payload: { username: string; password: string }) {
     return apiRequest<RegisterResponse>('/auth/register', { method: 'POST', body: payload })
   },
-  /** 成功响应直接携带替换后的 context；已有同意时附 transfer */
+  /** 成功响应直接携带替换后的 context */
   login(payload: { username: string; password: string }) {
     return apiRequest<AuthLoginResponse>('/auth/login', { method: 'POST', body: payload })
   },
   logout() {
     return apiRequest<LoggedOutResponse>('/auth/logout', { method: 'POST' })
   },
-
-  consentState() {
-    return apiRequest<ConsentStateResponse>('/me/consent')
-  },
-  /** 版本须等于现行版本；已是 granted 时再次 granted 只重跑转存（转存重试入口） */
-  postConsent(payload: { decision: 'granted' | 'rejected'; consentTextVersion: string }) {
-    return apiRequest<ConsentPostResponse>('/me/consent', { method: 'POST', body: payload })
-  },
-  /** 撤回：dataEpoch 递增，按 D-17 删除；重复调用幂等 */
-  revokeConsent() {
-    return apiRequest<ConsentRevokedResponse>('/me/consent', {
-      method: 'DELETE',
-    })
-  },
-  /** 注销：按撤回范围清理并失效全部会话 */
+  /** 注销：清空该账号全部数据并失效全部会话 */
   deleteAccount(payload: { password: string }) {
     return apiRequest<DeletedResponse>('/me/account', { method: 'DELETE', body: payload })
   },
-
-  /** 登录且同意；按 D-24 派生 */
+  /** 登录账号进度；按 D-24 派生 */
   progress() {
     return apiRequest<MeProgress>('/me/progress')
   },

@@ -9,8 +9,9 @@ from app.api.deps import Actor, db_session, get_actor
 from app.api.files import serve_file
 from app.archive import usecases as archive_uc
 from app.content import usecases as content_uc
-from app.identity import usecases as identity_uc
-from app.api.schemas import (ArticleCategoriesResponse, ArticleDetail, ArticlesResponse, Envelope, HealthData, LevelsResponse, LevelDetail, MeContext, SearchResponse)
+from app.api.schemas import (ArticleCategoriesResponse, ArticleDetail, ArticlesResponse,
+                             Envelope, HealthData, LevelsResponse, LevelDetail, MeContext,
+                             SearchResponse)
 from app.platform.envelope import envelope
 from app.scoring import usecases as scoring_uc
 
@@ -27,32 +28,18 @@ async def health():
 async def me_context(request: Request, actor: Actor = Depends(get_actor)):
     db = actor.db
     data: dict = {"authenticated": actor.user is not None}
-    consent_status = "none"
     if actor.user is not None:
         data["accountId"] = actor.user.id
         data["username"] = actor.user.username
-        data["dataEpoch"] = actor.user.data_epoch
-        consent_status = identity_uc.consent_status(db, actor.user)
-        if consent_status != "granted":
-            session = archive_uc.session_recordings(
-                db, owner_type="user", owner_id=actor.user.id)
-            data["pendingTransfer"] = session["transferableCount"]
-    data["consent"] = {"status": consent_status,
-                       "consentTextVersion": config.CONSENT_TEXT_VERSION
-                       if consent_status == "granted" else None}
-    data["currentConsentTextVersion"] = config.CONSENT_TEXT_VERSION
-    effective = scoring_uc.get_effective_range(db, owner_type=actor.owner_type,
-                                               owner_id=actor.owner_id)
+    effective = (scoring_uc.get_personal_range(db, user_id=actor.user.id)
+                 if actor.user is not None else None)
     if effective is None:
         data["calibration"] = {"status": "none"}
     else:
-        data["calibration"] = {
-            "status": effective["status"],
-            "expiresAt": effective.get("expiresAt"),
-        }
-    # nextLevelId：登录且同意按服务端 D-24 派生；否则第一已发布关
-    levels = content_uc.published_levels(db)
-    if actor.user is not None and consent_status == "granted":
+        data["calibration"] = {"status": effective["status"]}
+    # nextLevelId：登录按服务端 D-24 派生；未登录第一已开放关
+    levels = content_uc.open_levels(db)
+    if actor.user is not None:
         progress = archive_uc.derive_progress(db, user=actor.user)
         data["nextLevelId"] = progress["nextLevelId"]
     else:

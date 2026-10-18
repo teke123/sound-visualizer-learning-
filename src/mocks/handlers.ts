@@ -1,7 +1,9 @@
 /**
  * MSW handlers：按后端决策图契约模拟全部 1.0 端点（dev:mock 模式）。
- * 覆盖：内容/搜索/文章/媒体、上传、标定、检测（202 → 完成）、当前会话、
- * 档案与比较、学习事件与进度、账号与同意、反馈、预览。
+ * 覆盖：内容/搜索/文章/媒体、上传、标定、检测（202 → 完成）、
+ * 档案与比较、学习事件与进度、账号、反馈。
+ * 口径：注册 / 登录即默认同意服务条款；进度与录音归属登录账号；
+ * 录音质量仅作提示，不拦截评分；未标定可跳过（D-20）。
  */
 import { http, HttpResponse } from 'msw'
 import type {
@@ -22,7 +24,7 @@ import {
   PUBLISHED_IDS,
   SKELETONS,
 } from './fixtures'
-import { CONSENT_TEXT_VERSION, buildResult, deriveProgress, resetSession, state } from './state'
+import { buildResult, deriveProgress, resetSession, state } from './state'
 import { TINY_PNG, freqForMediaId, makeMouthSvg, makeToneWav } from './media'
 
 const requestId = () => `mock-${Math.random().toString(36).slice(2, 10)}`
@@ -45,66 +47,15 @@ function currentUser() {
   return state.session.authenticated
 }
 
-function consentGranted() {
-  return currentUser() !== null && state.session.consentStatus === 'granted'
-}
-
-function calibrationValid(): boolean {
-  const cal = state.session.calibration
-  if (cal.status === 'personal') return true
-  if (cal.status === 'session' && cal.expiresAt) return new Date(cal.expiresAt).getTime() > Date.now()
-  return cal.status === 'session'
-}
-
 function meContext(): MeContext {
   const user = currentUser()
   return {
     authenticated: user !== null,
     accountId: user ? `acct-${user.username}` : undefined,
     username: user?.username,
-    consent: { status: user ? state.session.consentStatus : 'none', consentTextVersion: CONSENT_TEXT_VERSION },
-    currentConsentTextVersion: CONSENT_TEXT_VERSION,
     calibration: state.session.calibration,
-    dataEpoch: user ? state.session.dataEpoch : undefined,
-    pendingTransfer:
-      user && state.session.consentStatus === 'none'
-        ? [...state.recordings.values()].filter((r) => r.recording.storage === 'session' && r.recording.status === 'completed').length
-        : undefined,
-    nextLevelId: consentGranted() ? deriveProgress().nextLevelId : LEVEL_SUMMARIES[0]?.id,
+    nextLevelId: user ? deriveProgress().nextLevelId : LEVEL_SUMMARIES[0]?.id,
   }
-}
-
-function sessionRecordingList() {
-  return [...state.recordings.values()]
-    .filter((item) => item.recording.storage === 'session')
-    .map((item) => ({
-      recordingId: item.recording.recordingId,
-      audioId: item.recording.audioId,
-      levelId: item.recording.levelId,
-      createdAt: item.recording.createdAt,
-      expiresAt: item.recording.expiresAt ?? null,
-      verdict: item.result?.quality.verdict ?? 'pass',
-      score: item.result?.score,
-    }))
-}
-
-/** 会话记录转档（同意 / 登录触发，D-14/D-21） */
-function transferSession(): { transferredCount: number; calibrationUpgraded: boolean } {
-  let count = 0
-  for (const item of state.recordings.values()) {
-    if (item.recording.storage === 'session' && item.recording.status === 'completed') {
-      item.recording.storage = 'archived'
-      item.recording.expiresAt = undefined
-      if (item.result) {
-        item.result.storage = 'archived'
-        item.result.expiresAt = undefined
-      }
-      count += 1
-    }
-  }
-  const upgraded = state.session.calibration.status === 'session'
-  if (upgraded) state.session.calibration = { status: 'personal' }
-  return { transferredCount: count, calibrationUpgraded: upgraded }
 }
 
 export const handlers = [
@@ -127,7 +78,7 @@ export const handlers = [
     const id = String(params.id)
     const detail = LEVEL_DETAILS[id]
     if (!detail || !PUBLISHED_IDS.includes(id)) {
-      return fail(404, 'LEVEL_NOT_PUBLISHED', '这一关未发布或已下架')
+      return fail(404, 'LEVEL_NOT_PUBLISHED', '这一关未开放或已下架')
     }
     return envelope(detail)
   }),
@@ -155,7 +106,7 @@ export const handlers = [
 
   http.get('/api/articles/:slug', ({ params }) => {
     const article = ARTICLES.find((a) => a.slug === String(params.slug))
-    if (!article) return fail(404, 'NOT_FOUND', '文章不存在或未发布')
+    if (!article) return fail(404, 'NOT_FOUND', '文章不存在或未开放')
     return envelope(article)
   }),
 
@@ -175,20 +126,6 @@ export const handlers = [
     })
   }),
 
-  http.get('/api/preview/media/:id', ({ request }) => {
-    const token = new URL(request.url).searchParams.get('token')
-    if (token !== 'demo-token') return fail(401, 'AUTH_REQUIRED', '预览令牌无效')
-    const id = new URL(request.url).pathname.split('/').pop() ?? ''
-    if (id.startsWith('img-')) {
-      return new HttpResponse(makeMouthSvg(id, '#7e57c2'), {
-        headers: { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'no-store' },
-      })
-    }
-    return new HttpResponse(makeToneWav({ durationSec: 0.8, freq: freqForMediaId(id) }), {
-      headers: { 'Content-Type': 'audio/wav', 'Cache-Control': 'no-store' },
-    })
-  }),
-
   /* ------------------------------ 音频与标定 ------------------------------ */
 
   http.post('/api/audio/uploads', async ({ request }) => {
@@ -198,13 +135,11 @@ export const handlers = [
     state.uploads.set(audioId, {
       purpose,
       durationSec: 3 + Math.random() * 5,
-      expiresAt: new Date(Date.now() + 72 * 3_600_000).toISOString(),
     })
     return envelope({
       audioId,
       duration: 4,
       format: 'webm;codecs=opus',
-      expiresAt: state.uploads.get(audioId)!.expiresAt,
     })
   }),
 
@@ -252,17 +187,14 @@ export const handlers = [
       status: state.session.calibration.status,
       pitchRange: state.session.calibration.status === 'none' ? undefined : { fLo: 120, fHi: 260 },
       vowelSpaceReady: state.session.calibration.status !== 'none',
-      expiresAt: state.session.calibration.expiresAt,
     }),
   ),
 
   http.post('/api/pitch-calibration', async ({ request }) => {
-    const body = (await request.json()) as { audioId: string; textVersion: string }
-    if (body.textVersion !== CALIBRATION_TEXT.textVersion) {
-      return fail(409, 'CONTENT_VERSION_CHANGED', '标定文本已更新，请重新读取')
-    }
-    if (!state.uploads.has(body.audioId)) return fail(404, 'NOT_FOUND', '上传不存在或已过期')
-    // 每两次标定演示一次 CALIBRATION_FAIL（HTTP 200 业务结果）
+    if (!currentUser()) return fail(401, 'AUTH_REQUIRED', '需要登录')
+    const body = (await request.json()) as { audioId: string }
+    if (!state.uploads.has(body.audioId)) return fail(404, 'NOT_FOUND', '上传不存在')
+    // 每几次标定演示一次 CALIBRATION_FAIL（HTTP 200 业务结果，可重试/可跳过）
     state.submissionCounter += 1
     const failThis = state.submissionCounter % 5 === 0
     if (failThis) {
@@ -278,10 +210,7 @@ export const handlers = [
         { code: 'CALIBRATION_FAIL', message: '标定未得出有效音域' },
       )
     }
-    const personal = consentGranted()
-    state.session.calibration = personal
-      ? { status: 'personal' }
-      : { status: 'session', expiresAt: new Date(Date.now() + 72 * 3_600_000).toISOString() }
+    state.session.calibration = { status: 'personal' }
     state.uploads.delete(body.audioId) // 标定音频用后即删
     return envelope({
       ok: true,
@@ -289,7 +218,6 @@ export const handlers = [
       pitchRange: { fLo: 110 + Math.round(Math.random() * 30), fHi: 240 + Math.round(Math.random() * 40) },
       vowelSpaceReady: true,
       rangeSnapshotId: `prs-mock-${Math.random().toString(36).slice(2, 8)}`,
-      expiresAt: state.session.calibration.expiresAt ?? null,
       updatedAt: new Date().toISOString(),
     })
   }),
@@ -297,7 +225,8 @@ export const handlers = [
   /* ------------------------------ 录音与检测 ------------------------------ */
 
   http.post('/api/recordings', async ({ request }) => {
-    const body = (await request.json()) as { audioId: string; levelId: string; contentVersion: number; submissionId: string }
+    if (!currentUser()) return fail(401, 'AUTH_REQUIRED', '需要登录后才能录音检测')
+    const body = (await request.json()) as { audioId: string; levelId: string; submissionId: string }
     const payload = JSON.stringify(body)
     // 幂等：同 submissionId 同负载重放；不同负载 409
     const replayId = state.submissions.get(body.submissionId)
@@ -311,34 +240,26 @@ export const handlers = [
       }
       return fail(409, 'IDEMPOTENCY_CONFLICT', '同一提交标识被用于不同负载')
     }
-    if (!state.uploads.has(body.audioId)) return fail(404, 'NOT_FOUND', '上传不存在或已过期')
-    if (!calibrationValid()) return fail(409, 'CALIBRATION_REQUIRED', '没有有效音域，请先完成标定')
+    if (!state.uploads.has(body.audioId)) return fail(404, 'NOT_FOUND', '上传不存在')
     const level = LEVEL_DETAILS[body.levelId]
-    if (!level || !PUBLISHED_IDS.includes(body.levelId)) return fail(404, 'LEVEL_NOT_PUBLISHED', '关卡未发布')
-    if (body.contentVersion !== level.contentVersion) {
-      return fail(409, 'CONTENT_VERSION_CHANGED', '关卡内容已更新，请刷新任务')
-    }
+    if (!level || !PUBLISHED_IDS.includes(body.levelId)) return fail(404, 'LEVEL_NOT_PUBLISHED', '关卡未开放')
 
     state.submissionCounter += 1
     const pattern = state.submissionCounter % 4
     const recordingId = `rec-${Math.random().toString(36).slice(2, 10)}`
-    const archived = consentGranted()
     const recording: RecordingDTO = {
       recordingId,
       audioId: body.audioId,
       levelId: body.levelId,
-      contentVersion: body.contentVersion,
       status: 'processing',
       stage: 'queued',
-      storage: archived ? 'archived' : 'session',
-      expiresAt: archived ? undefined : new Date(Date.now() + 72 * 3_600_000).toISOString(),
       createdAt: new Date().toISOString(),
     }
     state.recordings.set(recordingId, {
       recording,
       submissionPayload: payload,
       result: null,
-      qualityFail: pattern === 3,
+      qualityTips: pattern === 3,
       createdAt: Date.now(),
     })
     state.submissions.set(body.submissionId, recordingId)
@@ -355,7 +276,7 @@ export const handlers = [
   http.get('/api/recordings/:id', ({ params }) => {
     const id = String(params.id)
     const stored = state.recordings.get(id)
-    if (!stored) return fail(404, 'NOT_FOUND', '记录已过期或不可见')
+    if (!stored) return fail(404, 'NOT_FOUND', '记录已删除或不可见')
     const elapsed = Date.now() - stored.createdAt
     if (stored.recording.status === 'processing') {
       if (elapsed < PROCESSING_MS) {
@@ -373,52 +294,26 @@ export const handlers = [
     return envelope({ deleted: true })
   }),
 
-  /* ------------------------------ 当前会话 ------------------------------ */
-
-  http.get('/api/session/recordings', () => {
-    const recordings = sessionRecordingList()
-    return envelope({ recordings, transferableCount: recordings.length })
-  }),
-
-  http.post('/api/session/reset', () => {
-    for (const [id, item] of state.recordings) {
-      if (item.recording.storage === 'session') state.recordings.delete(id)
-    }
-    state.session.calibration = { status: 'none' }
-    resetSession()
-    return envelope({ reset: true, newSidIssued: !currentUser() })
-  }),
-
   /* --------------------------- 档案、学习与进度 --------------------------- */
 
-  http.get('/api/me/recordings', ({ request }) => {
+  http.get('/api/me/recordings', () => {
     if (!currentUser()) return fail(401, 'AUTH_REQUIRED', '需要登录')
-    if (!consentGranted()) return fail(403, 'CONSENT_REQUIRED', '需要先同意保存')
-    void request
-    const recordings = [...state.recordings.values()]
-      .filter((item) => item.recording.storage === 'archived')
-      .map((item) => ({
-        recordingId: item.recording.recordingId,
-        audioId: item.recording.audioId,
-        levelId: item.recording.levelId,
-        contentVersion: item.recording.contentVersion,
-        ruleVersion: 'rule-v1',
-        createdAt: item.recording.createdAt,
-        verdict: item.result?.quality.verdict ?? 'pass',
-        score: item.result?.score,
-      }))
+    const recordings = [...state.recordings.values()].map((item) => ({
+      recordingId: item.recording.recordingId,
+      audioId: item.recording.audioId,
+      levelId: item.recording.levelId,
+      createdAt: item.recording.createdAt,
+      verdict: item.result?.quality.signal?.verdict ?? null,
+      qualityAdvice: item.result?.quality.advice ?? null,
+      score: item.result?.score,
+    }))
     return envelope({ recordings, nextCursor: null })
   }),
 
   http.delete('/api/me/recordings', () => {
     if (!currentUser()) return fail(401, 'AUTH_REQUIRED', '需要登录')
-    let deleted = 0
-    for (const [id, item] of state.recordings) {
-      if (item.recording.storage === 'archived') {
-        state.recordings.delete(id)
-        deleted += 1
-      }
-    }
+    const deleted = state.recordings.size
+    state.recordings.clear()
     return envelope({ deleted })
   }),
 
@@ -437,16 +332,14 @@ export const handlers = [
         recordingId: item.recording.recordingId,
         audioId: item.recording.audioId,
         levelId: item.recording.levelId,
-        contentVersion: item.recording.contentVersion,
-        ruleVersion: 'rule-v1',
         createdAt: item.recording.createdAt,
-        verdict: item.result?.quality.verdict ?? 'pass',
+        verdict: item.result?.quality.signal?.verdict ?? null,
+        qualityAdvice: item.result?.quality.advice ?? null,
         score: item.result?.score,
       },
       result: item.result,
       rangeSnapshot: null,
     })
-    const sameVersion = sideA.recording.contentVersion === sideB.recording.contentVersion
     const scoreA = sideA.result?.score
     const scoreB = sideB.result?.score
     const differences: Array<{ dimension: string; description: string }> = []
@@ -461,16 +354,15 @@ export const handlers = [
     const data: ArchiveCompareResponse = {
       a: toSide(sideA),
       b: toSide(sideB),
-      comparable: { score: sameVersion, curve: true },
-      reasons: sameVersion ? [] : ['两条记录的内容版本不同，分数不能直接比较'],
-      differences: sameVersion ? differences : differences.filter((d) => d.dimension !== '分数'),
+      comparable: { score: true, curve: true },
+      reasons: [],
+      differences,
     }
     return envelope(data)
   }),
 
   http.post('/api/learning-events', async ({ request }) => {
     if (!currentUser()) return fail(401, 'AUTH_REQUIRED', '需要登录')
-    if (!consentGranted()) return fail(403, 'CONSENT_REQUIRED', '需要先同意保存')
     const body = (await request.json()) as { events: Array<{ eventId: string; levelId: string; kind: string; detail: Record<string, unknown> }> }
     let accepted = 0
     let duplicates = 0
@@ -490,7 +382,6 @@ export const handlers = [
         state.learningEvents.push({
           eventId: event.eventId,
           levelId: event.levelId,
-          contentVersion: 1,
           kind: 'listen_quiz',
           detail: { questionId: String(event.detail.questionId), choiceIndex: Number(event.detail.choiceIndex) },
         })
@@ -498,7 +389,6 @@ export const handlers = [
         state.learningEvents.push({
           eventId: event.eventId,
           levelId: event.levelId,
-          contentVersion: 1,
           kind: 'practice_done',
           detail: { stepId: String(event.detail.stepId) },
         })
@@ -510,16 +400,15 @@ export const handlers = [
 
   http.get('/api/me/progress', () => {
     if (!currentUser()) return fail(401, 'AUTH_REQUIRED', '需要登录')
-    if (!consentGranted()) return fail(403, 'CONSENT_REQUIRED', '需要先同意保存')
     return envelope(deriveProgress())
   }),
 
-  /* ------------------------------ 账号与同意 ------------------------------ */
+  /* ------------------------------ 账号 ------------------------------ */
 
   http.post('/api/auth/register', async ({ request }) => {
     const body = (await request.json()) as { username: string; password: string }
     if (!/^[\w\u4e00-\u9fa5]{3,32}$/.test(body.username)) {
-      return fail(422, 'VALIDATION_ERROR', '用户名需 3–32 位字母、数字、下划线或中文')
+      return fail(422, 'VALIDATION_ERROR', '用户名需 3–32 个字母、数字、下划线或中文')
     }
     if (body.password.length < 8) return fail(422, 'VALIDATION_ERROR', '密码至少 8 位')
     if (state.users.has(body.username)) return fail(409, 'USERNAME_TAKEN', '用户名已被使用')
@@ -534,65 +423,12 @@ export const handlers = [
       return fail(401, 'INVALID_CREDENTIALS', '用户名或密码不正确')
     }
     state.session.authenticated = user
-    let transfer: { status: string; transferredCount: number; calibrationUpgraded?: boolean } | undefined
-    if (state.session.consentStatus === 'granted') {
-      const result = transferSession()
-      transfer = { status: 'completed', ...result }
-    }
-    return envelope({ context: meContext(), transfer })
+    return envelope({ context: meContext() })
   }),
 
   http.post('/api/auth/logout', () => {
     resetSession()
     return envelope({ loggedOut: true })
-  }),
-
-  http.get('/api/me/consent', () => {
-    if (!currentUser()) return fail(401, 'AUTH_REQUIRED', '需要登录')
-    return envelope({
-      status: state.session.consentStatus,
-      consentTextVersion: CONSENT_TEXT_VERSION,
-      currentConsentTextVersion: CONSENT_TEXT_VERSION,
-      consentText:
-        '同意保存后，将保存你的学习进度、录音与检测结果；当前会话未过期的临时录音与音域标定会一并转存。临时录音最长保留 72 小时；你可随时删除或撤回同意（撤回将删除全部录音、进度与音域）。',
-      timeline: state.session.decisions,
-    })
-  }),
-
-  http.post('/api/me/consent', async ({ request }) => {
-    if (!currentUser()) return fail(401, 'AUTH_REQUIRED', '需要登录')
-    const body = (await request.json()) as { decision: 'granted' | 'rejected'; consentTextVersion: string }
-    if (body.consentTextVersion !== CONSENT_TEXT_VERSION) {
-      return fail(409, 'CONTENT_VERSION_CHANGED', '同意文案版本不一致')
-    }
-    let transfer = { status: 'none', transferredCount: 0 }
-    if (body.decision === 'granted') {
-      const already = state.session.consentStatus === 'granted'
-      if (!already) {
-        state.session.decisions.push({ decision: 'granted', consentTextVersion: CONSENT_TEXT_VERSION, createdAt: new Date().toISOString() })
-        state.session.consentStatus = 'granted'
-      }
-      const result = transferSession()
-      transfer = { status: 'completed', ...result }
-    } else {
-      state.session.decisions.push({ decision: 'rejected', consentTextVersion: CONSENT_TEXT_VERSION, createdAt: new Date().toISOString() })
-      state.session.consentStatus = 'rejected'
-    }
-    return envelope({
-      consent: { status: state.session.consentStatus, consentTextVersion: CONSENT_TEXT_VERSION },
-      transfer,
-    })
-  }),
-
-  http.delete('/api/me/consent', () => {
-    if (!currentUser()) return fail(401, 'AUTH_REQUIRED', '需要登录')
-    state.recordings.clear()
-    state.learningEvents = []
-    state.session.calibration = { status: 'none' }
-    state.session.dataEpoch += 1
-    state.session.decisions.push({ decision: 'revoked', consentTextVersion: CONSENT_TEXT_VERSION, createdAt: new Date().toISOString() })
-    state.session.consentStatus = 'revoked'
-    return envelope({ consent: { status: 'revoked' as const }, dataEpoch: state.session.dataEpoch })
   }),
 
   http.delete('/api/me/account', async ({ request }) => {
@@ -607,45 +443,18 @@ export const handlers = [
     return envelope({ deleted: true })
   }),
 
-  /* ------------------------------ 反馈与预览 ------------------------------ */
+  /* ------------------------------ 反馈 ------------------------------ */
 
   http.post('/api/feedback', () => envelope({ feedbackId: `fb-${Math.random().toString(36).slice(2, 10)}` })),
 
   http.post('/api/wishes', () => envelope({ wishId: `wish-${Math.random().toString(36).slice(2, 10)}` })),
-
-  http.get('/api/preview/levels/:id', ({ request }) => {
-    const token = new URL(request.url).searchParams.get('token')
-    if (token !== 'demo-token') return fail(401, 'AUTH_REQUIRED', '预览令牌无效或已过期')
-    const id = String(params0(request))
-    const base = LEVEL_DETAILS[id]
-    if (!base) return fail(404, 'NOT_FOUND', '草稿不存在')
-    return envelope({ ...base, contentVersion: 99 })
-  }),
-
-  http.get('/api/preview/articles/:slug', ({ request }) => {
-    const token = new URL(request.url).searchParams.get('token')
-    if (token !== 'demo-token') return fail(401, 'AUTH_REQUIRED', '预览令牌无效或已过期')
-    const article = ARTICLES.find((a) => a.slug === String(params0(request)))
-    if (!article) return fail(404, 'NOT_FOUND', '草稿不存在')
-    return envelope({ ...article, contentVersion: 99, title: `${article.title}（草稿）` })
-  }),
 ]
 
-function params0(request: Request): string {
-  const parts = new URL(request.url).pathname.split('/')
-  return parts[parts.length - 1] ?? ''
-}
-
-/** 到时完成：写结果快照（质量合格 / 不合格两种演示形态） */
+/** 到时完成：写结果快照（质量良好 / 带质量提示两种演示形态，均正常评分） */
 function finishRecording(recordingId: string) {
   const stored = state.recordings.get(recordingId)
   if (!stored || stored.recording.status !== 'processing') return
   stored.recording.status = 'completed'
   stored.recording.stage = undefined
-  stored.result = buildResult(
-    stored.recording.levelId,
-    stored.recording.audioId,
-    stored.qualityFail,
-    stored.recording.storage === 'archived',
-  )
+  stored.result = buildResult(stored.recording.levelId, stored.recording.audioId, stored.qualityTips)
 }

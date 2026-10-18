@@ -25,9 +25,7 @@ export interface Envelope<T> {
 }
 
 // 字面量联合从生成组件派生，避免手写漂移
-export type ConsentStatus = Schemas['ConsentInfo']['status']
 export type CalibrationStatus = Schemas['PitchCalibrationInfo']['status']
-export type StorageKind = RecordingDTO['storage']
 
 /* ------------------------------- me/context ------------------------------- */
 
@@ -100,12 +98,6 @@ export type RecordingWithResult = Schemas['RecordingWithResult']
 export type RecordingSubmitResponse = Schemas['RecordingWithResult']
 export type RecordingDeleted = Schemas['RecordingDeleted']
 
-/* -------------------------------- 当前会话 -------------------------------- */
-
-export type SessionRecordingSummary = Schemas['SessionRecordingSummary']
-export type SessionRecordingsResponse = Schemas['SessionRecordingsResponse']
-export type SessionResetResponse = Schemas['SessionResetResponse']
-
 /* ------------------------------ 档案与学习 -------------------------------- */
 
 export type ArchiveRecordingSummary = Schemas['ArchiveRecordingSummary']
@@ -118,7 +110,6 @@ export type ArchiveCompareResponse = Schemas['ArchiveCompareResponse']
 export type LearningEvent = {
   eventId: string
   levelId: string
-  contentVersion: number
 } & (
   | { kind: 'listen_quiz'; detail: { questionId: string; choiceIndex: number } }
   | { kind: 'practice_done'; detail: { stepId: string } }
@@ -128,14 +119,8 @@ export type LearningEventsResponse = Schemas['LearningEventsResponse']
 export type ProgressLevel = Schemas['ProgressLevel']
 export type MeProgress = Schemas['MeProgress']
 
-/* ------------------------------ 同意与账号 -------------------------------- */
+/* -------------------------------- 账号 ------------------------------------ */
 
-/** 后端 schema 名 ConsentDecisionItem，时间字段为 createdAt */
-export type ConsentDecision = Schemas['ConsentDecisionItem']
-export type ConsentStateResponse = Schemas['ConsentStateResponse']
-export type TransferResult = Schemas['TransferResult']
-export type ConsentPostResponse = Schemas['ConsentPostResponse']
-export type ConsentRevokedResponse = Schemas['ConsentRevokedResponse']
 export type RegisterResponse = Schemas['RegisterResponse']
 export type AuthLoginResponse = Schemas['AuthLoginResponse']
 export type LoggedOutResponse = Schemas['LoggedOutResponse']

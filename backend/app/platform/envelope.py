@@ -1,7 +1,7 @@
-"""统一错误与 envelope（决策图「HTTP 与契约」）。
+"""统一错误与 envelope（D-18：HTTP 与契约）。
 
 JSON 响应统一 {code, message, data, requestId, nextStep?}；标准状态码。
-QUALITY_FAIL / CALIBRATION_FAIL 是 200 的有效业务结果，不是错误。
+CALIBRATION_FAIL 是 200 的有效业务结果，不是错误。
 文件成功直接返回媒体类型，不套 envelope。
 """
 from __future__ import annotations
@@ -12,8 +12,6 @@ from fastapi import Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
-
-from app import config
 
 
 class ApiError(Exception):
@@ -110,11 +108,6 @@ def invalid_credentials() -> ApiError:
 
 def forbidden(msg: str = "没有权限执行此操作") -> ApiError:
     return ApiError(403, "FORBIDDEN", msg)
-
-
-def consent_required() -> ApiError:
-    return ApiError(403, "CONSENT_REQUIRED", "需要先同意保存，才能使用档案功能",
-                    next_step="请先在账号页完成同意")
 
 
 def not_found(msg: str = "资源不存在或不可见") -> ApiError:

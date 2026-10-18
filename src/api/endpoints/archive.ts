@@ -1,4 +1,4 @@
-/** archive / learning / feedback / session 模块端点（docs/decision-map-backend.md） */
+/** archive / learning / feedback 模块端点（docs/decision-map-backend.md） */
 import { apiRequest } from '../client'
 import type {
   ArchiveCompareResponse,
@@ -8,8 +8,6 @@ import type {
   FeedbackResponse,
   LearningEvent,
   LearningEventsResponse,
-  SessionRecordingsResponse,
-  SessionResetResponse,
   WishResponse,
 } from '../generated/types'
 
@@ -37,17 +35,6 @@ export const learningApi = {
       method: 'POST',
       body: { events },
     })
-  },
-}
-
-export const sessionApi = {
-  /** 当前会话临时记录 + 同意后将转存条数 */
-  recordings() {
-    return apiRequest<SessionRecordingsResponse>('/session/recordings')
-  },
-  /** 清空当前会话临时数据；访客同时轮换 sid */
-  reset() {
-    return apiRequest<SessionResetResponse>('/session/reset', { method: 'POST' })
   },
 }
 

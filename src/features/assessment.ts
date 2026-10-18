@@ -1,11 +1,11 @@
 /**
- * useAssessmentFlow：检测流程状态机（P05 内嵌与 P08 共用，docs/architecture/04 §6.2）。
+ * useAssessmentFlow：录音检测流程状态机（P05 内嵌录音区，FR-902–906 / D-20）。
  *
- *   Idle → (无有效音域) Calibrating → MicRequest → Ready → Recording → Recorded
+ *   Idle → (未标定：可选) Calibrating → MicRequest → Ready → Recording → Recorded
  *        → Uploading → Submitting → Navigate(/result/:id)
- *   分支：CALIBRATION_REQUIRED → Calibrating（标定后自动重提交原 audioId/submissionId）
- *         CONTENT_VERSION_CHANGED → VersionChanged → 刷新任务后 Ready
- *         DETECTION_OFF / 429 → Blocked；可重试失败 → Failed（同 submissionId 重试）
+ *   分支：CONTENT_VERSION_CHANGED → VersionChanged → 刷新任务后 Ready
+ *         可重试失败 → Failed（同 submissionId 重试）
+ *   标定可跳过（D-20）：跳过标定直接进入录音，提交流程不因未标定阻断。
  */
 import { computed, onScopeDispose, ref, type Ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -26,7 +26,6 @@ export type FlowState =
   | 'uploading'
   | 'submitting'
   | 'version-changed'
-  | 'blocked'
   | 'failed'
   | 'navigating'
 
@@ -52,8 +51,6 @@ export function useAssessmentFlow(options: AssessmentFlowOptions) {
   const submissionId = ref<string | null>(null)
   const audioId = ref<string | null>(null)
   const flowError = ref<FlowError | null>(null)
-  /** 标定由检测流程触发时：成功后用原 audioId/submissionId 自动重提交 */
-  const resubmitAfterCalibration = ref(false)
 
   const busy = computed(() => state.value === 'uploading' || state.value === 'submitting')
 
@@ -62,7 +59,7 @@ export function useAssessmentFlow(options: AssessmentFlowOptions) {
   async function begin() {
     flowError.value = null
     if (!contextStore.calibrationValid) {
-      resubmitAfterCalibration.value = false
+      // 未标定：先引导标定（可跳过，D-20）；跳过后直接进入录音
       state.value = 'calibrating'
       return
     }
@@ -143,7 +140,6 @@ export function useAssessmentFlow(options: AssessmentFlowOptions) {
     const res = await detectionApi.submitRecording({
       audioId: audioId.value,
       levelId: level.id,
-      contentVersion: level.contentVersion,
       submissionId: submissionId.value,
     })
     const recording = res.data.recording
@@ -152,7 +148,6 @@ export function useAssessmentFlow(options: AssessmentFlowOptions) {
       submissionId: submissionId.value,
       audioId: audioId.value,
       levelId: level.id,
-      contentVersion: level.contentVersion,
     })
     state.value = 'navigating'
     recorder.release()
@@ -166,12 +161,6 @@ export function useAssessmentFlow(options: AssessmentFlowOptions) {
         retryable: true,
       }
       state.value = recorder.blob ? 'recorded' : 'failed'
-      return
-    }
-    // 409 CALIBRATION_REQUIRED：进入标定，成功后自动重提交（FD-06）
-    if (error.code === 'CALIBRATION_REQUIRED') {
-      resubmitAfterCalibration.value = true
-      state.value = 'calibrating'
       return
     }
     if (error.code === 'CONTENT_VERSION_CHANGED') {
@@ -192,17 +181,12 @@ export function useAssessmentFlow(options: AssessmentFlowOptions) {
       state.value = 'recorded'
       return
     }
-    if (error.code === 'DETECTION_OFF' || error.code === 'RATE_LIMITED' || error.code === 'SERVER_BUSY') {
-      flowError.value = { copy: { title: error.message, hint: error.nextStep ?? '请稍后重试。' }, requestId: error.requestId, retryable: true }
-      state.value = 'blocked'
-      return
-    }
     if (error.code === 'FILE_TOO_LARGE' || error.code === 'DECODE_FAILED') {
       flowError.value = { copy: { title: error.message, hint: '请重新录制一段较短的录音再提交。' }, requestId: error.requestId, retryable: false }
       state.value = 'recorded'
       return
     }
-    if (error.code === 'AUTH_REQUIRED' || error.code === 'CONSENT_REQUIRED') {
+    if (error.code === 'AUTH_REQUIRED') {
       contextStore.onAuthError(error)
     }
     const retryAfter = error.retryAfterMs
@@ -219,28 +203,16 @@ export function useAssessmentFlow(options: AssessmentFlowOptions) {
     state.value = recorder.blob ? 'recorded' : 'failed'
   }
 
-  /** 同键重试：保留 audioId 与 submissionId（仅在提交页面内，FD-15） */
-  async function retry(): Promise<void> {
-    await submit()
-  }
-
   /* ------------------------------ 标定回调 ------------------------------ */
 
   function onCalibrationDone() {
     void contextStore.refresh()
-    if (resubmitAfterCalibration.value) {
-      resubmitAfterCalibration.value = false
-      // 标定成功：用原 audioId 与原 submissionId 自动重提交，无需重录
-      state.value = 'submitting'
-      submitPayload().catch(onSubmitError)
-      return
-    }
     void requestMic()
   }
 
+  /** 跳过标定，直接录音（D-20：未标定不阻断提交流程） */
   function onCalibrationCancel() {
-    resubmitAfterCalibration.value = false
-    state.value = 'idle'
+    void requestMic()
   }
 
   /* ---------------------------- 离开页面保护 ---------------------------- */
@@ -268,7 +240,6 @@ export function useAssessmentFlow(options: AssessmentFlowOptions) {
     stopRecording,
     reRecord,
     submit,
-    retry,
     onCalibrationDone,
     onCalibrationCancel,
   }

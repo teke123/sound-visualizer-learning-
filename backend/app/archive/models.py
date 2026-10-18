@@ -17,7 +17,6 @@ class LearningEventRow(Base):
     user_id: Mapped[str] = mapped_column(String(64), index=True)
     event_id: Mapped[str] = mapped_column(String(128))
     level_id: Mapped[str] = mapped_column(String(16), index=True)
-    content_version: Mapped[int] = mapped_column(Integer)
     kind: Mapped[str] = mapped_column(String(16))     # listen_quiz | practice_done
     detail: Mapped[str | None] = mapped_column(Text)  # JSON {questionId,choiceIndex} / {stepId}
     correct: Mapped[bool | None] = mapped_column()    # 仅 listen_quiz 服务端派生

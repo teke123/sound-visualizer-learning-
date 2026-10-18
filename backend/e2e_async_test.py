@@ -1,18 +1,18 @@
 """异步路径自测：202 回落与轮询、Provider 不可达（PROVIDER_DOWN 503）、
 处理超时（TIMEOUT 504）、同键重试复活。三种模式各自要求服务按对应
-环境变量启动（backend 目录下，见 docs/交接文档_后端问题清单.md §5）：
+环境变量启动（backend 目录下）：
 
-- E2E_MODE=202（默认）：SVS_SYNC_WINDOW=0 py -3.13 main.py。
-  首提应立即回落 202、轮询最终 200。评分缓存键含会话所有者，新会话
+- E2E_MODE=202（默认）：SVS_SYNC_WINDOW=0 py -3 main.py。
+  首提应立即回落 202、轮询最终 200。评分缓存键含用户，新注册用户
   必为冷缓存，无需清库。（wait_sync_window 曾有超时取消执行器 future
   的竞态：窗口 0 时管线永不开跑、录音滞留 processing 到硬截止 TIMEOUT，
   已改为不取消参与者的 asyncio.wait——本组合即其回归验证。）
-- E2E_MODE=down：SVS_MOCK_PROVIDER=fail py -3.13 main.py
+- E2E_MODE=down：SVS_MOCK_PROVIDER=fail py -3 main.py
   （mock 模拟不可达；标定不依赖 provider 结果，不受影响）。
 - E2E_MODE=timeout：SVS_MOCK_PROVIDER=slow SVS_MOCK_SLOW_SEC=40
-  py -3.13 main.py（slow 须大于 SVS_HARD_DEADLINE 默认 30，触发 504 TIMEOUT；
+  py -3 main.py（slow 须大于 SVS_HARD_DEADLINE 默认 30，触发 504 TIMEOUT；
   标定路由等待上限已解耦为 SVS_CALIBRATION_TIMEOUT 默认 45，slow 40 时
-  前置标定可在窗口内完成）。全程约 100 秒；另断言迟到的管线收尾不会
+  标定可在窗口内完成）。全程约 100 秒；另断言迟到的管线收尾不会
   把已判 TIMEOUT 的录音复活成 completed。
 """
 from __future__ import annotations
@@ -49,13 +49,12 @@ def wav_bytes(samples):
     return buf.getvalue()
 
 
-def calibrate(c):
-    audio = wav_bytes(synthesize_text("妈坡车米布女妈麻马骂", "male", syllable_dur=0.36))
-    r = c.post("/api/audio/uploads", data={"purpose": "calibration"},
-               files={"file": ("c.webm", audio, "audio/webm")})
-    r = c.post("/api/pitch-calibration",
-               json={"audioId": r.json()["data"]["audioId"], "textVersion": "v1"})
-    assert r.json()["code"] == "OK", r.text[:200]
+def login(c):
+    username = f"async用户_{int(time.time()*1000)}"
+    r = c.post("/api/auth/register", json={"username": username, "password": "password123"})
+    assert r.status_code == 200, r.text[:200]
+    r = c.post("/api/auth/login", json={"username": username, "password": "password123"})
+    assert r.status_code == 200, r.text[:200]
 
 
 def upload_rec(c, name="mama"):
@@ -72,11 +71,10 @@ def main() -> int:
 
     # 60s：timeout 模式下标定本身要走完 slow 40s + 分析，40s 客户端超时会先到
     with httpx.Client(base_url=BASE, headers=HEADERS, timeout=60) as c:
-        cv = c.get("/api/levels/L30").json()["data"]["contentVersion"]
-        calibrate(c)
+        login(c)
         audio_id = upload_rec(c)
         r = c.post("/api/recordings", json={
-            "audioId": audio_id, "levelId": "L30", "contentVersion": cv,
+            "audioId": audio_id, "levelId": "L30",
             "submissionId": f"async-{mode}-{time.time()}"})
         rec = r.json()["data"]["recording"]
         if mode == "202":
@@ -84,10 +82,9 @@ def main() -> int:
                   f"{r.status_code}")
             check("retry-after header", r.headers.get("retry-after") is not None)
             rec_id = rec["recordingId"]
-            # 处理中重复提交（不同 submissionId）→ 202；硬编码 cv 在 L30 非 v1
-            # 时会收到 409 CONTENT_VERSION_CHANGED，让探针静默失去意义
+            # 处理中重复提交（不同 submissionId）→ 202
             r2 = c.post("/api/recordings", json={
-                "audioId": audio_id, "levelId": "L30", "contentVersion": cv,
+                "audioId": audio_id, "levelId": "L30",
                 "submissionId": f"async-dup-{mode}-{time.time()}"})
             check("duplicate submit while processing → 202",
                   r2.status_code == 202, f"{r2.status_code} {r2.text[:150]}")

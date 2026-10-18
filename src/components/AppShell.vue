@@ -1,34 +1,28 @@
 <script setup lang="ts">
 /**
- * AppShell：桌面顶部导航（全部一级页面 + 常驻搜索）与手机底部 5 标签
- * （首页 / 地图 / 检测 / 档案 / 我的；FD-10）；预览页不渲染账号入口。
+ * AppShell：桌面顶部导航（一级页面 + 常驻搜索）与手机底部 5 标签
+ * （首页 / 地图 / 发音库 / 档案 / 我的）。
  */
-import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useContextStore } from '@/stores/context'
-import { useConsent } from '@/features/consent'
 import SearchBox from './SearchBox.vue'
 
 const route = useRoute()
 const router = useRouter()
 const contextStore = useContextStore()
-const consent = useConsent()
-
-const isPreview = computed(() => route.path.startsWith('/preview'))
 
 const topLinks = [
   { to: '/', label: '首页' },
   { to: '/map', label: '发音地图' },
   { to: '/principles', label: '发音原理' },
   { to: '/library', label: '发音库' },
-  { to: '/test', label: '检测中心' },
   { to: '/archive', label: '声音档案' },
 ]
 
 const bottomTabs = [
   { to: '/', label: '首页', icon: '🏠' },
   { to: '/map', label: '地图', icon: '🗺️' },
-  { to: '/test', label: '检测', icon: '🎤' },
+  { to: '/library', label: '发音库', icon: '📚' },
   { to: '/archive', label: '档案', icon: '📁' },
   { to: '/account', label: '我的', icon: '👤' },
 ]
@@ -44,17 +38,17 @@ function isActive(to: string): boolean {
 </script>
 
 <template>
-  <div class="app-shell" :class="{ 'with-bottom-tabs': !isPreview }">
+  <div class="app-shell">
     <header class="top-nav">
       <RouterLink to="/" class="brand">看得见的声音</RouterLink>
-      <nav v-if="!isPreview" class="top-links" aria-label="一级导航">
+      <nav class="top-links" aria-label="一级导航">
         <RouterLink v-for="link in topLinks" :key="link.to" :to="link.to" :class="{ active: isActive(link.to) }">
           {{ link.label }}
         </RouterLink>
       </nav>
       <div class="top-right">
-        <SearchBox v-if="!isPreview" class="top-search" @search="onSearch" />
-        <RouterLink v-if="!isPreview" to="/account" class="account-entry">
+        <SearchBox class="top-search" @search="onSearch" />
+        <RouterLink to="/account" class="account-entry">
           {{ contextStore.isAuthenticated ? contextStore.context.username : '登录 / 注册' }}
         </RouterLink>
       </div>
@@ -64,7 +58,7 @@ function isActive(to: string): boolean {
       <slot />
     </main>
 
-    <nav v-if="!isPreview" class="bottom-tabs" aria-label="手机导航">
+    <nav class="bottom-tabs" aria-label="手机导航">
       <RouterLink v-for="tab in bottomTabs" :key="tab.to" :to="tab.to" :class="{ active: isActive(tab.to) }">
         <span class="tab-icon" aria-hidden="true">{{ tab.icon }}</span>
         <span class="tab-label">{{ tab.label }}</span>

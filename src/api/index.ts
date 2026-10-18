@@ -6,7 +6,7 @@ export { contentApi } from './endpoints/content'
 export { detectionApi } from './endpoints/detection'
 export type { SubmitRecordingPayload } from './endpoints/detection'
 export { identityApi } from './endpoints/identity'
-export { archiveApi, learningApi, sessionApi, feedbackApi } from './endpoints/archive'
+export { archiveApi, learningApi, feedbackApi } from './endpoints/archive'
 export type { WishPayload } from './endpoints/archive'
 export {
   mediaUrl,
@@ -16,4 +16,3 @@ export {
   audioFormantsPngUrl,
   audioSpectrogramPngUrl,
 } from './mediaUrl'
-export type { MediaUrlOptions } from './mediaUrl'

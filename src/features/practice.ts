@@ -32,7 +32,6 @@ export function usePractice(level: LevelDetail, options: { interactive?: boolean
     progress.recordPracticeDone({
       levelId: level.id,
       stepId: step.id,
-      contentVersion: level.contentVersion,
     })
   }
 

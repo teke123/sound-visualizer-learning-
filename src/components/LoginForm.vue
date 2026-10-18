@@ -1,7 +1,6 @@
 <script setup lang="ts">
-/** LoginForm：登录（FR-107 / FR-102）：写明不提供找回、保存需同意；表单内错误（INVALID_CREDENTIALS） */
+/** LoginForm：登录（FR-107 / FR-102）：注册/登录即代表同意服务条款；表单内错误（INVALID_CREDENTIALS） */
 import { ref } from 'vue'
-import type { TransferResult } from '@/api'
 import { errorCopy } from '@/copy/usePageCopy'
 import { useAuth, validatePassword, validateUsername } from '@/features/auth'
 
@@ -11,7 +10,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'success', payload: { redirect: string | null; needConsent: boolean; transfer?: TransferResult }): void
+  (e: 'success', payload: { redirect: string | null }): void
 }>()
 
 const auth = useAuth()
@@ -24,27 +23,15 @@ async function submit() {
   usernameError.value = validateUsername(username.value)
   passwordError.value = validatePassword(password.value)
   if (usernameError.value || passwordError.value) return
-  let needConsent = false
-  let transfer: TransferResult | undefined
-  const ok = await auth.login(
-    { username: username.value, password: password.value },
-    {
-      onNeedConsent: () => {
-        needConsent = true
-      },
-      onTransfer: (result) => {
-        transfer = result as TransferResult
-      },
-    },
-  )
-  if (ok) emit('success', { redirect: props.redirect ?? null, needConsent, transfer })
+  const ok = await auth.login({ username: username.value, password: password.value })
+  if (ok) emit('success', { redirect: props.redirect ?? null })
 }
 </script>
 
 <template>
   <form class="auth-form" @submit.prevent="submit" novalidate>
     <h2>登录</h2>
-    <p class="auth-note">保存进度和录音需先同意；登录入口写明：本站不提供密码找回，忘记密码只能重新注册。</p>
+    <p class="auth-note">登录即代表同意服务条款；本站不提供密码找回，忘记密码只能重新注册。</p>
 
     <label class="field">
       <span>用户名</span>

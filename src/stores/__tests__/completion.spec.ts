@@ -45,7 +45,7 @@ describe('computeNextLevelId（FR-205 / FD-02）', () => {
     level('L30', 30, ['q3'], ['s3']),
   ]
 
-  it('返回公开顺序中第一个未完成的已发布关', () => {
+  it('返回公开顺序中第一个未完成的已开放关', () => {
     const completed = new Set(['L01'])
     expect(computeNextLevelId(levels, (l) => completed.has(l.id))).toBe('L07')
   })
@@ -54,7 +54,7 @@ describe('computeNextLevelId（FR-205 / FD-02）', () => {
     expect(computeNextLevelId(levels, () => true)).toBe('L01')
   })
 
-  it('L01 未发布时回落第一已发布关', () => {
+  it('L01 未开放时回落第一已开放关', () => {
     const withoutL01 = levels.slice(1)
     expect(computeNextLevelId(withoutL01, () => true)).toBe('L07')
   })

@@ -4,8 +4,6 @@
 import type {
   AssessmentResult,
   AudioPurpose,
-  CalibrationStatus,
-  ConsentStatus,
   LearningEvent,
   RecordingDTO,
 } from '@/api'
@@ -18,18 +16,15 @@ export interface MockUser {
 
 export interface MockSession {
   authenticated: MockUser | null
-  consentStatus: ConsentStatus
-  decisions: Array<{ decision: 'granted' | 'rejected' | 'revoked'; consentTextVersion: string; createdAt: string }>
-  calibration: { status: CalibrationStatus; expiresAt?: string }
-  dataEpoch: number
+  calibration: { status: 'none' | 'personal' }
 }
 
 export interface MockRecording {
   recording: RecordingDTO
   submissionPayload: string
   result: AssessmentResult | null
-  /** 质量不合格（每 N 次演示一次） */
-  qualityFail: boolean
+  /** 质量提示演示（每 N 次一次；仅提示，不拦截评分） */
+  qualityTips: boolean
   createdAt: number
 }
 
@@ -37,12 +32,9 @@ export const state = {
   users: new Map<string, MockUser>([['learner', { username: 'learner', password: '12345678' }]]),
   session: {
     authenticated: null,
-    consentStatus: 'none',
-    decisions: [],
     calibration: { status: 'none' },
-    dataEpoch: 1,
   } as MockSession,
-  uploads: new Map<string, { purpose: AudioPurpose; durationSec: number; expiresAt: string }>(),
+  uploads: new Map<string, { purpose: AudioPurpose; durationSec: number }>(),
   recordings: new Map<string, MockRecording>(),
   submissions: new Map<string, string>(),
   learningEvents: [] as LearningEvent[],
@@ -51,13 +43,8 @@ export const state = {
 
 export function resetSession() {
   state.session.authenticated = null
-  state.session.consentStatus = 'none'
-  state.session.decisions = []
   state.session.calibration = { status: 'none' }
-  state.session.dataEpoch += 1
 }
-
-export const CONSENT_TEXT_VERSION = 'consent-v1'
 
 /* ------------------------------ 结果合成 ------------------------------ */
 
@@ -100,43 +87,54 @@ function buildFormants(): AssessmentResult['formants'] {
   }
 }
 
-export function buildResult(levelId: string, audioId: string, qualityFail: boolean, archived: boolean): AssessmentResult {
+export function buildResult(levelId: string, audioId: string, qualityTips: boolean): AssessmentResult {
   const level = LEVEL_DETAILS[levelId]
   const scoreBase = 62 + (hashOf(audioId) % 34)
   const score = Math.min(98, scoreBase)
-  if (qualityFail) {
+  if (qualityTips) {
+    // 质量字段仅作友好提示（FR-1301）：照常给出分数、现象与声学图像
     return {
       levelId,
-      contentVersion: level?.contentVersion ?? 1,
-      ruleVersion: 'rule-v1',
       providerVersion: 'provider-mock-1',
       algorithmVersion: 'algo-mock-1',
-      storage: archived ? 'archived' : 'session',
-      expiresAt: archived ? undefined : new Date(Date.now() + 72 * 3_600_000).toISOString(),
       quality: {
-        verdict: 'fail',
         signal: {
           verdict: 'fail',
-          volume: { dbfs: -30.2, pass: false, advice: '音量偏轻，请离麦克风近一些' },
-          noise: { snrDb: 8.5, pass: false, advice: '环境噪声较大，请找安静的地方重录' },
+          volume: { dbfs: -30.2, pass: false, advice: '音量偏小，建议离麦克风近一些重录，共振峰图像会更清晰' },
+          noise: { snrDb: 8.5, pass: false, advice: '底噪偏大，建议换一个安静的环境再录' },
           clipping: { ratio: 0, pass: true, advice: null },
-          duration: { valueSec: 1.2, expectedSec: 2, pass: false, advice: '录音偏短，请读完整段提示词' },
+          duration: { valueSec: 1.2, expectedSec: 2, pass: false, advice: '时长偏短，请读完整段提示词' },
         },
         reading: {},
-        retakeAdvice: '找一个安静的地方，嘴巴离麦克风约一拳距离，用平常说话的音量再读一遍。',
+        advice: '找一个安静的地方，嘴巴离麦克风约一拳距离，用平常说话的音量再录一次。',
       },
+      score,
+      phenomena: [
+        {
+          tag: 'tone_flat',
+          syllable: level?.representativeChar ?? level?.targetSound ?? '',
+          position: { syllableIndex: 0, part: 'tone' },
+          description: `「${level?.representativeChar ?? level?.targetSound ?? ''}」的音高走向偏平，起伏比标准曲线小。`,
+        },
+      ],
+      fourSteps: [
+        {
+          phenomenon: '音高走势偏平',
+          possibleCause: '可能跟呼吸支撑和声带松紧有关',
+          cue: '读之前先吸一口气，让声音自然起伏，不要压着说。',
+          practice: { levelId, stepRef: `${levelId}-s2` },
+          wordingSource: 'rule_template',
+        },
+      ],
+      curve: buildCurve(levelId, audioId),
+      formants: level?.layer === 'vowel' ? buildFormants() : undefined,
     }
   }
   return {
     levelId,
-    contentVersion: level?.contentVersion ?? 1,
-    ruleVersion: 'rule-v1',
     providerVersion: 'provider-mock-1',
     algorithmVersion: 'algo-mock-1',
-    storage: archived ? 'archived' : 'session',
-    expiresAt: archived ? undefined : new Date(Date.now() + 72 * 3_600_000).toISOString(),
     quality: {
-      verdict: 'pass',
       signal: {
         verdict: 'pass',
         volume: { dbfs: -22.1, pass: true, advice: null },
@@ -145,7 +143,7 @@ export function buildResult(levelId: string, audioId: string, qualityFail: boole
         duration: { valueSec: 4.2, expectedSec: 2, pass: true, advice: null },
       },
       reading: { missing: [], extra: [], repeated: [], replaced: [], disordered: false, advice: null },
-      retakeAdvice: '',
+      advice: null,
     },
     score,
     phenomena: [

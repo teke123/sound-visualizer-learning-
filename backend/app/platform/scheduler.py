@@ -1,5 +1,4 @@
-"""进程内 asyncio 周期任务（docs/architecture/03 第 5.6 节）：
-处理超时 / 临时到期 / 物理清理 / 预览令牌清理 / 自检。"""
+"""进程内 asyncio 周期任务：处理超时 / 物理清理 / 自检。"""
 from __future__ import annotations
 
 import asyncio
@@ -7,8 +6,8 @@ import contextlib
 import logging
 
 from app import config
-from app.db import get_session, now
-from app.platform.audit import deletion_log
+from app.db import get_session
+from app.platform.deletion_log import deletion_log
 
 logger = logging.getLogger("svs.scheduler")
 
@@ -36,20 +35,8 @@ def sweep_timeouts() -> None:
         db.close()
 
 
-def sweep_expiries() -> None:
-    from app.detection.usecases import expire_temp_records
-
-    db = get_session()
-    try:
-        n = expire_temp_records(db)
-        if n:
-            logger.info("expired %d temp resource(s)", n)
-    finally:
-        db.close()
-
-
 def physical_cleanup() -> None:
-    """按删除日志物理删除文件与缓存（幂等重试，>12h 告警）。"""
+    """按删除日志物理删除文件与缓存（幂等重试，积压过多时告警）。"""
     pending = deletion_log.read_pending()
     for entry in pending:
         kind, key = entry.get("kind"), entry.get("key")
@@ -81,18 +68,6 @@ def physical_cleanup() -> None:
         logger.warning("cleanup backlog large: %d", len(deletion_log.read_pending()))
 
 
-def cleanup_preview_tokens() -> None:
-    from app.platform.models import PreviewTokenRow
-
-    db = get_session()
-    try:
-        for row in db.query(PreviewTokenRow).filter(PreviewTokenRow.expires_at < now()).all():
-            db.delete(row)
-        db.commit()
-    finally:
-        db.close()
-
-
 def self_check() -> None:
     from app.platform.executor import executor
 
@@ -104,9 +79,7 @@ def self_check() -> None:
 def start() -> list[asyncio.Task]:
     return [
         asyncio.create_task(_run_every(config.SWEEP_INTERVAL_SECONDS, sweep_timeouts)),
-        asyncio.create_task(_run_every(config.EXPIRY_SWEEP_INTERVAL_SECONDS, sweep_expiries)),
         asyncio.create_task(_run_every(config.CLEANUP_INTERVAL_SECONDS, physical_cleanup)),
-        asyncio.create_task(_run_every(config.PREVIEW_CLEAN_INTERVAL_SECONDS, cleanup_preview_tokens)),
         asyncio.create_task(_run_every(3600.0, self_check)),
     ]
 

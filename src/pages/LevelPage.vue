@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * P05 关卡页（FR-601–610）：加载与 404 态在此处理，内容交 LevelLearnSection；
- * 进入时校验已发布；404/LEVEL_NOT_PUBLISHED → 统一不可见并刷新 levels（NFR-11）。
+ * 进入时校验已开放；404/LEVEL_NOT_PUBLISHED → 统一不可见并刷新 levels（NFR-11）。
  */
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'

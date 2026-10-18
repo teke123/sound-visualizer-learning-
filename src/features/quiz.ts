@@ -1,6 +1,6 @@
 /**
  * 听辨练习流程（FR-606 / D-24）：
- * 播放题干 → 单选 → 立即判对（访客本地判对，answerIndex 随详情下发）；
+ * 播放题干 → 单选 → 立即判对（answerIndex 随详情下发）；
  * 答错展示解释并可再答；每次作答记一次 listen_quiz 事件。
  */
 import { computed, reactive } from 'vue'
@@ -41,7 +41,6 @@ export function useQuiz(level: LevelDetail, options: { interactive?: boolean } =
         questionId: question.id,
         choiceIndex,
         correct,
-        contentVersion: level.contentVersion,
       })
     }
     return record

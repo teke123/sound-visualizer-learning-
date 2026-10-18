@@ -1,11 +1,10 @@
-"""规则引擎：朗读维判定、现象标签与四步反馈、T 值曲线分析、共振峰对比
+"""规则引擎：现象标签与四步反馈、T 值曲线分析、共振峰对比、朗读检错报告
 （FR-1004/1005/1006/1007；四步文字来自人工审定模板，同一分析结果输出一致）。
 """
 from __future__ import annotations
 
 import numpy as np
 
-from app import config
 from app.acoustics.analysis import F0Result, extract_formants, formant_stats_in_segments, to_t_values
 from app.scoring.provider import ProviderResult
 
@@ -21,8 +20,9 @@ TAGS = [
 _PART_LABEL = {"initial": "声母", "final": "韵母", "tone": "声调", "overall": "整体"}
 
 
-def judge_reading(provider: ProviderResult) -> tuple[bool, dict]:
-    """朗读维闸门（FR-1301 维度二）：不合格丢弃 Provider 分数。"""
+def reading_report(provider: ProviderResult) -> dict:
+    """朗读检错信息（漏读/增读/回读/替换/乱读）＋改善建议，
+    仅作为结果中的提示随质量信息返回，不拦截评分与可视化（FR-1301）。"""
     r = provider.reading
     reading = {
         "missing": list(r.get("missing", [])),
@@ -32,19 +32,17 @@ def judge_reading(provider: ProviderResult) -> tuple[bool, dict]:
         "disordered": bool(r.get("disordered", False)),
     }
     if reading["disordered"]:
-        reading["advice"] = "没有听出按提示词的朗读内容，请对着提示词完整朗读一遍再提交"
-        return False, reading
-    if reading["missing"]:
+        reading["advice"] = "没有听出按提示词的朗读内容，建议对着提示词完整朗读一遍再试"
+    elif reading["missing"]:
         reading["advice"] = (f"有漏读（{ '、'.join(reading['missing']) }），"
-                             "请把提示的内容一个字一个字读完再提交")
-        return False, reading
-    if reading["extra"] or reading["repeated"]:
+                             "把提示的内容一个字一个字读完，效果会更好")
+    elif reading["extra"] or reading["repeated"]:
         parts = reading["extra"] + reading["repeated"]
         reading["advice"] = (f"有多读或回读（{'、'.join(parts)}），"
-                             "请只朗读提示的内容，读错了请停下重录")
-        return False, reading
-    reading["advice"] = None
-    return True, reading
+                             "只朗读提示的内容会得到更准确的对比")
+    else:
+        reading["advice"] = None
+    return reading
 
 
 def _t_curve_in_segment(f0: F0Result, seg: tuple[float, float],

@@ -1,7 +1,8 @@
 <script setup lang="ts">
 /**
- * P01 首页（FR-201–206）：四个主按钮、搜索框、已发布关入口、下一关推荐；
- * 无已发布关时后三个按钮显示「暂无已发布内容」。
+ * P01 首页（FR-201–206）：四个主按钮、搜索框、已开放关入口、下一关推荐；
+ * 无已开放关时后三个按钮显示「暂无已开放内容」。
+ * 「跟着练」「录音比较」都进入下一关 P05 的练习区 / 录音区（D-03：检测在 P05 完成）。
  */
 import { computed, onMounted } from 'vue'
 import { useLevelsStore } from '@/stores/levels'
@@ -49,11 +50,15 @@ function onSearch(q: string) {
       >
         🏃 跟着练
       </RouterLink>
-      <span v-else class="main-btn disabled">🏃 跟着练<span class="btn-note">暂无已发布内容</span></span>
-      <RouterLink v-if="hasPublished" :to="nextLevelId ? `/test/${nextLevelId}` : '/test'" class="main-btn">
+      <span v-else class="main-btn disabled">🏃 跟着练<span class="btn-note">暂无已开放内容</span></span>
+      <RouterLink
+        v-if="hasPublished"
+        :to="nextLevelId ? `/learn/${nextLevelId}#record` : '/library'"
+        class="main-btn"
+      >
         🎤 录音比较
       </RouterLink>
-      <span v-else class="main-btn disabled">🎤 录音比较<span class="btn-note">暂无已发布内容</span></span>
+      <span v-else class="main-btn disabled">🎤 录音比较<span class="btn-note">暂无已开放内容</span></span>
     </nav>
 
     <section v-if="nextLevel" class="next-level" aria-label="下一关推荐">
@@ -61,11 +66,11 @@ function onSearch(q: string) {
       <LevelCard :level="nextLevel" :completed="progressStore.completedIds.has(nextLevel.id)" />
     </section>
 
-    <section class="levels-entry" aria-label="已发布关卡">
+    <section class="levels-entry" aria-label="已开放关卡">
       <h2>全部关卡</h2>
       <PageState v-if="levelsStore.loading && !levelsStore.loaded" state="loading" />
       <PageState v-else-if="levelsStore.error && !hasPublished" :state="'error'" :error="levelsStore.error" @retry="levelsStore.refresh()" />
-      <p v-else-if="!hasPublished" class="no-levels">暂无已发布关卡，内容正在准备中。</p>
+      <p v-else-if="!hasPublished" class="no-levels">暂无已开放关卡，内容正在准备中。</p>
       <template v-else>
         <div class="level-grid">
           <LevelCard

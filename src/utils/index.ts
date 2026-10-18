@@ -57,13 +57,3 @@ export function formatDateTime(iso?: string): string {
   return date.toLocaleString('zh-CN', { hour12: false })
 }
 
-/** 距到期还剩多久（用于「临时保存，N 小时后到期」） */
-export function formatRemaining(expiresAt?: string): string {
-  if (!expiresAt) return ''
-  const remain = new Date(expiresAt).getTime() - Date.now()
-  if (Number.isNaN(remain) || remain <= 0) return '已到期'
-  const hours = Math.floor(remain / 3_600_000)
-  if (hours >= 1) return `约 ${hours} 小时后到期`
-  const minutes = Math.max(1, Math.floor(remain / 60_000))
-  return `约 ${minutes} 分钟后到期`
-}

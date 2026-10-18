@@ -14,8 +14,8 @@ export function isLevelCompleted(
 }
 
 /**
- * nextLevelId = 公开顺序中第一个未完成的已发布关；
- * 全部完成或无进度时回落 L01；L01 未发布时回落第一已发布关（FR-205 / FD-02）。
+ * nextLevelId = 公开顺序中第一个未完成的已开放关；
+ * 全部完成或无进度时回落 L01；L01 未开放时回落第一已开放关（FR-205 / FD-02）。
  */
 export function computeNextLevelId(
   published: LevelSummary[],

@@ -1,4 +1,4 @@
-"""detection 模块表：录音状态机记录、不可变结果快照。"""
+"""detection 模块表：录音状态机记录、结果快照。"""
 from __future__ import annotations
 
 import datetime
@@ -12,30 +12,23 @@ from app.db import Base
 class RecordingRow(Base):
     __tablename__ = "recording"
     __table_args__ = (
-        UniqueConstraint("owner_type", "owner_id", "submission_id", name="uq_recording_submission"),
+        UniqueConstraint("user_id", "submission_id", name="uq_recording_submission"),
     )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
-    owner_type: Mapped[str] = mapped_column(String(8))      # sid | user
-    owner_id: Mapped[str] = mapped_column(String(64), index=True)
+    user_id: Mapped[str] = mapped_column(String(64), index=True)
     audio_id: Mapped[str] = mapped_column(String(64), index=True)
     level_id: Mapped[str] = mapped_column(String(16), index=True)
-    content_version: Mapped[int] = mapped_column(Integer)
-    rule_version: Mapped[str] = mapped_column(String(32))
     submission_id: Mapped[str] = mapped_column(String(128))
     submission_payload_hash: Mapped[str] = mapped_column(String(64))
     status: Mapped[str] = mapped_column(String(16), default="processing")  # processing|completed|failed
-    stage: Mapped[str | None] = mapped_column(String(16))   # queued|signal_check|scoring|analyzing|finalizing
-    outcome: Mapped[str | None] = mapped_column(String(16)) # completed→scored|quality_fail; failed→error code
+    stage: Mapped[str | None] = mapped_column(String(16))   # queued|analyzing|scoring|finalizing
+    outcome: Mapped[str | None] = mapped_column(String(16)) # completed→scored; failed→error code
     retryable: Mapped[bool | None] = mapped_column()
     attempt: Mapped[int] = mapped_column(Integer, default=1)
     deadline_at: Mapped[datetime.datetime] = mapped_column(DateTime)
-    epoch_at_start: Mapped[int] = mapped_column(Integer, default=1)
     range_snapshot_id: Mapped[str | None] = mapped_column(String(64))
-    storage: Mapped[str] = mapped_column(String(16), default="session")   # session | archived
-    consent_id: Mapped[str | None] = mapped_column(String(64))
     accepted_request_id: Mapped[str | None] = mapped_column(String(64))
-    expires_at: Mapped[datetime.datetime | None] = mapped_column(DateTime)
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime)
     completed_at: Mapped[datetime.datetime | None] = mapped_column(DateTime)
     deleted_at: Mapped[datetime.datetime | None] = mapped_column(DateTime)
@@ -46,5 +39,5 @@ class AssessmentResultRow(Base):
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     recording_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
-    payload: Mapped[str] = mapped_column(Text)   # 结果对象 JSON（契约见决策图）
+    payload: Mapped[str] = mapped_column(Text)   # 结果对象 JSON（契约见 schemas）
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime)

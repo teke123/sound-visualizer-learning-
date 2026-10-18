@@ -363,40 +363,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/session/recordings": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Session Recordings */
-        get: operations["session_recordings_api_session_recordings_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/session/reset": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Session Reset */
-        post: operations["session_reset_api_session_reset_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/me/recordings": {
         parameters: {
             query?: never;
@@ -466,25 +432,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/me/consent": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Consent */
-        get: operations["get_consent_api_me_consent_get"];
-        put?: never;
-        /** Post Consent */
-        post: operations["post_consent_api_me_consent_post"];
-        /** Revoke Consent */
-        delete: operations["revoke_consent_api_me_consent_delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/me/account": {
         parameters: {
             query?: never;
@@ -530,77 +477,6 @@ export interface paths {
         put?: never;
         /** Submit Wish */
         post: operations["submit_wish_api_wishes_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/preview/tokens": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Create Token */
-        post: operations["create_token_api_preview_tokens_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/preview/levels/{level_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Preview Level */
-        get: operations["preview_level_api_preview_levels__level_id__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/preview/articles/{slug}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Preview Article */
-        get: operations["preview_article_api_preview_articles__slug__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/preview/media/{media_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Preview Media
-         * @description 仅令牌绑定草稿引用的媒体可预览；不授权私人录音。
-         */
-        get: operations["preview_media_api_preview_media__media_id__get"];
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -684,24 +560,8 @@ export interface paths {
         };
         /** Admin Level Detail */
         get: operations["admin_level_detail_api_admin_levels__level_id__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/admin/levels/{level_id}/draft": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Admin Save Level Draft */
-        put: operations["admin_save_level_draft_api_admin_levels__level_id__draft_put"];
+        /** Admin Save Level */
+        put: operations["admin_save_level_api_admin_levels__level_id__put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -726,7 +586,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/admin/levels/{level_id}/publish": {
+    "/api/admin/levels/{level_id}/published": {
         parameters: {
             query?: never;
             header?: never;
@@ -734,79 +594,8 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        put?: never;
-        /** Admin Publish Level */
-        post: operations["admin_publish_level_api_admin_levels__level_id__publish_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/admin/levels/{level_id}/unpublish": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Admin Unpublish Level */
-        post: operations["admin_unpublish_level_api_admin_levels__level_id__unpublish_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/admin/levels/{level_id}/rollback": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Admin Rollback Level */
-        post: operations["admin_rollback_level_api_admin_levels__level_id__rollback_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/admin/levels/{level_id}/skeleton": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Admin Set Skeleton */
-        put: operations["admin_set_skeleton_api_admin_levels__level_id__skeleton_put"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/admin/levels/{level_id}/diff": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Admin Level Diff
-         * @description 草稿与当前公开版本对比（字段级 diff）。
-         */
-        get: operations["admin_level_diff_api_admin_levels__level_id__diff_get"];
-        put?: never;
+        /** Admin Set Level Published */
+        put: operations["admin_set_level_published_api_admin_levels__level_id__published_put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -841,15 +630,17 @@ export interface paths {
         };
         /** Admin Article Detail */
         get: operations["admin_article_detail_api_admin_articles__slug__get"];
-        put?: never;
+        /** Admin Save Article */
+        put: operations["admin_save_article_api_admin_articles__slug__put"];
         post?: never;
-        delete?: never;
+        /** Admin Delete Article */
+        delete: operations["admin_delete_article_api_admin_articles__slug__delete"];
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/admin/articles/{slug}/draft": {
+    "/api/admin/articles/{slug}/published": {
         parameters: {
             query?: never;
             header?: never;
@@ -857,60 +648,9 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Admin Save Article Draft */
-        put: operations["admin_save_article_draft_api_admin_articles__slug__draft_put"];
+        /** Admin Set Article Published */
+        put: operations["admin_set_article_published_api_admin_articles__slug__published_put"];
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/admin/articles/{slug}/publish": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Admin Publish Article */
-        post: operations["admin_publish_article_api_admin_articles__slug__publish_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/admin/articles/{slug}/unpublish": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Admin Unpublish Article */
-        post: operations["admin_unpublish_article_api_admin_articles__slug__unpublish_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/admin/articles/{slug}/rollback": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Admin Rollback Article */
-        post: operations["admin_rollback_article_api_admin_articles__slug__rollback_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -943,16 +683,10 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /**
-         * Admin Rename Category
-         * @description 分类更名不穿透草稿立即公开：只改分类行，文章快照在重新发布时生效。
-         */
+        /** Admin Rename Category */
         put: operations["admin_rename_category_api_admin_categories__category_id__put"];
         post?: never;
-        /**
-         * Admin Delete Category
-         * @description 删除前迁移：仍有关联文章（草稿）的分类须先迁到其他分类。
-         */
+        /** Admin Delete Category */
         delete: operations["admin_delete_category_api_admin_categories__category_id__delete"];
         options?: never;
         head?: never;
@@ -994,24 +728,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/admin/detection-switches": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Admin Get Switches */
-        get: operations["admin_get_switches_api_admin_detection_switches_get"];
-        put?: never;
-        /** Admin Set Switch */
-        post: operations["admin_set_switch_api_admin_detection_switches_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/admin/calibration-text": {
         parameters: {
             query?: never;
@@ -1023,7 +739,7 @@ export interface paths {
         get: operations["admin_get_calibration_api_admin_calibration_text_get"];
         /**
          * Admin Set Calibration
-         * @description 标定文本配置：须覆盖六个单韵母（FR/CMS 首版范围）。
+         * @description 标定文本配置：须覆盖六个单韵母（FR-1403）。
          */
         put: operations["admin_set_calibration_api_admin_calibration_text_put"];
         post?: never;
@@ -1122,23 +838,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/admin/audit": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Admin Audit */
-        get: operations["admin_audit_api_admin_audit_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1193,14 +892,12 @@ export interface components {
             audioId: string;
             /** Levelid */
             levelId: string;
-            /** Contentversion */
-            contentVersion: number;
-            /** Ruleversion */
-            ruleVersion?: string | null;
             /** Createdat */
             createdAt?: string | null;
             /** Verdict */
             verdict?: string | null;
+            /** Qualityadvice */
+            qualityAdvice?: string | null;
             /** Score */
             score?: number | null;
         };
@@ -1215,6 +912,13 @@ export interface components {
             id: number;
             /** Name */
             name: string;
+        };
+        /** ArticleContentBody */
+        ArticleContentBody: {
+            /** Content */
+            content: {
+                [key: string]: unknown;
+            };
         };
         /** ArticleDemo */
         ArticleDemo: {
@@ -1235,8 +939,6 @@ export interface components {
             summary?: string | null;
             /** Markdown */
             markdown: string;
-            /** Contentversion */
-            contentVersion: number;
             demo?: components["schemas"]["ArticleDemo"] | null;
             /** Practice */
             practice?: components["schemas"]["ArticlePracticeItem"][] | null;
@@ -1244,15 +946,6 @@ export interface components {
             references?: components["schemas"]["ArticleReference"][] | null;
             /** Relatedlevels */
             relatedLevels?: components["schemas"]["RelatedLevel"][] | null;
-        };
-        /** ArticleDraftBody */
-        ArticleDraftBody: {
-            /** Content */
-            content: {
-                [key: string]: unknown;
-            };
-            /** Changenote */
-            changeNote?: string | null;
         };
         /** ArticlePracticeItem */
         ArticlePracticeItem: {
@@ -1284,8 +977,6 @@ export interface components {
             demoMediaId?: string | null;
             /** Relatedlevelids */
             relatedLevelIds?: string[] | null;
-            /** Contentversion */
-            contentVersion?: number | null;
         };
         /** ArticlesResponse */
         ArticlesResponse: {
@@ -1323,21 +1014,10 @@ export interface components {
         AssessmentResult: {
             /** Levelid */
             levelId: string;
-            /** Contentversion */
-            contentVersion: number;
-            /** Ruleversion */
-            ruleVersion: string;
             /** Providerversion */
             providerVersion: string;
             /** Algorithmversion */
             algorithmVersion: string;
-            /**
-             * Storage
-             * @enum {string}
-             */
-            storage: "session" | "archived";
-            /** Expiresat */
-            expiresAt?: string | null;
             quality: components["schemas"]["Quality"];
             /** Score */
             score?: number | null;
@@ -1356,13 +1036,10 @@ export interface components {
             duration: number;
             /** Format */
             format: string;
-            /** Expiresat */
-            expiresAt?: string | null;
         };
         /** AuthLoginResponse */
         AuthLoginResponse: {
             context: components["schemas"]["LoginContextPartial"];
-            transfer?: components["schemas"]["TransferResult"] | null;
         };
         /** Body_admin_upload_media_api_admin_media_post */
         Body_admin_upload_media_api_admin_media_post: {
@@ -1397,8 +1074,6 @@ export interface components {
         CalibrationBody: {
             /** Audioid */
             audioId: string;
-            /** Textversion */
-            textVersion: string;
         };
         /** CalibrationFailResult */
         CalibrationFailResult: {
@@ -1421,9 +1096,7 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "none" | "session" | "personal";
-            /** Expiresat */
-            expiresAt?: string | null;
+            status: "none" | "personal";
         };
         /** CalibrationOkResult */
         CalibrationOkResult: {
@@ -1431,16 +1104,14 @@ export interface components {
             ok: boolean;
             /**
              * Status
-             * @enum {string}
+             * @constant
              */
-            status: "session" | "personal";
+            status: "personal";
             pitchRange: components["schemas"]["PitchRange"];
             /** Vowelspaceready */
             vowelSpaceReady: boolean;
             /** Rangesnapshotid */
             rangeSnapshotId?: string | null;
-            /** Expiresat */
-            expiresAt?: string | null;
             /** Updatedat */
             updatedAt?: string | null;
         };
@@ -1516,62 +1187,6 @@ export interface components {
             /** B */
             b: string;
         };
-        /** ConsentBody */
-        ConsentBody: {
-            /** Decision */
-            decision: string;
-            /** Consenttextversion */
-            consentTextVersion: string;
-        };
-        /** ConsentDecisionItem */
-        ConsentDecisionItem: {
-            /** Decision */
-            decision: string;
-            /** Consenttextversion */
-            consentTextVersion: string;
-            /** Createdat */
-            createdAt: string;
-        };
-        /** ConsentInfo */
-        ConsentInfo: {
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "none" | "granted" | "rejected" | "revoked";
-            /** Consenttextversion */
-            consentTextVersion?: string | null;
-        };
-        /** ConsentPostResponse */
-        ConsentPostResponse: {
-            consent: components["schemas"]["ConsentInfo"];
-            transfer: components["schemas"]["TransferResult"];
-        };
-        /** ConsentRevokedResponse */
-        ConsentRevokedResponse: {
-            /** Consent */
-            consent: {
-                [key: string]: unknown;
-            };
-            /** Dataepoch */
-            dataEpoch?: number | null;
-        };
-        /** ConsentStateResponse */
-        ConsentStateResponse: {
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "none" | "granted" | "rejected" | "revoked";
-            /** Consenttextversion */
-            consentTextVersion: string;
-            /** Currentconsenttextversion */
-            currentConsentTextVersion: string;
-            /** Consenttext */
-            consentText: string;
-            /** Timeline */
-            timeline: components["schemas"]["ConsentDecisionItem"][];
-        };
         /** CurvePoint */
         CurvePoint: {
             /** T */
@@ -1624,15 +1239,6 @@ export interface components {
             allowedMetrics: string[];
             /** Available */
             available: boolean;
-        };
-        /** DraftBody */
-        DraftBody: {
-            /** Content */
-            content: {
-                [key: string]: unknown;
-            };
-            /** Changenote */
-            changeNote?: string | null;
         };
         /** DurationCheck */
         DurationCheck: {
@@ -1784,60 +1390,6 @@ export interface components {
              */
             message: string;
             data: components["schemas"]["ClearArchiveResponse"];
-            /** Requestid */
-            requestId?: string | null;
-            /** Nextstep */
-            nextStep?: string | null;
-        };
-        /** Envelope[ConsentPostResponse] */
-        Envelope_ConsentPostResponse_: {
-            /**
-             * Code
-             * @default OK
-             */
-            code: string;
-            /**
-             * Message
-             * @default ok
-             */
-            message: string;
-            data: components["schemas"]["ConsentPostResponse"];
-            /** Requestid */
-            requestId?: string | null;
-            /** Nextstep */
-            nextStep?: string | null;
-        };
-        /** Envelope[ConsentRevokedResponse] */
-        Envelope_ConsentRevokedResponse_: {
-            /**
-             * Code
-             * @default OK
-             */
-            code: string;
-            /**
-             * Message
-             * @default ok
-             */
-            message: string;
-            data: components["schemas"]["ConsentRevokedResponse"];
-            /** Requestid */
-            requestId?: string | null;
-            /** Nextstep */
-            nextStep?: string | null;
-        };
-        /** Envelope[ConsentStateResponse] */
-        Envelope_ConsentStateResponse_: {
-            /**
-             * Code
-             * @default OK
-             */
-            code: string;
-            /**
-             * Message
-             * @default ok
-             */
-            message: string;
-            data: components["schemas"]["ConsentStateResponse"];
             /** Requestid */
             requestId?: string | null;
             /** Nextstep */
@@ -2041,24 +1593,6 @@ export interface components {
             /** Nextstep */
             nextStep?: string | null;
         };
-        /** Envelope[PreviewTokenResponse] */
-        Envelope_PreviewTokenResponse_: {
-            /**
-             * Code
-             * @default OK
-             */
-            code: string;
-            /**
-             * Message
-             * @default ok
-             */
-            message: string;
-            data: components["schemas"]["PreviewTokenResponse"];
-            /** Requestid */
-            requestId?: string | null;
-            /** Nextstep */
-            nextStep?: string | null;
-        };
         /** Envelope[RecordingDeleted] */
         Envelope_RecordingDeleted_: {
             /**
@@ -2149,42 +1683,6 @@ export interface components {
             /** Nextstep */
             nextStep?: string | null;
         };
-        /** Envelope[SessionRecordingsResponse] */
-        Envelope_SessionRecordingsResponse_: {
-            /**
-             * Code
-             * @default OK
-             */
-            code: string;
-            /**
-             * Message
-             * @default ok
-             */
-            message: string;
-            data: components["schemas"]["SessionRecordingsResponse"];
-            /** Requestid */
-            requestId?: string | null;
-            /** Nextstep */
-            nextStep?: string | null;
-        };
-        /** Envelope[SessionResetResponse] */
-        Envelope_SessionResetResponse_: {
-            /**
-             * Code
-             * @default OK
-             */
-            code: string;
-            /**
-             * Message
-             * @default ok
-             */
-            message: string;
-            data: components["schemas"]["SessionResetResponse"];
-            /** Requestid */
-            requestId?: string | null;
-            /** Nextstep */
-            nextStep?: string | null;
-        };
         /** Envelope[Union[CalibrationOkResult, CalibrationFailResult]] */
         Envelope_Union_CalibrationOkResult__CalibrationFailResult__: {
             /**
@@ -2228,8 +1726,6 @@ export interface components {
             eventId: string;
             /** Levelid */
             levelId: string;
-            /** Contentversion */
-            contentVersion: number;
             /** Kind */
             kind: string;
             /** Detail */
@@ -2377,14 +1873,17 @@ export interface components {
                 [key: string]: unknown;
             }[] | null;
         };
+        /** LevelContentBody */
+        LevelContentBody: {
+            /** Content */
+            content: {
+                [key: string]: unknown;
+            };
+        };
         /** LevelDetail */
         LevelDetail: {
             /** Id */
             id: string;
-            /** Contentversion */
-            contentVersion: number;
-            /** Ruleversion */
-            ruleVersion: string;
             /** Order */
             order: number;
             /**
@@ -2480,7 +1979,7 @@ export interface components {
              * Availability
              * @enum {string}
              */
-            availability: "open" | "temporarily_unavailable" | "closed";
+            availability: "open" | "closed";
             completionKeys: components["schemas"]["CompletionKeys"];
         };
         /** LevelsResponse */
@@ -2521,8 +2020,6 @@ export interface components {
             accountId?: string | null;
             /** Username */
             username?: string | null;
-            /** Dataepoch */
-            dataEpoch?: number | null;
         };
         /** MeContext */
         MeContext: {
@@ -2532,14 +2029,7 @@ export interface components {
             accountId?: string | null;
             /** Username */
             username?: string | null;
-            consent: components["schemas"]["ConsentInfo"];
-            /** Currentconsenttextversion */
-            currentConsentTextVersion: string;
             calibration: components["schemas"]["CalibrationInfo"];
-            /** Dataepoch */
-            dataEpoch?: number | null;
-            /** Pendingtransfer */
-            pendingTransfer?: number | null;
             /** Nextlevelid */
             nextLevelId?: string | null;
         };
@@ -2593,12 +2083,10 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "none" | "session" | "personal";
+            status: "none" | "personal";
             pitchRange?: components["schemas"]["PitchRange"] | null;
             /** Vowelspaceready */
             vowelSpaceReady?: boolean | null;
-            /** Expiresat */
-            expiresAt?: string | null;
             /** Updatedat */
             updatedAt?: string | null;
         };
@@ -2625,15 +2113,6 @@ export interface components {
             bodyCue: string;
             /** Mediaid */
             mediaId?: string | null;
-        };
-        /** PreviewTokenResponse */
-        PreviewTokenResponse: {
-            /** Token */
-            token?: string | null;
-            /** Expiresat */
-            expiresAt?: string | null;
-            /** Url */
-            url?: string | null;
         };
         /** ProSource */
         ProSource: {
@@ -2676,22 +2155,20 @@ export interface components {
             /** Total */
             total: number;
         };
-        /** PublishBody */
-        PublishBody: {
-            /** Changenote */
-            changeNote?: string | null;
+        /** PublishedBody */
+        PublishedBody: {
+            /** Published */
+            published: boolean;
         };
-        /** Quality */
+        /**
+         * Quality
+         * @description 录音质量提示（FR-1301）：仅作辅助提示，不拦截评分与可视化。
+         */
         Quality: {
-            /**
-             * Verdict
-             * @enum {string}
-             */
-            verdict: "pass" | "fail";
             signal?: components["schemas"]["QualitySignal"] | null;
             reading?: components["schemas"]["QualityReading"] | null;
-            /** Retakeadvice */
-            retakeAdvice?: string | null;
+            /** Advice */
+            advice?: string | null;
         };
         /** QualityReading */
         QualityReading: {
@@ -2739,19 +2216,12 @@ export interface components {
             /** Explanation */
             explanation?: string | null;
         };
-        /** ReasonBody */
-        ReasonBody: {
-            /** Reason */
-            reason: string;
-        };
         /** RecordingBody */
         RecordingBody: {
             /** Audioid */
             audioId: string;
             /** Levelid */
             levelId: string;
-            /** Contentversion */
-            contentVersion: number;
             /** Submissionid */
             submissionId: string;
         };
@@ -2763,23 +2233,14 @@ export interface components {
             audioId: string;
             /** Levelid */
             levelId: string;
-            /** Contentversion */
-            contentVersion: number;
             /**
              * Status
              * @enum {string}
              */
             status: "processing" | "completed" | "failed";
             /** Stage */
-            stage?: ("queued" | "signal_check" | "scoring" | "analyzing" | "finalizing") | null;
+            stage?: ("queued" | "analyzing" | "scoring" | "finalizing") | null;
             error?: components["schemas"]["RecordingError"] | null;
-            /**
-             * Storage
-             * @enum {string}
-             */
-            storage: "session" | "archived";
-            /** Expiresat */
-            expiresAt?: string | null;
             /** Createdat */
             createdAt?: string | null;
         };
@@ -2935,42 +2396,6 @@ export interface components {
             /** Query */
             query?: string | null;
         };
-        /** SessionRecordingSummary */
-        SessionRecordingSummary: {
-            /** Recordingid */
-            recordingId: string;
-            /** Audioid */
-            audioId: string;
-            /** Levelid */
-            levelId: string;
-            /** Createdat */
-            createdAt?: string | null;
-            /** Expiresat */
-            expiresAt?: string | null;
-            /** Verdict */
-            verdict?: string | null;
-            /** Score */
-            score?: number | null;
-        };
-        /** SessionRecordingsResponse */
-        SessionRecordingsResponse: {
-            /** Recordings */
-            recordings: components["schemas"]["SessionRecordingSummary"][];
-            /** Transferablecount */
-            transferableCount: number;
-        };
-        /** SessionResetResponse */
-        SessionResetResponse: {
-            /** Reset */
-            reset: boolean;
-            /** Newsidissued */
-            newSidIssued: boolean;
-        };
-        /** SkeletonBody */
-        SkeletonBody: {
-            /** Skeletonpublic */
-            skeletonPublic: boolean;
-        };
         /** SpeakerBody */
         SpeakerBody: {
             /** Name */
@@ -2979,34 +2404,6 @@ export interface components {
             gender: string;
             /** Mediaid */
             mediaId: string;
-        };
-        /** SwitchBody */
-        SwitchBody: {
-            /** Levelid */
-            levelId?: string | null;
-            /** Enabled */
-            enabled: boolean;
-            /** Reason */
-            reason: string;
-        };
-        /** TokenBody */
-        TokenBody: {
-            /** Kind */
-            kind: string;
-            /** Id */
-            id: string;
-        };
-        /** TransferResult */
-        TransferResult: {
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "completed" | "partial" | "none";
-            /** Transferredcount */
-            transferredCount: number;
-            /** Calibrationupgraded */
-            calibrationUpgraded?: boolean | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -3726,46 +3123,6 @@ export interface operations {
             };
         };
     };
-    session_recordings_api_session_recordings_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Envelope_SessionRecordingsResponse_"];
-                };
-            };
-        };
-    };
-    session_reset_api_session_reset_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Envelope_SessionResetResponse_"];
-                };
-            };
-        };
-    };
     my_recordings_api_me_recordings_get: {
         parameters: {
             query?: {
@@ -3903,79 +3260,6 @@ export interface operations {
             };
         };
     };
-    get_consent_api_me_consent_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Envelope_ConsentStateResponse_"];
-                };
-            };
-        };
-    };
-    post_consent_api_me_consent_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ConsentBody"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Envelope_ConsentPostResponse_"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    revoke_consent_api_me_consent_delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Envelope_ConsentRevokedResponse_"];
-                };
-            };
-        };
-    };
     delete_account_api_me_account_delete: {
         parameters: {
             query?: never;
@@ -4062,140 +3346,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_WishResponse_"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    create_token_api_preview_tokens_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TokenBody"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Envelope_PreviewTokenResponse_"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    preview_level_api_preview_levels__level_id__get: {
-        parameters: {
-            query?: {
-                token?: string;
-            };
-            header?: never;
-            path: {
-                level_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Envelope_LevelDetail_"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    preview_article_api_preview_articles__slug__get: {
-        parameters: {
-            query?: {
-                token?: string;
-            };
-            header?: never;
-            path: {
-                slug: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Envelope_ArticleDetail_"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    preview_media_api_preview_media__media_id__get: {
-        parameters: {
-            query?: {
-                token?: string;
-                kind?: string;
-                object_id?: string;
-            };
-            header?: never;
-            path: {
-                media_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */
@@ -4333,7 +3483,7 @@ export interface operations {
             };
         };
     };
-    admin_save_level_draft_api_admin_levels__level_id__draft_put: {
+    admin_save_level_api_admin_levels__level_id__put: {
         parameters: {
             query?: never;
             header?: never;
@@ -4344,7 +3494,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["DraftBody"];
+                "application/json": components["schemas"]["LevelContentBody"];
             };
         };
         responses: {
@@ -4399,7 +3549,7 @@ export interface operations {
             };
         };
     };
-    admin_publish_level_api_admin_levels__level_id__publish_post: {
+    admin_set_level_published_api_admin_levels__level_id__published_put: {
         parameters: {
             query?: never;
             header?: never;
@@ -4410,141 +3560,9 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["PublishBody"];
+                "application/json": components["schemas"]["PublishedBody"];
             };
         };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    admin_unpublish_level_api_admin_levels__level_id__unpublish_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                level_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ReasonBody"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    admin_rollback_level_api_admin_levels__level_id__rollback_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                level_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    admin_set_skeleton_api_admin_levels__level_id__skeleton_put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                level_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SkeletonBody"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    admin_level_diff_api_admin_levels__level_id__diff_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                level_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -4595,7 +3613,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ArticleDraftBody"];
+                "application/json": components["schemas"]["ArticleContentBody"];
             };
         };
         responses: {
@@ -4650,7 +3668,7 @@ export interface operations {
             };
         };
     };
-    admin_save_article_draft_api_admin_articles__slug__draft_put: {
+    admin_save_article_api_admin_articles__slug__put: {
         parameters: {
             query?: never;
             header?: never;
@@ -4661,7 +3679,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ArticleDraftBody"];
+                "application/json": components["schemas"]["ArticleContentBody"];
             };
         };
         responses: {
@@ -4685,77 +3703,7 @@ export interface operations {
             };
         };
     };
-    admin_publish_article_api_admin_articles__slug__publish_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                slug: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PublishBody"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    admin_unpublish_article_api_admin_articles__slug__unpublish_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                slug: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ReasonBody"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    admin_rollback_article_api_admin_articles__slug__rollback_post: {
+    admin_delete_article_api_admin_articles__slug__delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -4765,6 +3713,41 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_set_article_published_api_admin_articles__slug__published_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublishedBody"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -4876,9 +3859,7 @@ export interface operations {
     };
     admin_delete_category_api_admin_categories__category_id__delete: {
         parameters: {
-            query: {
-                to_category: string;
-            };
+            query?: never;
             header?: never;
             path: {
                 category_id: number;
@@ -4970,59 +3951,6 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    admin_get_switches_api_admin_detection_switches_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
-    admin_set_switch_api_admin_detection_switches_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SwitchBody"];
-            };
-        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -5250,40 +4178,6 @@ export interface operations {
                 "application/json": components["schemas"]["HandleBody"];
             };
         };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    admin_audit_api_admin_audit_get: {
-        parameters: {
-            query?: {
-                object_type?: string;
-                action?: string;
-                request_id?: string;
-                limit?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {

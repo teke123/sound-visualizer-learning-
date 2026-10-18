@@ -1,15 +1,16 @@
 <script setup lang="ts">
 /**
- * LevelLearnSection：关卡页内容区（level 已就绪）。
+ * LevelLearnSection：关卡页内容区（level 已就绪，P05 = 学习与录音检测一体，FR-609）。
  * 在此一次性建立 quiz / practice / assessment 流程（level 引用稳定）。
  */
-import { computed, onBeforeUnmount, ref, toRef } from 'vue'
+import { computed, onBeforeUnmount, toRef } from 'vue'
 import { mediaUrl, type LevelDetail } from '@/api'
 import { useQuiz } from '@/features/quiz'
 import { usePractice } from '@/features/practice'
 import { useAssessmentFlow } from '@/features/assessment'
 import { useComparePanel } from '@/features/compare'
 import { useLevelsStore } from '@/stores/levels'
+import { usePlayerStore } from '@/stores/player'
 import { useRecorderStore } from '@/stores/recorder'
 import LevelView from '@/renderers/LevelView.vue'
 import LevelNav from '@/components/LevelNav.vue'
@@ -22,6 +23,7 @@ const props = defineProps<{ level: LevelDetail }>()
 const emit = defineEmits<{ (e: 'reload'): void }>()
 
 const levelsStore = useLevelsStore()
+const player = usePlayerStore()
 const recorder = useRecorderStore()
 
 const levelRef = toRef(props, 'level')
@@ -40,8 +42,14 @@ const compare = useComparePanel()
 const compareOpen = computed(() => compare.pair.value !== null)
 const calibrating = computed(() => flow.state.value === 'calibrating')
 
-const canAssess = computed(() => props.level.detection?.available !== false)
-const quizDoneIds = computed(() => new Set(quiz.passedIds.value))
+/** 本关录音区参考示范（FR-902：录音前可听示范） */
+const sampleKey = computed(() => `demo:${props.level.detection?.sampleMediaId ?? ''}`)
+
+function playSample() {
+  const mediaId = props.level.detection?.sampleMediaId
+  if (!mediaId) return
+  void player.play({ key: sampleKey.value, url: mediaUrl(mediaId), label: '参考示范' })
+}
 
 function openPair(aId: string, bId: string) {
   void compare.open(aId, bId)
@@ -70,33 +78,35 @@ onBeforeUnmount(() => recorder.release())
       @practice-redo="(payload) => practice.redoById(payload)"
     >
       <template #assessment>
-        <!-- 熔断：检测入口显示故障说明，学习入口保留（D-05 / NFR-11） -->
-        <div v-if="!canAssess" class="detection-off" role="note">
-          <p>🎤 录音检测暂停中（维护中），学习内容不受影响。</p>
-          <RouterLink to="/library" class="off-link">先去学习其他关卡</RouterLink>
-        </div>
-        <template v-else>
-          <RecorderPanel
-            :state="flow.state.value"
-            :recorder-status="recorder.status"
-            :elapsed-ms="recorder.elapsedMs"
-            :blob-url="recorder.blobUrl"
-            :has-take="recorder.hasPendingTake"
-            :waveform="recorder.waveform"
-            :error="flow.flowError.value"
-            :busy="flow.busy.value"
-            :recorder-error="recorder.error"
-            @begin="flow.begin"
-            @retry-mic="flow.requestMic"
-            @start="flow.startRecording"
-            @stop="flow.stopRecording"
-            @re-record="flow.reRecord"
-            @submit="flow.submit"
-          />
-          <p class="task-prompt">
-            朗读内容：<strong>{{ level.detection?.promptText }}</strong>
-          </p>
-        </template>
+        <!-- 录音前可听示范并看到朗读内容（FR-902） -->
+        <p class="task-prompt">
+          朗读内容：<strong>{{ level.detection?.promptText }}</strong>
+        </p>
+        <button
+          v-if="level.detection?.sampleMediaId"
+          type="button"
+          class="sample-btn"
+          @click="playSample"
+        >
+          {{ player.isCurrent(sampleKey) ? '⏸ 暂停参考示范' : '▶ 听参考示范' }}
+        </button>
+        <RecorderPanel
+          :state="flow.state.value"
+          :recorder-status="recorder.status"
+          :elapsed-ms="recorder.elapsedMs"
+          :blob-url="recorder.blobUrl"
+          :has-take="recorder.hasPendingTake"
+          :waveform="recorder.waveform"
+          :error="flow.flowError.value"
+          :busy="flow.busy.value"
+          :recorder-error="recorder.error"
+          @begin="flow.begin"
+          @retry-mic="flow.requestMic"
+          @start="flow.startRecording"
+          @stop="flow.stopRecording"
+          @re-record="flow.reRecord"
+          @submit="flow.submit"
+        />
       </template>
     </LevelView>
 
@@ -133,26 +143,23 @@ onBeforeUnmount(() => recorder.release())
 </template>
 
 <style scoped lang="sass">
-.detection-off
-  background: #eceff1
-  border: 1px solid #cfd8dc
-  border-radius: 10px
-  padding: 14px 16px
-  p
-    margin: 0 0 8px
-    color: #546e7a
-
-.off-link
-  color: #00897b
-  font-weight: 600
-  text-decoration: none
-
 .task-prompt
   font-size: 15px
   background: #fffde7
   border: 1px solid #ffe082
   border-radius: 8px
   padding: 10px 14px
+  margin: 0 0 10px
+
+.sample-btn
+  min-height: 44px
+  padding: 4px 18px
+  border-radius: 999px
+  border: 1px solid #00897b
+  background: #e0f2f1
+  color: #00695c
+  cursor: pointer
+  margin-bottom: 12px
 
 .confusable-entry
   margin-top: 18px

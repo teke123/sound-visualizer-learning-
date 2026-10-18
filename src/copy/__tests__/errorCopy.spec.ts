@@ -4,15 +4,16 @@ import { ApiError } from '@/api'
 import { errorCopy } from '../usePageCopy'
 
 describe('errorCopy', () => {
-  it('QUALITY_FAIL 使用固定「本次不能评」口径并给重录指引', () => {
+  it('QUALITY_FAIL 使用友好提示口径：不阻断评分', () => {
     const copy = errorCopy(new ApiError({ status: 200, code: 'QUALITY_FAIL', message: '' }))
-    expect(copy.title).toBe('本次不能评')
-    expect(copy.hint).toContain('重录')
+    expect(copy.title).toBe('录音质量提示')
+    expect(copy.hint).toContain('不受影响')
+    expect(copy.title).not.toContain('不能评')
   })
 
-  it('DETECTION_OFF 保留学习入口提示', () => {
-    const copy = errorCopy(new ApiError({ status: 503, code: 'DETECTION_OFF', message: '' }))
-    expect(copy.hint).toContain('学习')
+  it('CALIBRATION_FAIL 提示可跳过标定', () => {
+    const copy = errorCopy(new ApiError({ status: 200, code: 'CALIBRATION_FAIL', message: '' }))
+    expect(copy.hint).toContain('跳过')
   })
 
   it('TIMEOUT 提示同页面重试边界', () => {

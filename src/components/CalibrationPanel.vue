@@ -1,8 +1,9 @@
 <script setup lang="ts">
 /**
- * CalibrationPanel：音域标定对话框（FR-1006 / FD-06）。
- * 检测流程内嵌（不可跳过）与 P11 主动重新标定共用；
+ * CalibrationPanel：音域标定对话框（FR-1006 / D-20，可跳过）。
+ * 录音区引导标定与 P11 主动重新标定共用；
  * 流程：读取标定文本 → 录音（40 秒）→ 上传 purpose=calibration → POST 标定。
+ * 未标定可直接「跳过标定，直接录音」，不影响评分与结果展示。
  */
 import { onMounted, ref, watch } from 'vue'
 import { QDialog } from 'quasar'
@@ -61,7 +62,7 @@ async function submit() {
     <div class="calibration-panel" role="dialog" aria-label="音域标定">
       <header class="cal-head">
         <h2>先做一次音域标定</h2>
-        <p>标定让你和标准曲线站在同一把「尺子」上比较，不同音高的人都能公平对比。只需要一次，很快。</p>
+        <p>标定让你和标准曲线站在同一把「尺子」上比较，不同音高的人都能公平对比。只需要一次，很快。也可以跳过标定，直接录音检测。</p>
       </header>
 
       <!-- 读取标定文本 -->
@@ -131,7 +132,7 @@ async function submit() {
 
       <footer class="cal-foot">
         <button type="button" class="cal-skip" @click="emit('cancel')">
-          {{ calibration.phase.value === 'success' ? '关闭' : '暂不标定（本次不能录音检测）' }}
+          {{ calibration.phase.value === 'success' ? '关闭' : '跳过标定，直接录音' }}
         </button>
       </footer>
     </div>

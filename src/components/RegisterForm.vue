@@ -1,5 +1,5 @@
 <script setup lang="ts">
-/** RegisterForm：注册（FR-107）：用户名 3–32 唯一、密码 ≥8；注册不自动登录；USERNAME_TAKEN 表单内错误 */
+/** RegisterForm：注册（FR-107）：用户名 3–32 唯一、密码 ≥8；注册即代表同意服务条款、不自动登录；USERNAME_TAKEN 表单内错误 */
 import { ref } from 'vue'
 import { ApiError } from '@/api'
 import { errorCopy } from '@/copy/usePageCopy'
@@ -35,7 +35,7 @@ const usernameTaken = () => auth.error.value instanceof ApiError && auth.error.v
 <template>
   <form class="auth-form" @submit.prevent="submit" novalidate>
     <h2>注册</h2>
-    <p class="auth-note">账号只用于保存你的学习进度与录音；不收集邮箱或手机号，也不提供密码找回。注册不会自动登录。</p>
+    <p class="auth-note">注册即代表同意服务条款。账号只用于保存你的学习进度与录音；不收集邮箱或手机号，也不提供密码找回。注册不会自动登录。</p>
 
     <div v-if="registered" class="register-ok">
       <p>✅ 注册成功。现在去登录吧。</p>

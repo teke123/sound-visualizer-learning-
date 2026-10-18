@@ -129,7 +129,7 @@ export const SKELETONS: LevelSkeleton[] = [
   { id: 'L21', order: 21, layer: 'initial', targetSound: 'zh', availability: 'closed' },
 ]
 
-/** 易混对（双方均已发布才展示） */
+/** 易混对（双方均已开放才展示） */
 export const CONFUSABLE_PAIRS = [
   { a: 'L07', b: 'L08' },
   { a: 'L13', b: 'L14' },
@@ -274,8 +274,6 @@ export const LEVEL_DETAILS: Record<string, LevelDetail> = Object.fromEntries(
         title: seed.title,
         oneLiner: seed.oneLiner,
         goal: seed.goal,
-        contentVersion: 1,
-        ruleVersion: 'rules-mock-1',
         applicableIssues: '适合与易混音分不清的学习者',
         nav: {
           prev: prev?.id ?? null,
@@ -397,7 +395,6 @@ export const ARTICLES: ArticleDetail[] = [
     title: '气从哪里来：说话的动力',
     category: '气',
     summary: '说话的声音，起点是一口平稳呼出的气。',
-    contentVersion: 1,
     demo: { mediaId: 'aud-L01-demo', text: '啊' },
     markdown: [
       '## 一口气，一串音',
@@ -432,7 +429,6 @@ export const ARTICLES: ArticleDetail[] = [
     title: '声音怎么响：喉咙里的小马达',
     category: '声',
     summary: '声带一开一合，气流就变成了带着音高的声音。',
-    contentVersion: 1,
     demo: { mediaId: 'aud-L07-demo', text: '波' },
     markdown: [
       '## 摸得到的振动',
@@ -464,7 +460,6 @@ export const ARTICLES: ArticleDetail[] = [
     title: '嘴和舌头怎么摆：声音的调色盘',
     category: '口型',
     summary: '同样的气流，过不同的口型，就成了不同的音。',
-    contentVersion: 1,
     demo: { mediaId: 'aud-L13-demo', text: '呢' },
     markdown: [
       '## 看得见的差别',
@@ -504,7 +499,6 @@ export const ARTICLE_SUMMARIES: ArticleSummary[] = ARTICLES.map((article) => ({
   title: article.title,
   category: article.category,
   summary: article.summary,
-  contentVersion: article.contentVersion,
 }))
 
 /* -------------------------------- 标定文本 ------------------------------- */

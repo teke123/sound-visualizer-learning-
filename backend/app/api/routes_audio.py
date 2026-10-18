@@ -1,4 +1,4 @@
-"""音频、标定与检测路由（决策图「音频、标定与检测」表）。"""
+"""音频、标定与检测路由（要求登录；D-05/D-19/D-20）。"""
 from __future__ import annotations
 
 from typing import Union
@@ -7,21 +7,21 @@ import asyncio
 import json
 
 from fastapi import APIRouter, Depends, Request, UploadFile, File, Form
-from fastapi.responses import Response
 from pydantic import BaseModel
 
 from app import config
 from app.acoustics import usecases as acoustics_uc
-from app.api.deps import Actor, get_actor
+from app.api.deps import Actor, get_actor, require_user
 from app.api.files import serve_file
 from app.archive import usecases as archive_uc
 from app.content import usecases as content_uc
 from app.detection import usecases as detection_uc
-from app.identity import usecases as identity_uc
 from app.platform.envelope import ApiError, envelope
 from app.scoring import usecases as scoring_uc
 
-from app.api.schemas import (AudioUploadResponse, CalibrationFailResult, CalibrationOkResult, Envelope, F0Response, FormantsResponse, PitchCalibrationInfo, RecordingDeleted, RecordingOnly, RecordingWithResult)
+from app.api.schemas import (AudioUploadResponse, CalibrationFailResult, CalibrationOkResult,
+                             Envelope, F0Response, FormantsResponse, PitchCalibrationInfo,
+                             RecordingDeleted, RecordingOnly, RecordingWithResult)
 
 router = APIRouter(prefix="/api", tags=["audio-detection"])
 
@@ -32,6 +32,7 @@ router = APIRouter(prefix="/api", tags=["audio-detection"])
 async def upload_audio(request: Request, purpose: str = Form(...),
                        file: UploadFile = File(...),
                        actor: Actor = Depends(get_actor)):
+    user = require_user(actor)
     actor.rate_limit("upload")
     # 分块读并在超限时立即中止：一次性 file.read() 会把整个文件载入内存，
     # 超大上传会先吃满 RAM 才被 20MB 上限拒绝
@@ -51,7 +52,7 @@ async def upload_audio(request: Request, purpose: str = Form(...),
         raise ApiError(400, "DECODE_FAILED", "没有收到音频内容，请重试")
     result = await asyncio.get_running_loop().run_in_executor(
         None, lambda: acoustics_uc.register_upload(
-            actor.db, owner_type=actor.owner_type, owner_id=actor.owner_id,
+            actor.db, user_id=user.id,
             purpose=purpose, filename=file.filename, mime=file.content_type,
             raw_bytes=raw))
     return envelope(request, result)
@@ -59,19 +60,17 @@ async def upload_audio(request: Request, purpose: str = Form(...),
 
 @router.get("/audio/{audio_id}/file")
 async def audio_file(request: Request, audio_id: str, actor: Actor = Depends(get_actor)):
-    row = acoustics_uc.get_audio_for_read(actor.db, audio_id=audio_id,
-                                          actor_type=actor.owner_type,
-                                          actor_id=actor.owner_id)
+    user = require_user(actor)
+    row = acoustics_uc.get_audio_for_read(actor.db, audio_id=audio_id, user_id=user.id)
     return serve_file(request, acoustics_uc.audio_path(row), "audio/wav",
                       cache_control="private, no-store")
 
 
 @router.get("/audio/{audio_id}/f0", response_model=Envelope[F0Response])
 async def audio_f0(request: Request, audio_id: str, actor: Actor = Depends(get_actor)):
+    user = require_user(actor)
     actor.rate_limit("feature_read")
-    row = acoustics_uc.get_audio_for_read(actor.db, audio_id=audio_id,
-                                          actor_type=actor.owner_type,
-                                          actor_id=actor.owner_id)
+    row = acoustics_uc.get_audio_for_read(actor.db, audio_id=audio_id, user_id=user.id)
     data = await asyncio.get_running_loop().run_in_executor(
         None, lambda: acoustics_uc.get_f0(actor.db, row))
     return envelope(request, data)
@@ -80,10 +79,9 @@ async def audio_f0(request: Request, audio_id: str, actor: Actor = Depends(get_a
 @router.get("/audio/{audio_id}/formants", response_model=Envelope[FormantsResponse])
 async def audio_formants(request: Request, audio_id: str,
                          actor: Actor = Depends(get_actor)):
+    user = require_user(actor)
     actor.rate_limit("feature_read")
-    row = acoustics_uc.get_audio_for_read(actor.db, audio_id=audio_id,
-                                          actor_type=actor.owner_type,
-                                          actor_id=actor.owner_id)
+    row = acoustics_uc.get_audio_for_read(actor.db, audio_id=audio_id, user_id=user.id)
     data = await asyncio.get_running_loop().run_in_executor(
         None, lambda: acoustics_uc.get_formants(actor.db, row))
     return envelope(request, data)
@@ -92,10 +90,9 @@ async def audio_formants(request: Request, audio_id: str,
 @router.get("/audio/{audio_id}/formants.png")
 async def audio_formants_png(request: Request, audio_id: str,
                              actor: Actor = Depends(get_actor)):
+    user = require_user(actor)
     actor.rate_limit("feature_read")
-    row = acoustics_uc.get_audio_for_read(actor.db, audio_id=audio_id,
-                                          actor_type=actor.owner_type,
-                                          actor_id=actor.owner_id,
+    row = acoustics_uc.get_audio_for_read(actor.db, audio_id=audio_id, user_id=user.id,
                                           purposes=("recording",))
     path = await asyncio.get_running_loop().run_in_executor(
         None, lambda: acoustics_uc.get_formants_png(actor.db, row))
@@ -105,25 +102,24 @@ async def audio_formants_png(request: Request, audio_id: str,
 @router.get("/audio/{audio_id}/spectrogram.png")
 async def audio_spectrogram_png(request: Request, audio_id: str,
                                 actor: Actor = Depends(get_actor)):
+    user = require_user(actor)
     actor.rate_limit("feature_read")
-    row = acoustics_uc.get_audio_for_read(actor.db, audio_id=audio_id,
-                                          actor_type=actor.owner_type,
-                                          actor_id=actor.owner_id,
+    row = acoustics_uc.get_audio_for_read(actor.db, audio_id=audio_id, user_id=user.id,
                                           purposes=("recording",))
     path = await asyncio.get_running_loop().run_in_executor(
         None, lambda: acoustics_uc.get_spectrogram_png(actor.db, row))
     return serve_file(request, path, "image/png", cache_control="private, no-store")
 
 
-# ---------------- 标定 ----------------
+# ---------------- 标定（FR-1006，可跳过） ----------------
 
 @router.get("/pitch-calibration", response_model=Envelope[PitchCalibrationInfo])
 async def get_calibration(request: Request, actor: Actor = Depends(get_actor)):
+    user = require_user(actor)
     text_row = content_uc.get_active_calibration_text(actor.db)
     if text_row is None:
         raise ApiError(500, "INTERNAL_ERROR", "标定文本未配置，请联系管理员")
-    effective = scoring_uc.get_effective_range(actor.db, owner_type=actor.owner_type,
-                                               owner_id=actor.owner_id)
+    effective = scoring_uc.get_personal_range(actor.db, user_id=user.id)
     data = {
         "text": text_row.text,
         "textVersion": text_row.text_version,
@@ -132,28 +128,25 @@ async def get_calibration(request: Request, actor: Actor = Depends(get_actor)):
     }
     if effective:
         data["pitchRange"] = {"fLo": effective["fLo"], "fHi": effective["fHi"]}
-        data["expiresAt"] = effective.get("expiresAt")
         data["updatedAt"] = effective.get("updatedAt")
     return envelope(request, data)
 
 
 class CalibrationBody(BaseModel):
     audioId: str
-    textVersion: str
 
 
 @router.post("/pitch-calibration", response_model=Envelope[Union[CalibrationOkResult, CalibrationFailResult]])
 async def post_calibration(request: Request, body: CalibrationBody,
                            actor: Actor = Depends(get_actor)):
+    user = require_user(actor)
     actor.rate_limit("calibration")
     text_row = content_uc.get_active_calibration_text(actor.db)
-    if text_row is None or body.textVersion != text_row.text_version:
-        raise ApiError(409, "CONTENT_VERSION_CHANGED", "标定文本已更新，请刷新后重试")
+    if text_row is None:
+        raise ApiError(500, "INTERNAL_ERROR", "标定文本未配置，请联系管理员")
     audio = acoustics_uc.get_audio_for_read(
-        actor.db, audio_id=body.audioId, actor_type=actor.owner_type,
-        actor_id=actor.owner_id, purposes=("calibration",))
-    consent_valid = (actor.user is not None
-                     and identity_uc.consent_granted(actor.db, actor.user))
+        actor.db, audio_id=body.audioId, user_id=user.id,
+        purposes=("calibration",))
     from app.platform.executor import executor
 
     # 任务线程内自建会话（compute_calibration），不持有请求作用域 actor.db：
@@ -161,8 +154,7 @@ async def post_calibration(request: Request, body: CalibrationBody,
     future = executor.try_submit(
         scoring_uc.compute_calibration, audio_id=audio.id,
         syllables=json.loads(text_row.syllables),
-        owner_type=actor.owner_type, owner_id=actor.owner_id,
-        consent_valid=consent_valid)
+        user_id=user.id)
     if future is None:
         raise ApiError(503, "SERVER_BUSY", "当前处理排队已满，请稍后重试",
                        headers={"Retry-After": "5"})
@@ -189,7 +181,6 @@ async def post_calibration(request: Request, body: CalibrationBody,
 class RecordingBody(BaseModel):
     audioId: str
     levelId: str
-    contentVersion: int
     submissionId: str
 
 
@@ -197,12 +188,11 @@ class RecordingBody(BaseModel):
              responses={202: {"model": Envelope[RecordingOnly], "description": "PROCESSING"}})
 async def submit_recording(request: Request, body: RecordingBody,
                            actor: Actor = Depends(get_actor)):
+    user = require_user(actor)
     actor.rate_limit("recording_submit")
     outcome = detection_uc.submit_recording(
-        actor.db, owner_type=actor.owner_type, owner_id=actor.owner_id,
-        user=actor.user, audio_id=body.audioId, level_id=body.levelId,
-        content_version=body.contentVersion, submission_id=body.submissionId,
-        request_id=actor.request_id)
+        actor.db, user=user, audio_id=body.audioId, level_id=body.levelId,
+        submission_id=body.submissionId, request_id=actor.request_id)
     outcome = await detection_uc.wait_sync_window(outcome)
     if outcome.status == 200:
         return envelope(request, {"recording": detection_uc.recording_view(outcome.recording),
@@ -216,8 +206,8 @@ async def submit_recording(request: Request, body: RecordingBody,
              responses={202: {"model": Envelope[RecordingOnly], "description": "PROCESSING"}})
 async def get_recording(request: Request, recording_id: str,
                         actor: Actor = Depends(get_actor)):
-    outcome = detection_uc.get_recording(actor.db, owner_type=actor.owner_type,
-                                         owner_id=actor.owner_id,
+    user = require_user(actor)
+    outcome = detection_uc.get_recording(actor.db, user_id=user.id,
                                          recording_id=recording_id)
     if outcome.status == 200:
         return envelope(request, {"recording": detection_uc.recording_view(outcome.recording),
@@ -230,17 +220,16 @@ async def get_recording(request: Request, recording_id: str,
 @router.delete("/recordings/{recording_id}", response_model=Envelope[RecordingDeleted])
 async def delete_recording(request: Request, recording_id: str,
                            actor: Actor = Depends(get_actor)):
+    user = require_user(actor)
     from app.detection.models import RecordingRow
 
     rec = actor.db.query(RecordingRow).filter(
         RecordingRow.id == recording_id,
-        RecordingRow.owner_type == actor.owner_type,
-        RecordingRow.owner_id == actor.owner_id).one_or_none()
+        RecordingRow.user_id == user.id).one_or_none()
     if rec is None:
         raise ApiError(404, "NOT_FOUND", "录音不存在或不可见")
     already = rec.deleted_at is not None
     if not already:
-        archive_uc.delete_recording(actor.db, rec, request_id=actor.request_id,
-                                    reason="user_delete")
+        archive_uc.delete_recording(actor.db, rec)
         actor.db.commit()
     return envelope(request, {"deleted": True, "alreadyDeleted": already})

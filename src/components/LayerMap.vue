@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * LayerMap：P03 三层闯关定位图（FR-401/402/404，FD-13）。
- * 固定三层：单韵母 → 声母 → 拼读；已发布可点进；骨架仅身份 + 「未开放」；
+ * 固定三层：单韵母 → 声母 → 拼读；已开放可点进；骨架仅身份 + 「未开放」；
  * 不承载专业说明与 IPA；完成标记来自进度门面。
  */
 import { computed } from 'vue'
@@ -22,7 +22,6 @@ interface MapNode {
   order: number
   published: boolean
   completed: boolean
-  unavailable: boolean
 }
 
 const LAYERS: Array<{ key: LevelSummary['layer']; name: string; hint: string }> = [
@@ -42,7 +41,6 @@ const layers = computed(() =>
         order: level.order,
         published: true,
         completed: props.completedIds.has(level.id),
-        unavailable: level.availability === 'temporarily_unavailable',
       }))
     const skeleton: MapNode[] = props.skeletons
       .filter((item) => item.layer === layer.key)
@@ -53,7 +51,6 @@ const layers = computed(() =>
         order: item.order,
         published: false,
         completed: false,
-        unavailable: false,
       }))
     return { ...layer, nodes: [...published, ...skeleton].sort((a, b) => a.order - b.order) }
   }),
@@ -73,7 +70,7 @@ const layers = computed(() =>
             v-if="node.published"
             :to="`/learn/${node.id}`"
             class="map-node published"
-            :class="{ completed: node.completed, unavailable: node.unavailable }"
+            :class="{ completed: node.completed }"
           >
             <span class="node-sound">{{ node.label }}</span>
             <span class="node-id">{{ node.id }}</span>
@@ -136,10 +133,6 @@ const layers = computed(() =>
     &.completed
       background: #c8e6c9
       border-color: #66bb6a
-    &.unavailable
-      background: #eceff1
-      border-color: #b0bec5
-      color: #78909c
 
   &.skeleton
     background: #fafafa

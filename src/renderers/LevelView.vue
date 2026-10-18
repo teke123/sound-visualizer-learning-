@@ -1,8 +1,8 @@
 <script setup lang="ts">
 /**
- * LevelView：关卡页纯展示组件（FR-601 统一结构，公开与预览共用，FD-12）。
- * 认知顺序：一句话结论 → 构形 → 示范 → 听辨 → 跟着练 → 误区 → 专业折叠。
- * 本关录音区与反馈由页面通过 slot 挂载（预览页不挂载 assessment / 反馈 / 学习事件）。
+ * LevelView：关卡页纯展示组件（FR-601 统一结构）。
+ * 认知顺序：一句话结论 → 构形 → 示范 → 听辨 → 跟着练 → 误区 → 专业与声学说明（直接展示）。
+ * 本关录音区与反馈由页面通过 slot 挂载。
  */
 import type { LevelDetail } from '@/api'
 import ArticulationFigure from './ArticulationFigure.vue'
@@ -10,12 +10,11 @@ import DemoPlayer from '@/components/DemoPlayer.vue'
 import QuizPanel from '@/components/QuizPanel.vue'
 import PracticeStepper from '@/components/PracticeStepper.vue'
 import MisconceptionList from '@/components/MisconceptionList.vue'
-import ProFold from '@/components/ProFold.vue'
 
 defineProps<{
   level: LevelDetail
   mediaResolver: (mediaId: string) => string
-  /** 练习步骤完成集合（用于展示完成标记；预览传空集合） */
+  /** 练习步骤完成集合（用于展示完成标记） */
   practiceDoneIds: ReadonlySet<string>
   interactive?: boolean
 }>()
@@ -90,9 +89,26 @@ const emit = defineEmits<{
       <slot name="assessment" />
     </section>
 
-    <!-- 专业折叠（FR-610） -->
-    <section class="level-section" aria-label="专业说明">
-      <ProFold :pro="level.professional" />
+    <!-- 专业与声学说明（FR-610：发音部位、发音方法与声学参考值直接展示） -->
+    <section v-if="level.professional" class="level-section" aria-label="专业说明">
+      <h2>专业与声学说明</h2>
+      <p class="pro-content">{{ level.professional.description }}</p>
+      <div v-if="level.professional.acousticRefs?.length" class="pro-notes">
+        <h3>声学参考值</h3>
+        <ul>
+          <li v-for="ref in level.professional.acousticRefs" :key="ref.name">
+            {{ ref.name }}：{{ ref.value }}<template v-if="ref.note">（{{ ref.note }}）</template>
+          </li>
+        </ul>
+      </div>
+      <div v-if="level.professional.sources?.length" class="pro-references">
+        <h3>来源</h3>
+        <ul>
+          <li v-for="source in level.professional.sources" :key="source.title">
+            {{ source.title }} — {{ source.source }}（许可：{{ source.license }}）
+          </li>
+        </ul>
+      </div>
     </section>
   </article>
 </template>
@@ -148,4 +164,23 @@ const emit = defineEmits<{
   font-size: 14px
   color: #546e7a
   margin-top: 10px
+
+.pro-content
+  white-space: pre-wrap
+  line-height: 1.8
+  color: #37474f
+  margin: 0
+
+.pro-notes, .pro-references
+  margin-top: 12px
+  h3
+    margin: 0 0 6px
+    font-size: 14px
+  ul
+    margin: 0
+    padding-left: 18px
+  li
+    font-size: 13px
+    color: #546e7a
+    line-height: 1.8
 </style>

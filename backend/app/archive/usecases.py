@@ -1,5 +1,5 @@
-"""archive / learning 用例：自动转存（含音域升级）、档案查询与比较、
-当前会话临时记录、学习事件与 D-24 只读派生进度、数据清理编排。"""
+"""archive / learning 用例：档案查询与比较、学习事件与 D-24 只读派生进度、
+数据清理编排（删除录音 / 清空档案 / 注销清空）。"""
 from __future__ import annotations
 
 import base64
@@ -8,61 +8,18 @@ import datetime
 from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
-from app import config
 from app.acoustics.models import AudioRow
-from app.acoustics.usecases import (
-    ARCHIVED_EXPIRES_AT, mark_deleted as mark_audio_deleted,
-)
+from app.acoustics.usecases import mark_deleted as mark_audio_deleted
 from app.archive.models import LearningEventRow
-from app.content.models import LevelRow, LevelVersionRow
+from app.content.models import LevelRow
 from app.db import JSONText, now
 from app.detection.models import AssessmentResultRow, RecordingRow
 from app.feedback.models import FeedbackRow
-from app.platform.audit import audit, deletion_log
+from app.platform.deletion_log import deletion_log
 from app.platform.envelope import ApiError
-from app.scoring.models import PitchRangeRow, ScoreCacheRow
-from app.scoring.usecases import (
-    recompute_personal_range,
-    snapshot_dict,
-    upgrade_session_range_on_transfer,
-)
 from app.identity.models import UserRow
-
-
-# ---------------- 自动转存（D-14 / 5.3） ----------------
-
-def transfer_session_records(db: Session, *, sid: str, user_id: str,
-                             consent_id: str | None) -> dict:
-    """单事务：本会话内本账号 session 记录（completed、未过期、未删除）→ archived，
-    登记 consentId；会话标定升级为个人音域。失败整个回滚，重试天然幂等。"""
-    rows = (db.query(RecordingRow)
-            .filter(RecordingRow.owner_type == "user", RecordingRow.owner_id == user_id,
-                    RecordingRow.storage == "session",
-                    RecordingRow.status == "completed",
-                    RecordingRow.deleted_at.is_(None))
-            .all())
-    transferred = 0
-    for row in rows:
-        if row.expires_at is not None and row.expires_at < now():
-            continue
-        row.storage = "archived"
-        row.expires_at = None
-        if consent_id:
-            row.consent_id = consent_id
-        # 音频随录音脱离 72h 到期：存档回放与音域滚动重算都依赖音频存活
-        audio = db.get(AudioRow, row.audio_id)
-        if audio is not None:
-            audio.expires_at = ARCHIVED_EXPIRES_AT
-        transferred += 1
-    upgraded = upgrade_session_range_on_transfer(db, sid=sid, user_id=user_id)
-    # 转存后按「标定基线 + 最近存档合格录音」滚动更新
-    recompute_personal_range(db, user_id=user_id)
-    audit.log(db, action="transfer", object_type="user", object_id=user_id,
-              actor_type="user", actor_id=user_id,
-              after={"transferredCount": transferred, "calibrationUpgraded": upgraded})
-    db.flush()
-    return {"status": "completed" if transferred or upgraded else "none",
-            "transferredCount": transferred, "calibrationUpgraded": upgraded}
+from app.scoring.models import ScoreCacheRow
+from app.scoring.usecases import recompute_personal_range, snapshot_dict
 
 
 # ---------------- 档案 ----------------
@@ -74,10 +31,9 @@ def recording_summary(rec: RecordingRow, result: AssessmentResultRow | None) -> 
         "recordingId": rec.id,
         "audioId": rec.audio_id,
         "levelId": rec.level_id,
-        "contentVersion": rec.content_version,
-        "ruleVersion": rec.rule_version,
         "createdAt": rec.created_at.isoformat() if rec.created_at else None,
-        "verdict": (quality.get("verdict") if quality else None) or rec.outcome,
+        "verdict": rec.outcome,
+        "qualityAdvice": quality.get("advice"),
         "score": payload.get("score"),
     }
 
@@ -102,8 +58,7 @@ def _parse_page_cursor(cursor: str) -> tuple[datetime.datetime, str]:
 def my_recordings(db: Session, *, user: UserRow, level_id: str | None,
                   cursor: str | None, limit: int = 20) -> dict:
     q = (db.query(RecordingRow)
-         .filter(RecordingRow.owner_type == "user", RecordingRow.owner_id == user.id,
-                 RecordingRow.storage == "archived",
+         .filter(RecordingRow.user_id == user.id,
                  RecordingRow.deleted_at.is_(None)))
     if level_id:
         q = q.filter(RecordingRow.level_id == level_id)
@@ -129,13 +84,12 @@ def my_recordings(db: Session, *, user: UserRow, level_id: str | None,
 
 
 def compare_recordings(db: Session, *, user: UserRow, a: str, b: str) -> dict:
-    """本人同关 archived 两条比较：双方摘要与曲线、各自音域快照；
+    """本人同关两条比较：双方摘要与曲线、各自音域快照；
     可比维度与差异提示（FR-1103）。"""
     recs = []
     for rid in (a, b):
         rec = db.query(RecordingRow).filter(
-            RecordingRow.id == rid, RecordingRow.owner_type == "user",
-            RecordingRow.owner_id == user.id, RecordingRow.storage == "archived",
+            RecordingRow.id == rid, RecordingRow.user_id == user.id,
             RecordingRow.deleted_at.is_(None)).one_or_none()
         if rec is None:
             raise ApiError(404, "NOT_FOUND", f"录音不存在：{rid}")
@@ -143,12 +97,8 @@ def compare_recordings(db: Session, *, user: UserRow, a: str, b: str) -> dict:
     ra, rb = recs
     if ra.level_id != rb.level_id:
         raise ApiError(422, "VALIDATION_ERROR", "只能比较同一关卡的两条记录")
-    comparable = {"score": False, "curve": False}
+    comparable = {"score": True, "curve": False}
     reasons: list[str] = []
-    if ra.content_version != rb.content_version or ra.rule_version != rb.rule_version:
-        reasons.append("内容或规则版本不同，分数不可直接比较")
-    else:
-        comparable["score"] = True
 
     def full(rec: RecordingRow) -> dict:
         result = db.query(AssessmentResultRow).filter(
@@ -167,7 +117,7 @@ def compare_recordings(db: Session, *, user: UserRow, a: str, b: str) -> dict:
         reasons.append("至少一条记录无有效曲线，曲线对比不可用")
     sa, sb = fa["result"].get("score"), fb["result"].get("score")
     differences = []
-    if comparable["score"] and sa is not None and sb is not None:
+    if sa is not None and sb is not None:
         differences.append({
             "dimension": "score",
             "description": f"分数从 {sa} 变为 {sb}" + ("（有进步）" if sb > sa else "（保持或退步）"),
@@ -192,70 +142,9 @@ def _snapshot_of(db: Session, payload: dict) -> dict | None:
     return snapshot_dict(row) if row else None
 
 
-# ---------------- 会话临时记录 ----------------
-
-def session_recordings(db: Session, *, owner_type: str, owner_id: str) -> dict:
-    """当前 sid（访客）或当前绑定会话内本账号的临时录音摘要。"""
-    rows = (db.query(RecordingRow)
-            .filter(RecordingRow.owner_type == owner_type, RecordingRow.owner_id == owner_id,
-                    RecordingRow.storage == "session", RecordingRow.deleted_at.is_(None),
-                    RecordingRow.status == "completed")
-            .order_by(RecordingRow.created_at.desc()).all())
-    items = []
-    transferable = 0
-    for rec in rows:
-        if rec.expires_at is None or rec.expires_at >= now():
-            transferable += 1
-        result = db.query(AssessmentResultRow).filter(
-            AssessmentResultRow.recording_id == rec.id).one_or_none()
-        items.append({
-            "recordingId": rec.id,
-            "audioId": rec.audio_id,
-            "levelId": rec.level_id,
-            "createdAt": rec.created_at.isoformat() if rec.created_at else None,
-            "expiresAt": rec.expires_at.isoformat() if rec.expires_at else None,
-            "verdict": rec.outcome,
-            "score": (JSONText.load(result.payload, {}).get("score")
-                      if result else None),
-        })
-    return {"recordings": items, "transferableCount": transferable}
-
-
-def session_reset(db: Session, *, sid: str, owner_type: str, owner_id: str,
-                  is_guest: bool) -> dict:
-    """删除当前会话全部临时录音、未引用上传与会话标定；访客同时轮换 sid。"""
-    from app.identity.usecases import rotate_sid
-    from app.scoring.usecases import delete_owner_ranges
-
-    recs = (db.query(RecordingRow)
-            .filter(RecordingRow.owner_type == owner_type, RecordingRow.owner_id == owner_id,
-                    RecordingRow.storage == "session", RecordingRow.deleted_at.is_(None))
-            .all())
-    for rec in recs:
-        delete_recording(db, rec, request_id=None, reason="session_reset")
-    # 未引用上传：无 recording 引用的 audio
-    referenced = {r.audio_id for r in recs}
-    orphans = (db.query(AudioRow)
-               .filter(AudioRow.owner_type == owner_type, AudioRow.owner_id == owner_id,
-                       AudioRow.deleted_at.is_(None)).all())
-    for audio in orphans:
-        if audio.id not in referenced:
-            has_other_ref = db.query(RecordingRow).filter(
-                RecordingRow.audio_id == audio.id,
-                RecordingRow.deleted_at.is_(None)).count()
-            if not has_other_ref:
-                mark_audio_deleted(db, audio)
-    if owner_type == "sid":
-        delete_owner_ranges(db, owner_type="sid", owner_id=owner_id)
-    db.commit()
-    new_sid = rotate_sid(db, sid) if is_guest else None
-    return {"reset": True, "newSidIssued": new_sid is not None}
-
-
 # ---------------- 删除 ----------------
 
-def delete_recording(db: Session, rec: RecordingRow, *, request_id: str | None,
-                     reason: str | None) -> None:
+def delete_recording(db: Session, rec: RecordingRow) -> None:
     """单删：立即逻辑失效；独占 audio 同时失效；音域引用该录音则重算；
     反馈去引用。重复删除幂等。"""
     if rec.deleted_at is not None:
@@ -270,40 +159,28 @@ def delete_recording(db: Session, rec: RecordingRow, *, request_id: str | None,
             mark_audio_deleted(db, audio)
     for fb in db.query(FeedbackRow).filter(FeedbackRow.recording_id == rec.id).all():
         fb.recording_id = None
-        fb.recording_content_version = None
     for sc in db.query(ScoreCacheRow).filter(ScoreCacheRow.audio_id == rec.audio_id).all():
         deletion_log.append(kind="score_cache",
-                            key=f"{sc.owner_type}:{sc.owner_id}:{sc.pcm_sha256}:{sc.level_id}")
+                            key=f"{sc.user_id}:{sc.pcm_sha256}:{sc.level_id}")
         db.delete(sc)
-    if rec.owner_type == "user":
-        recompute_personal_range(db, user_id=rec.owner_id)
-    audit.log(db, action="delete_recording", object_type="recording", object_id=rec.id,
-              actor_type="user", actor_id=rec.owner_id, reason=reason,
-              request_id=request_id)
+    recompute_personal_range(db, user_id=rec.user_id)
     db.flush()
 
 
-def clear_archive(db: Session, *, user: UserRow, request_id: str | None) -> dict:
+def clear_archive(db: Session, *, user: UserRow) -> dict:
     rows = (db.query(RecordingRow)
-            .filter(RecordingRow.owner_type == "user", RecordingRow.owner_id == user.id,
-                    RecordingRow.storage == "archived", RecordingRow.deleted_at.is_(None))
+            .filter(RecordingRow.user_id == user.id,
+                    RecordingRow.deleted_at.is_(None))
             .all())
     for rec in rows:
-        delete_recording(db, rec, request_id=request_id, reason="clear_archive")
-    recompute_personal_range(db, user_id=user.id)
-    audit.log(db, action="clear_archive", object_type="user", object_id=user.id,
-              actor_type="user", actor_id=user.id, request_id=request_id,
-              after={"deleted": len(rows)})
+        delete_recording(db, rec)
     db.commit()
     return {"deleted": len(rows)}
 
 
-def purge_user_data(db: Session, *, user_id: str, request_id: str | None,
-                    include_learning: bool, include_ranges: bool) -> None:
-    """撤回/注销范围的清理（D-17）：录音、结果、音频、缓存、事件/进度、音域。"""
-    recs = (db.query(RecordingRow)
-            .filter(RecordingRow.owner_type == "user", RecordingRow.owner_id == user_id)
-            .all())
+def purge_user_data(db: Session, *, user_id: str) -> None:
+    """注销清理（D-17/FR-108）：录音、结果、音频、缓存、事件/进度、音域。"""
+    recs = db.query(RecordingRow).filter(RecordingRow.user_id == user_id).all()
     for rec in recs:
         if rec.deleted_at is None:
             rec.deleted_at = now()
@@ -311,22 +188,16 @@ def purge_user_data(db: Session, *, user_id: str, request_id: str | None,
         if audio is not None and audio.deleted_at is None:
             mark_audio_deleted(db, audio)
         deletion_log.append(kind="score_cache",
-                            key=f"user:{user_id}:{audio.pcm_sha256 if audio else ''}:*")
-    db.query(ScoreCacheRow).filter(ScoreCacheRow.owner_type == "user",
-                                   ScoreCacheRow.owner_id == user_id).delete(
+                            key=f"{user_id}:{audio.pcm_sha256 if audio else ''}:*")
+    db.query(ScoreCacheRow).filter(ScoreCacheRow.user_id == user_id).delete(
         synchronize_session=False)
-    if include_learning:
-        db.query(LearningEventRow).filter(LearningEventRow.user_id == user_id).delete(
-            synchronize_session=False)
-    if include_ranges:
-        from app.scoring.usecases import delete_owner_ranges
+    db.query(LearningEventRow).filter(LearningEventRow.user_id == user_id).delete(
+        synchronize_session=False)
+    from app.scoring.usecases import delete_owner_ranges
 
-        delete_owner_ranges(db, owner_type="user", owner_id=user_id)
-    # sid 名下遗留（登录前上传未绑定）也一并清理
-    for fb in db.query(FeedbackRow).filter(FeedbackRow.owner_type == "user",
-                                           FeedbackRow.owner_id == user_id).all():
+    delete_owner_ranges(db, user_id=user_id)
+    for fb in db.query(FeedbackRow).filter(FeedbackRow.user_id == user_id).all():
         fb.recording_id = None
-        fb.recording_content_version = None
     db.flush()
 
 
@@ -335,7 +206,7 @@ def purge_user_data(db: Session, *, user_id: str, request_id: str | None,
 EVENT_BATCH_LIMIT = 50
 
 def accept_learning_events(db: Session, *, user: UserRow, events: list[dict]) -> dict:
-    """登录且同意；按 eventId 去重；服务端按公开版本校验并派生对错。"""
+    """按 eventId 去重；服务端按关卡内容校验并派生对错。"""
     accepted, duplicates, rejected = 0, 0, []
     for ev in events[:EVENT_BATCH_LIMIT]:
         event_id = str(ev.get("eventId") or "")
@@ -349,18 +220,16 @@ def accept_learning_events(db: Session, *, user: UserRow, events: list[dict]) ->
             duplicates += 1
             continue
         level = db.get(LevelRow, level_id)
-        if level is None or level.status != "published" or not level.current_version_id:
-            rejected.append({"eventId": event_id, "code": "LEVEL_NOT_PUBLISHED"})
+        if level is None or not level.published:
+            rejected.append({"eventId": event_id, "code": "LEVEL_NOT_OPEN"})
             continue
-        version = db.get(LevelVersionRow, level.current_version_id)
-        content = JSONText.load(version.content, {})
+        content = JSONText.load(level.content, {})
         detail = ev.get("detail") or {}
         correct = None
         if kind == "listen_quiz":
             quiz = next((q for q in content.get("quizzes") or []
                          if q.get("id") == detail.get("questionId")), None)
             if quiz is None:
-                # 旧版本事件按稳定 id 计入：id 不在当前版本则拒
                 rejected.append({"eventId": event_id, "code": "QUESTION_NOT_FOUND"})
                 continue
             correct = isinstance(detail.get("choiceIndex"), int) and \
@@ -373,7 +242,7 @@ def accept_learning_events(db: Session, *, user: UserRow, events: list[dict]) ->
                 continue
         db.add(LearningEventRow(
             user_id=user.id, event_id=event_id, level_id=level_id,
-            content_version=version.version, kind=kind,
+            kind=kind,
             detail=JSONText.dump(detail), correct=correct, created_at=now(),
         ))
         accepted += 1
@@ -382,17 +251,16 @@ def accept_learning_events(db: Session, *, user: UserRow, events: list[dict]) ->
 
 
 def derive_progress(db: Session, *, user: UserRow) -> dict:
-    """D-24：当前公开版本全部听辨题各至少答对一次 + 全部练习步骤各至少一次；
-    下一关 = 公开顺序中第一个未完成的已发布关，全部完成回落第一已发布关。"""
-    from app.content.usecases import published_levels
+    """D-24：全部听辨题各至少答对一次 + 全部练习步骤各至少一次；
+    下一关 = 顺序中第一个未完成的已开放关，全部完成回落第一已开放关。"""
+    from app.content.usecases import open_levels
 
-    levels = published_levels(db)
+    levels = open_levels(db)
     events = db.query(LearningEventRow).filter(LearningEventRow.user_id == user.id).all()
     out = []
     completed_ids = []
     for lv in levels:
-        version = db.get(LevelVersionRow, lv.current_version_id)
-        content = JSONText.load(version.content, {})
+        content = JSONText.load(lv.content, {})
         quiz_ids = {q["id"] for q in content.get("quizzes") or [] if q.get("id")}
         step_ids = {p["id"] for p in content.get("practice") or [] if p.get("id")}
         lv_events = [e for e in events if e.level_id == lv.id]

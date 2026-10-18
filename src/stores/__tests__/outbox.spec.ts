@@ -21,11 +21,11 @@ function stubLocalStorage() {
 }
 
 function quizEvent(eventId: string, levelId = 'L01', questionId = 'q1'): LearningEvent {
-  return { eventId, levelId, contentVersion: 1, kind: 'listen_quiz', detail: { questionId, choiceIndex: 0 } }
+  return { eventId, levelId, kind: 'listen_quiz', detail: { questionId, choiceIndex: 0 } }
 }
 
 function practiceEvent(eventId: string, levelId = 'L01', stepId = 's1'): LearningEvent {
-  return { eventId, levelId, contentVersion: 1, kind: 'practice_done', detail: { stepId } }
+  return { eventId, levelId, kind: 'practice_done', detail: { stepId } }
 }
 
 describe('outbox store', () => {
@@ -40,7 +40,7 @@ describe('outbox store', () => {
 
   it('按 eventId 去重：同一事件不重复入队（重试沿用同一 eventId）', () => {
     const outbox = useOutboxStore()
-    outbox.bind({ accountId: 'a1', dataEpoch: 3 })
+    outbox.bind('a1')
     outbox.enqueue(quizEvent('e1'))
     outbox.enqueue(quizEvent('e1'))
     expect(outbox.events).toHaveLength(1)
@@ -49,7 +49,7 @@ describe('outbox store', () => {
 
   it('乐观合并视图：listen_quiz → quizPassed，practice_done → practiceDone', () => {
     const outbox = useOutboxStore()
-    outbox.bind({ accountId: 'a1', dataEpoch: 3 })
+    outbox.bind('a1')
     outbox.enqueue(quizEvent('e1', 'L01', 'q1'))
     outbox.enqueue(practiceEvent('e2', 'L01', 's1'))
     const overlay = outbox.overlay.get('L01')!
@@ -59,28 +59,18 @@ describe('outbox store', () => {
 
   it('身份切换重新加载对应账号队列；clear 清除并落盘删除', () => {
     const outbox = useOutboxStore()
-    outbox.bind({ accountId: 'a1', dataEpoch: 1 })
+    outbox.bind('a1')
     outbox.enqueue(quizEvent('e1'))
-    expect(localStorage.getItem('vv.outbox.a1.1')).toBeTruthy()
+    expect(localStorage.getItem('vv.outbox.a1')).toBeTruthy()
 
-    outbox.bind({ accountId: 'a2', dataEpoch: 1 })
+    outbox.bind('a2')
     expect(outbox.events).toHaveLength(0)
 
-    outbox.bind({ accountId: 'a1', dataEpoch: 1 })
+    outbox.bind('a1')
     expect(outbox.events.map((e) => e.eventId)).toEqual(['e1'])
 
     outbox.clear()
     expect(outbox.events).toHaveLength(0)
-    expect(localStorage.getItem('vv.outbox.a1.1')).toBeNull()
-  })
-
-  it('dataEpoch 变化后使用新键，旧代次数据由 clearLegacy 清理', () => {
-    const outbox = useOutboxStore()
-    outbox.bind({ accountId: 'a1', dataEpoch: 1 })
-    outbox.enqueue(quizEvent('e-old'))
-    outbox.bind({ accountId: 'a1', dataEpoch: 2 })
-    expect(outbox.events).toHaveLength(0)
-    outbox.clearLegacy('a1')
-    expect(localStorage.getItem('vv.outbox.a1.1')).toBeNull()
+    expect(localStorage.getItem('vv.outbox.a1')).toBeNull()
   })
 })

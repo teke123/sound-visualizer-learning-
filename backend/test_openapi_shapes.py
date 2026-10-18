@@ -5,7 +5,7 @@
 逐端点发真实请求，把响应体按 Envelope[X] / X 严格校验（extra=forbid，
 多余字段即视为契约漂移——实现加了字段而 schemas.py 没跟上时会在这里暴露）。
 
-运行：backend/ 目录下 `py -3.13 test_openapi_shapes.py`（TestClient 走 ASGI，
+运行：backend/ 目录下 `py -3 test_openapi_shapes.py`（TestClient 走 ASGI，
 不占 8000 端口；可直接与运行中的服务共存，共写同一 SQLite）。
 合成音频用法与 e2e_test.py 相同（app/seed_support.py）。
 """
@@ -26,12 +26,10 @@ import main as backend_main  # noqa: E402
 from app.api.schemas import (  # noqa: E402
     ArchiveCompareResponse, ArticleCategoriesResponse, ArticleDetail, ArticlesResponse,
     AssessmentResult, AudioUploadResponse, AuthLoginResponse, ArchiveListResponse,
-    CalibrationFailResult, CalibrationOkResult, ConsentPostResponse,
-    ConsentRevokedResponse, ConsentStateResponse, DeletedResponse, FeedbackResponse,
+    CalibrationFailResult, CalibrationOkResult, DeletedResponse, FeedbackResponse,
     F0Response, FormantsResponse, HealthData, LearningEventsResponse, LevelDetail,
     LevelsResponse, MeContext, MeProgress, PitchCalibrationInfo, RecordingDeleted,
-    RecordingWithResult, RegisterResponse, SearchResponse, SessionRecordingsResponse,
-    SessionResetResponse, WishResponse, Envelope,
+    RecordingWithResult, RegisterResponse, SearchResponse, WishResponse, Envelope,
 )
 from app.seed_support import synthesize_text  # noqa: E402
 
@@ -80,12 +78,13 @@ def expect(name: str, resp, data_model=None, *, enveloped=True,
         if enveloped and body.get("code") != code:
             problems.append(f"code={body.get('code')!r}（期望 {code!r}）")
         checks = []
-        if enveloped:
-            checks.append((f"Envelope[{data_model.__name__}]",
-                           strict(Envelope[data_model]), body))
-            checks.append((data_model.__name__, strict(data_model), body.get("data")))
-        elif data_model is not None:
-            checks.append((data_model.__name__, strict(data_model), body))
+        if data_model is not None:
+            if enveloped:
+                checks.append((f"Envelope[{data_model.__name__}]",
+                               strict(Envelope[data_model]), body))
+                checks.append((data_model.__name__, strict(data_model), body.get("data")))
+            else:
+                checks.append((data_model.__name__, strict(data_model), body))
         for label, model, payload in checks:
             try:
                 model.model_validate(payload)
@@ -120,7 +119,7 @@ def upload(c: TestClient, audio: bytes, purpose: str, name: str) -> str:
 
 def main() -> int:
     with TestClient(backend_main.app, headers=ORIGIN) as c:
-        # ---- 平台与内容 ----
+        # ---- 平台与内容（公开） ----
         r = c.get("/api/health")
         expect("health → HealthData（唯一非 envelope 端点）", r, HealthData, enveloped=False)
 
@@ -157,37 +156,34 @@ def main() -> int:
         r = c.get(f"/api/articles/{slug}")
         expect(f"articles/{slug} → ArticleDetail", r, ArticleDetail)
 
-        # ---- 标定 ----
-        r = c.get("/api/pitch-calibration")
-        expect("pitch-calibration GET（未标定）→ PitchCalibrationInfo", r,
-               PitchCalibrationInfo)
+        # ---- 未登录保护 ----
+        r = c.get("/api/me/recordings")
+        expect("me/recordings 未登录 → 401", r, None, status=401, code="AUTH_REQUIRED")
 
-        cal_id = upload(c, wav_bytes(synthesize_text("妈坡车米布女妈麻马骂", "male",
-                                                    syllable_dur=0.36)),
-                        "calibration", "cal.webm")
-        r = c.post("/api/pitch-calibration", json={"audioId": cal_id, "textVersion": "v1"})
-        body = expect("pitch-calibration POST → CalibrationOkResult", r, CalibrationOkResult)
-        check("  标定结果 status=session", body["data"]["status"] == "session")
+        # ---- 账号：注册 / 登录 ----
+        username = f"shape用户_{int(time.time())}"
+        r = c.post("/api/auth/register", json={"username": username,
+                                               "password": "password123"})
+        expect("auth/register → RegisterResponse", r, RegisterResponse)
+        r = c.post("/api/auth/login", json={"username": username,
+                                            "password": "password123"})
+        body = expect("auth/login → AuthLoginResponse", r, AuthLoginResponse)
+        check("  login context.authenticated=true",
+              body["data"]["context"]["authenticated"] is True)
 
-        r = c.get("/api/pitch-calibration")
-        body = expect("pitch-calibration GET（已标定）→ PitchCalibrationInfo", r,
-                      PitchCalibrationInfo)
-        check("  已标定带 pitchRange", bool(body["data"].get("pitchRange")))
+        r = c.get("/api/me/context")
+        body = expect("me/context（已登录未标定）→ MeContext", r, MeContext)
+        check("  calibration status=none",
+              body["data"]["calibration"]["status"] == "none")
 
-        sil_cal = upload(c, silence_bytes(3), "calibration", "sil-cal.webm")
-        r = c.post("/api/pitch-calibration", json={"audioId": sil_cal, "textVersion": "v1"})
-        expect("pitch-calibration 静音 → CalibrationFailResult", r,
-               CalibrationFailResult, code="CALIBRATION_FAIL")
-
-        # ---- 录音检测闭环 ----
-        cv = c.get("/api/levels/L30").json()["data"]["contentVersion"]
+        # ---- 未标定直接检测（D-20） ----
         rec_audio = upload(c, wav_bytes(synthesize_text("妈麻马骂", "male",
                                                         syllable_dur=0.32)),
                            "recording", "rec.webm")
         r = c.post("/api/recordings", json={
-            "audioId": rec_audio, "levelId": "L30", "contentVersion": cv,
+            "audioId": rec_audio, "levelId": "L30",
             "submissionId": f"shape-{time.time()}"})
-        body = expect("recordings POST → RecordingWithResult", r, RecordingWithResult)
+        body = expect("recordings POST（未标定）→ RecordingWithResult", r, RecordingWithResult)
         rec_id = body["data"]["recording"]["recordingId"]
         check("  结果含 quality/curve", bool(body["data"]["result"]["quality"])
               and body["data"]["result"]["curve"] is not None)
@@ -203,52 +199,34 @@ def main() -> int:
         r = c.get(f"/api/audio/{rec_audio}/formants")
         expect("audio formants → FormantsResponse", r, FormantsResponse)
 
-        sil_rec = upload(c, silence_bytes(3), "recording", "sil-rec.webm")
-        r = c.post("/api/recordings", json={
-            "audioId": sil_rec, "levelId": "L30", "contentVersion": cv,
-            "submissionId": f"shape-sil-{time.time()}"})
-        body = expect("静音录音 200 QUALITY_FAIL → RecordingWithResult", r,
-                      RecordingWithResult)
-        check("  质量失败 verdict=fail 且无分数",
-              body["data"]["result"]["quality"]["verdict"] == "fail"
-              and body["data"]["result"].get("score") is None)
+        # ---- 标定 ----
+        r = c.get("/api/pitch-calibration")
+        expect("pitch-calibration GET（未标定）→ PitchCalibrationInfo", r,
+               PitchCalibrationInfo)
 
-        r = c.get("/api/session/recordings")
-        expect("session/recordings → SessionRecordingsResponse", r,
-               SessionRecordingsResponse)
+        cal_id = upload(c, wav_bytes(synthesize_text("妈坡车米布女妈麻马骂", "male",
+                                                    syllable_dur=0.36)),
+                        "calibration", "cal.webm")
+        r = c.post("/api/pitch-calibration", json={"audioId": cal_id})
+        body = expect("pitch-calibration POST → CalibrationOkResult", r, CalibrationOkResult)
+        check("  标定结果 status=personal", body["data"]["status"] == "personal")
 
-        # ---- 账号：注册 / 登录 / 同意 ----
-        username = f"shape用户_{int(time.time())}"
-        r = c.post("/api/auth/register", json={"username": username,
-                                               "password": "password123"})
-        expect("auth/register → RegisterResponse", r, RegisterResponse)
-        r = c.post("/api/auth/login", json={"username": username,
-                                            "password": "password123"})
-        body = expect("auth/login → AuthLoginResponse", r, AuthLoginResponse)
-        check("  login context.authenticated=true",
-              body["data"]["context"]["authenticated"] is True)
+        r = c.get("/api/pitch-calibration")
+        body = expect("pitch-calibration GET（已标定）→ PitchCalibrationInfo", r,
+                      PitchCalibrationInfo)
+        check("  已标定带 pitchRange", bool(body["data"].get("pitchRange")))
 
-        r = c.get("/api/me/context")
-        body = expect("me/context（已登录未同意）→ MeContext", r, MeContext)
-        check("  pendingTransfer>=1", (body["data"].get("pendingTransfer") or 0) >= 1,
-              str(body["data"].get("pendingTransfer")))
+        sil_cal = upload(c, silence_bytes(3), "calibration", "sil-cal.webm")
+        r = c.post("/api/pitch-calibration", json={"audioId": sil_cal})
+        expect("pitch-calibration 静音 → CalibrationFailResult", r,
+               CalibrationFailResult, code="CALIBRATION_FAIL")
 
-        r = c.get("/api/me/consent")
-        expect("me/consent GET（未决定）→ ConsentStateResponse", r, ConsentStateResponse)
-
-        r = c.post("/api/me/consent", json={"decision": "granted",
-                                            "consentTextVersion": "v1"})
-        body = expect("me/consent POST granted → ConsentPostResponse", r,
-                      ConsentPostResponse)
-        check("  转存 transferredCount>=1",
-              body["data"]["transfer"]["transferredCount"] >= 1)
-
-        # ---- 档案 / 学习 ----
+        # ---- 标定后提交 + 质量提示不拦截 ----
         rec2_audio = upload(c, wav_bytes(synthesize_text("妈麻马骂", "male",
                                                          syllable_dur=0.32)),
                             "recording", "rec2.webm")
         r = c.post("/api/recordings", json={
-            "audioId": rec2_audio, "levelId": "L30", "contentVersion": cv,
+            "audioId": rec2_audio, "levelId": "L30",
             "submissionId": f"shape-arc-{time.time()}"})
         if r.status_code == 202:  # 契约允许：同步窗口未完成 → 按 Retry-After 轮询
             pending_id = r.json()["data"]["recording"]["recordingId"]
@@ -257,11 +235,27 @@ def main() -> int:
                 if r.status_code == 200:
                     break
                 time.sleep(0.3)
-        body = expect("同意后提交（自动归档）→ RecordingWithResult", r,
-                      RecordingWithResult)
+        body = expect("标定后提交 → RecordingWithResult", r, RecordingWithResult)
         rec2_id = body["data"]["recording"]["recordingId"]
-        check("  storage=archived", body["data"]["recording"]["storage"] == "archived")
 
+        sil_rec = upload(c, silence_bytes(3), "recording", "sil-rec.webm")
+        r = c.post("/api/recordings", json={
+            "audioId": sil_rec, "levelId": "L30",
+            "submissionId": f"shape-sil-{time.time()}"})
+        if r.status_code == 202:
+            pending_id = r.json()["data"]["recording"]["recordingId"]
+            for _ in range(40):
+                r = c.get(f"/api/recordings/{pending_id}")
+                if r.status_code == 200:
+                    break
+                time.sleep(0.3)
+        body = expect("静音录音（质量提示不拦截）→ RecordingWithResult", r,
+                      RecordingWithResult)
+        check("  质量提示存在且仍有分数",
+              bool(body["data"]["result"]["quality"]["signal"])
+              and body["data"]["result"].get("score") is not None)
+
+        # ---- 档案 / 学习 ----
         r = c.get("/api/me/recordings", params={"levelId": "L30"})
         expect("me/recordings → ArchiveListResponse", r, ArchiveListResponse)
         r = c.get("/api/me/recordings/compare", params={"a": rec_id, "b": rec2_id})
@@ -270,13 +264,13 @@ def main() -> int:
 
         d30 = c.get("/api/levels/L30").json()["data"]
         events = [{"eventId": f"shape-quiz-{q['id']}", "levelId": "L30",
-                   "contentVersion": cv, "kind": "listen_quiz",
+                   "kind": "listen_quiz",
                    "detail": {"questionId": q["id"],
                               "choiceIndex": q["answerIndex"]}}
                   for q in d30["quizzes"]]
         events += [{"eventId": f"shape-step-{p['id']}", "levelId": "L30",
-                    "contentVersion": cv, "kind": "practice_done",
-                    "detail": {"stepId": p["id"]}} for p in d30["practice"]]
+                    "kind": "practice_done", "detail": {"stepId": p["id"]}}
+                   for p in d30["practice"]]
         r = c.post("/api/learning-events", json={"events": events})
         expect("learning-events → LearningEventsResponse", r, LearningEventsResponse)
         r = c.get("/api/me/progress")
@@ -292,21 +286,9 @@ def main() -> int:
         r = c.delete(f"/api/recordings/{rec2_id}")
         expect("recordings/{id} DELETE → RecordingDeleted", r, RecordingDeleted)
 
-        r = c.get("/api/me/consent")
-        body = expect("me/consent GET（已同意，时间线）→ ConsentStateResponse", r,
-                      ConsentStateResponse)
-        check("  timeline 条目含 createdAt（前端漂移修复锚点）",
-              len(body["data"]["timeline"]) >= 1
-              and bool(body["data"]["timeline"][0]["createdAt"]),
-              str(body["data"]["timeline"][:1]))
-
-        # ---- 撤回 / 清理 ----
-        r = c.delete("/api/me/consent")
-        expect("me/consent DELETE → ConsentRevokedResponse", r, ConsentRevokedResponse)
+        # ---- 清理 ----
         r = c.request("DELETE", "/api/me/account", json={"password": "password123"})
         expect("me/account DELETE → DeletedResponse", r, DeletedResponse)
-        r = c.post("/api/session/reset")
-        expect("session/reset → SessionResetResponse", r, SessionResetResponse)
 
     failed = [(n, d) for n, ok, d in results if not ok]
     print(f"\n==== {len(results) - len(failed)}/{len(results)} passed ====")

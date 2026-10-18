@@ -1,13 +1,12 @@
 """公开 API 响应模型（OpenAPI 契约真源）。
 
 - 路由直返 JSONResponse，response_model 仅用于生成 OpenAPI 文档（零运行时行为）；
-- 字段口径与 docs/decision-map-backend.md 及实际响应对齐，可空性按真实行为声明
-  （如 login 的部分 context、空列表时省略 skeletons）；
+- 字段口径与实际响应对齐，可空性按真实行为声明；
 - 前端经 openapi-typescript 从 /openapi.json 生成 TS 类型，CI 比对漂移。
 """
 from __future__ import annotations
 
-from typing import Generic, List, Literal, Optional, TypeVar, Union
+from typing import Generic, List, Literal, Optional, TypeVar
 
 from pydantic import BaseModel, Field
 
@@ -30,25 +29,15 @@ class HealthData(BaseModel):
     env: str
 
 
-class ConsentInfo(BaseModel):
-    status: Literal["none", "granted", "rejected", "revoked"]
-    consentTextVersion: Optional[str] = None
-
-
 class CalibrationInfo(BaseModel):
-    status: Literal["none", "session", "personal"]
-    expiresAt: Optional[str] = None
+    status: Literal["none", "personal"]
 
 
 class MeContext(BaseModel):
     authenticated: bool
     accountId: Optional[str] = None
     username: Optional[str] = None
-    consent: ConsentInfo
-    currentConsentTextVersion: str
     calibration: CalibrationInfo
-    dataEpoch: Optional[int] = None
-    pendingTransfer: Optional[int] = None
     nextLevelId: Optional[str] = None
 
 
@@ -70,7 +59,7 @@ class LevelSummary(BaseModel):
     title: str
     oneLiner: str
     demoMediaId: Optional[str] = None
-    availability: Literal["open", "temporarily_unavailable", "closed"]
+    availability: Literal["open", "closed"]
     completionKeys: CompletionKeys
 
 
@@ -89,7 +78,7 @@ class ConfusablePair(BaseModel):
 
 class LevelsResponse(BaseModel):
     levels: List[LevelSummary]
-    # 未发布但 skeleton_public 的关卡骨架；空列表时后端可能省略这两个键
+    # 未开放但 skeleton_public 的关卡骨架；空列表时后端可能省略这两个键
     skeleton: List[LevelSkeleton] = []
     confusablePairs: List[ConfusablePair] = []
 
@@ -210,8 +199,6 @@ class DetectionTask(BaseModel):
 
 class LevelDetail(BaseModel):
     id: str
-    contentVersion: int
-    ruleVersion: str
     order: int
     layer: Literal["vowel", "initial", "syllable"]
     type: str
@@ -259,7 +246,6 @@ class ArticleSummary(BaseModel):
     summary: Optional[str] = None
     demoMediaId: Optional[str] = None
     relatedLevelIds: Optional[List[str]] = None
-    contentVersion: Optional[int] = None
 
 
 class ArticlesResponse(BaseModel):
@@ -293,7 +279,6 @@ class ArticleDetail(BaseModel):
     category: str
     summary: Optional[str] = None
     markdown: str
-    contentVersion: int
     demo: Optional[ArticleDemo] = None
     practice: Optional[List[ArticlePracticeItem]] = None
     references: Optional[List[ArticleReference]] = None
@@ -306,7 +291,6 @@ class AudioUploadResponse(BaseModel):
     audioId: str
     duration: float
     format: str
-    expiresAt: Optional[str] = None
 
 
 class F0Frame(BaseModel):
@@ -342,20 +326,18 @@ class PitchRange(BaseModel):
 class PitchCalibrationInfo(BaseModel):
     text: str
     textVersion: str
-    status: Literal["none", "session", "personal"]
+    status: Literal["none", "personal"]
     pitchRange: Optional[PitchRange] = None
     vowelSpaceReady: Optional[bool] = None
-    expiresAt: Optional[str] = None
     updatedAt: Optional[str] = None
 
 
 class CalibrationOkResult(BaseModel):
     ok: bool
-    status: Literal["session", "personal"]
+    status: Literal["personal"]
     pitchRange: PitchRange
     vowelSpaceReady: bool
     rangeSnapshotId: Optional[str] = None
-    expiresAt: Optional[str] = None
     updatedAt: Optional[str] = None
 
 
@@ -387,12 +369,9 @@ class RecordingDTO(BaseModel):
     recordingId: str
     audioId: str
     levelId: str
-    contentVersion: int
     status: Literal["processing", "completed", "failed"]
-    stage: Optional[Literal["queued", "signal_check", "scoring", "analyzing", "finalizing"]] = None
+    stage: Optional[Literal["queued", "analyzing", "scoring", "finalizing"]] = None
     error: Optional[RecordingError] = None
-    storage: Literal["session", "archived"]
-    expiresAt: Optional[str] = None
     createdAt: Optional[str] = None
 
 
@@ -439,10 +418,10 @@ class QualityReading(BaseModel):
 
 
 class Quality(BaseModel):
-    verdict: Literal["pass", "fail"]
+    """录音质量提示（FR-1301）：仅作辅助提示，不拦截评分与可视化。"""
     signal: Optional[QualitySignal] = None
     reading: Optional[QualityReading] = None
-    retakeAdvice: Optional[str] = None
+    advice: Optional[str] = None
 
 
 class PhenomenonPosition(BaseModel):
@@ -518,12 +497,8 @@ class ResultFormants(BaseModel):
 
 class AssessmentResult(BaseModel):
     levelId: str
-    contentVersion: int
-    ruleVersion: str
     providerVersion: str
     algorithmVersion: str
-    storage: Literal["session", "archived"]
-    expiresAt: Optional[str] = None
     quality: Quality
     score: Optional[float] = None
     phenomena: Optional[List[Phenomenon]] = None
@@ -551,38 +526,15 @@ class ClearArchiveResponse(BaseModel):
     deleted: int
 
 
-# -------------------------------- 当前会话 ----------------------------------
-
-class SessionRecordingSummary(BaseModel):
-    recordingId: str
-    audioId: str
-    levelId: str
-    createdAt: Optional[str] = None
-    expiresAt: Optional[str] = None
-    verdict: Optional[str] = None
-    score: Optional[float] = None
-
-
-class SessionRecordingsResponse(BaseModel):
-    recordings: List[SessionRecordingSummary]
-    transferableCount: int
-
-
-class SessionResetResponse(BaseModel):
-    reset: bool
-    newSidIssued: bool
-
-
 # ------------------------------ 档案与学习 ----------------------------------
 
 class ArchiveRecordingSummary(BaseModel):
     recordingId: str
     audioId: str
     levelId: str
-    contentVersion: int
-    ruleVersion: Optional[str] = None
     createdAt: Optional[str] = None
     verdict: Optional[str] = None
+    qualityAdvice: Optional[str] = None
     score: Optional[float] = None
 
 
@@ -615,15 +567,6 @@ class ArchiveCompareResponse(BaseModel):
     differences: Optional[List[CompareDifference]] = None
 
 
-class LearningEventQuizDetail(BaseModel):
-    questionId: str
-    choiceIndex: int
-
-
-class LearningEventPracticeDetail(BaseModel):
-    stepId: str
-
-
 class LearningEventsResponse(BaseModel):
     accepted: int
     duplicates: int
@@ -652,37 +595,7 @@ class MeProgress(BaseModel):
     nextLevelId: Optional[str] = None
 
 
-# ------------------------------ 同意与账号 ----------------------------------
-
-class ConsentDecisionItem(BaseModel):
-    decision: str
-    consentTextVersion: str
-    createdAt: str
-
-
-class ConsentStateResponse(BaseModel):
-    status: Literal["none", "granted", "rejected", "revoked"]
-    consentTextVersion: str
-    currentConsentTextVersion: str
-    consentText: str
-    timeline: List[ConsentDecisionItem]
-
-
-class TransferResult(BaseModel):
-    status: Literal["completed", "partial", "none"]
-    transferredCount: int
-    calibrationUpgraded: Optional[bool] = None
-
-
-class ConsentPostResponse(BaseModel):
-    consent: ConsentInfo
-    transfer: TransferResult
-
-
-class ConsentRevokedResponse(BaseModel):
-    consent: dict
-    dataEpoch: Optional[int] = None
-
+# -------------------------------- 账号 --------------------------------------
 
 class RegisterResponse(BaseModel):
     accountId: str
@@ -694,12 +607,10 @@ class LoginContextPartial(BaseModel):
     authenticated: bool
     accountId: Optional[str] = None
     username: Optional[str] = None
-    dataEpoch: Optional[int] = None
 
 
 class AuthLoginResponse(BaseModel):
     context: LoginContextPartial
-    transfer: Optional[TransferResult] = None
 
 
 class LoggedOutResponse(BaseModel):
@@ -710,7 +621,7 @@ class DeletedResponse(BaseModel):
     deleted: bool
 
 
-# ------------------------------ 反馈与预览 ----------------------------------
+# -------------------------------- 反馈 --------------------------------------
 
 class FeedbackResponse(BaseModel):
     feedbackId: str
@@ -718,9 +629,3 @@ class FeedbackResponse(BaseModel):
 
 class WishResponse(BaseModel):
     wishId: str
-
-
-class PreviewTokenResponse(BaseModel):
-    token: Optional[str] = None
-    expiresAt: Optional[str] = None
-    url: Optional[str] = None

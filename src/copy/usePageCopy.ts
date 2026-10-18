@@ -18,7 +18,7 @@ export const PAGE_STATE_COPY: PageStateCopy = {
   empty: '这里还没有内容',
   error: '加载失败，请稍后重试',
   forbidden: '当前身份无法查看这部分内容',
-  /** 统一不可见状态：不存在、未发布、已删除或已过期 */
+  /** 统一不可见状态：不存在、未开放、已删除或已过期 */
   notVisible: '内容不存在或暂不可见',
 }
 
@@ -37,30 +37,25 @@ const NETWORK_COPY: ErrorCopy = {
 const CODE_COPY: Record<string, ErrorCopy> = {
   NETWORK: NETWORK_COPY,
   QUALITY_FAIL: {
-    title: '本次不能评',
-    hint: '这次录音不能满足评分要求，请按页面上的重录指引再录一次。',
+    title: '录音质量提示',
+    hint: '检测到本次录音环境不理想，可按提示改善后重录；本次评分与结果不受影响。',
   },
   CALIBRATION_FAIL: {
     title: '这次标定没有成功',
-    hint: '请按提示在安静处、用平常说话的音量再朗读一遍标定文本。',
+    hint: '请按提示在安静处、用平常说话的音量再朗读一遍标定文本；也可以跳过标定直接录音。',
   },
   PROCESSING: { title: '正在处理', hint: '评分仍在进行，稍后自动查询结果。' },
   DECODE_FAILED: { title: '没录上', hint: '这次录音无法读取，请重新录制后再提交。' },
   AUTH_REQUIRED: { title: '需要登录', hint: '请先登录后再进行此操作。' },
   INVALID_CREDENTIALS: { title: '用户名或密码不正确', hint: '本站不提供密码找回；忘记密码只能重新注册。' },
-  CONSENT_REQUIRED: { title: '需要先同意保存', hint: '保存进度和录音前，请先阅读并同意保存说明。' },
   NOT_FOUND: { title: PAGE_STATE_COPY.notVisible, hint: '内容可能已删除、下架或过期。' },
   LEVEL_NOT_PUBLISHED: {
     title: '这一关暂时不可见',
-    hint: '内容可能已下架或尚未发布；页面会自动刷新关卡列表。',
+    hint: '内容可能已下架或尚未开放；页面会自动刷新关卡列表。',
   },
   CONTENT_VERSION_CHANGED: {
     title: '关卡内容已更新',
     hint: '本关内容刚刚更新，请刷新任务后按新内容重录。',
-  },
-  CALIBRATION_REQUIRED: {
-    title: '需要先完成音域标定',
-    hint: '先朗读标定文本完成标定，标定后会自动继续刚才的录音。',
   },
   IDEMPOTENCY_CONFLICT: {
     title: '提交记录冲突',
@@ -71,10 +66,6 @@ const CODE_COPY: Record<string, ErrorCopy> = {
   RATE_LIMITED: { title: '操作太频繁', hint: '请稍等片刻再试。' },
   PROVIDER_ERROR: { title: '评分服务异常', hint: '本次评分未完成，可重试。' },
   PROVIDER_DOWN: { title: '评分服务暂不可用', hint: '本次评分未完成，可稍后重试。' },
-  DETECTION_OFF: {
-    title: '录音检测暂停中',
-    hint: '检测服务暂时维护，学习内容不受影响，可先回到关卡继续学习。',
-  },
   SERVER_BUSY: { title: '当前排队较多', hint: '请按提示的等待时间稍后重试。' },
   TIMEOUT: { title: '处理超时', hint: '在当前页面可直接重试本次提交；离开后请重新录音。' },
   INTERNAL_ERROR: { title: '服务开小差了', hint: '请重试；若持续失败请通过页面下方反馈告诉我们。' },

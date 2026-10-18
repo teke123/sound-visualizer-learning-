@@ -1,6 +1,6 @@
 /**
- * learningEvents outbox：同意后学习事件的本地队列、批量上传与重试（docs/architecture/04 §6.5）。
- * localStorage 键含 accountId 与 dataEpoch；联网、可见、路由切换时尝试上传；
+ * learningEvents outbox：学习事件的本地队列、批量上传与重试（FR-102 自动保存）。
+ * localStorage 键含 accountId；联网、可见、路由切换时尝试上传；
  * 被 rejected 的事件丢弃；上传成功后刷新服务端进度。
  */
 import { computed, ref } from 'vue'
@@ -12,14 +12,14 @@ const KEY_PREFIX = 'vv.outbox'
 /** 单批上传上限（后端契约：单批 ≤50） */
 const BATCH_LIMIT = 50
 
-function outboxKey(accountId: string, dataEpoch: number | undefined): string {
-  return `${KEY_PREFIX}.${accountId}.${dataEpoch ?? 0}`
+function outboxKey(accountId: string): string {
+  return `${KEY_PREFIX}.${accountId}`
 }
 
 export const useOutboxStore = defineStore('outbox', () => {
   const events = ref<LearningEvent[]>([])
-  /** 当前队列归属（accountId, dataEpoch）；身份变化时整队换血或清空 */
-  const owner = ref<{ accountId: string; dataEpoch: number | undefined } | null>(null)
+  /** 当前队列归属账号；身份变化时整队换血或清空 */
+  const owner = ref<string | null>(null)
   const flushing = ref(false)
   const lastError = ref<unknown>(null)
 
@@ -40,14 +40,14 @@ export const useOutboxStore = defineStore('outbox', () => {
     return map
   })
 
-  function bind(nextOwner: { accountId: string; dataEpoch: number | undefined } | null) {
-    if (owner.value?.accountId === nextOwner?.accountId && owner.value?.dataEpoch === nextOwner?.dataEpoch) return
-    owner.value = nextOwner ? { ...nextOwner } : null
+  function bind(nextOwner: string | null) {
+    if (owner.value === nextOwner) return
+    owner.value = nextOwner
     if (!nextOwner) {
       events.value = []
       return
     }
-    const raw = safeStorage.get(outboxKey(nextOwner.accountId, nextOwner.dataEpoch))
+    const raw = safeStorage.get(outboxKey(nextOwner))
     if (raw) {
       try {
         events.value = JSON.parse(raw) as LearningEvent[]
@@ -61,7 +61,7 @@ export const useOutboxStore = defineStore('outbox', () => {
 
   function persist() {
     if (!owner.value) return
-    const key = outboxKey(owner.value.accountId, owner.value.dataEpoch)
+    const key = outboxKey(owner.value)
     if (events.value.length === 0) safeStorage.remove(key)
     else safeStorage.set(key, JSON.stringify(events.value))
   }
@@ -98,16 +98,11 @@ export const useOutboxStore = defineStore('outbox', () => {
     }
   }
 
-  /** dataEpoch 变化 / 撤回 / 注销 / 退出：按调用方语义整队清除 */
+  /** 注销 / 退出：按调用方语义整队清除 */
   function clear() {
-    if (owner.value) safeStorage.remove(outboxKey(owner.value.accountId, owner.value.dataEpoch))
+    if (owner.value) safeStorage.remove(outboxKey(owner.value))
     events.value = []
   }
 
-  /** 清理旧代次（dataEpoch 递增后，旧键不再有效） */
-  function clearLegacy(accountId: string) {
-    safeStorage.removeByPrefix(`${KEY_PREFIX}.${accountId}.`)
-  }
-
-  return { events, owner, flushing, lastError, pendingCount, overlay, bind, enqueue, flush, clear, clearLegacy }
+  return { events, owner, flushing, lastError, pendingCount, overlay, bind, enqueue, flush, clear }
 })

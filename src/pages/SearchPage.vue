@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * P02 搜索（FR-301–304）：q 写入 URL，可刷新可后退；
- * 无结果时相近已发布关 + 「希望增加」（WishDialog 携 searchQuery）。
+ * 无结果时相近已开放关 + 「希望增加」（WishDialog 携 searchQuery）。
  */
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -78,11 +78,11 @@ function onSearch(term: string) {
 
       <section v-else class="result-section" aria-label="无结果">
         <h2>没有找到「{{ q }}」</h2>
-        <p class="no-hit-hint">可能是这个音还没有发布，或者名字不太一样。可以试试相近的关卡：</p>
+        <p class="no-hit-hint">可能是这个音还没有开放，或者名字不太一样。可以试试相近的关卡：</p>
         <div v-if="nearLevels.length > 0" class="result-grid">
           <LevelCard v-for="level in nearLevels" :key="level.id" :level="level" />
         </div>
-        <p v-else class="no-suggestion">暂时没有相近的已发布关卡。</p>
+        <p v-else class="no-suggestion">暂时没有相近的已开放关卡。</p>
         <button type="button" class="wish-open" @click="wishOpen = true">
           希望增加「{{ q }}」
         </button>

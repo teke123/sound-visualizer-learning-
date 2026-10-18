@@ -1,8 +1,7 @@
-"""content 模块用例：公开读模型、搜索、发布/下架/回退、前置检查、
-发布时标准曲线预计算、媒体授权读取、预览。"""
+"""content 模块用例：公开读模型、搜索、保存（即生效）、开放切换、
+内容完整性检查、标准曲线计算、媒体读取。"""
 from __future__ import annotations
 
-import datetime
 import logging
 
 import numpy as np
@@ -10,15 +9,12 @@ from sqlalchemy.orm import Session
 
 from app import config
 from app.content.models import (
-    ArticleDraftRow, ArticleRow, ArticleVersionRow, CalibrationTextRow, CategoryRow,
-    DetectionSwitchRow, LevelDraftRow, LevelRow, LevelVersionRow, MediaAssetRow,
-    MediaRefRow, ReferenceSpeakerRow, SagittalPresetRow,
+    ArticleRow, CalibrationTextRow, CategoryRow, LevelRow, MediaAssetRow,
+    ReferenceSpeakerRow,
 )
 from app.db import JSONText, now
-from app.ids import new_id
 from app.platform.envelope import ApiError
 from app.pinyin_utils import split_pinyin
-from app.scoring.provider import ProviderError
 
 logger = logging.getLogger("svs.content")
 
@@ -36,29 +32,17 @@ SAGITTAL_ENUMS = {
 
 # ---------------- 读模型 ----------------
 
-def _switch_state(db: Session, level_id: str | None) -> DetectionSwitchRow | None:
-    q = db.query(DetectionSwitchRow).filter(DetectionSwitchRow.enabled.is_(False))
-    if level_id:
-        row = q.filter(DetectionSwitchRow.level_id == level_id).one_or_none()
-        if row is not None:
-            return row
-    return q.filter(DetectionSwitchRow.level_id.is_(None)).one_or_none()
+def availability_of(level: LevelRow) -> str:
+    return "open" if level.published else "closed"
 
 
-def availability_of(db: Session, level: LevelRow) -> str:
-    if level.status != "published":
-        return "closed"
-    return "temporarily_unavailable" if _switch_state(db, level.id) else "open"
-
-
-def published_levels(db: Session) -> list[LevelRow]:
-    return (db.query(LevelRow).filter(LevelRow.status == "published")
+def open_levels(db: Session) -> list[LevelRow]:
+    return (db.query(LevelRow).filter(LevelRow.published.is_(True))
             .order_by(LevelRow.order).all())
 
 
 def level_summary(db: Session, level: LevelRow) -> dict:
-    version = db.get(LevelVersionRow, level.current_version_id) if level.current_version_id else None
-    content = JSONText.load(version.content, {}) if version else {}
+    content = JSONText.load(level.content, {})
     demos = content.get("demos") or []
     demo_media = next((d["mediaId"] for d in demos
                        if d.get("speed") == "normal" and d.get("mediaId")), None)
@@ -75,7 +59,7 @@ def level_summary(db: Session, level: LevelRow) -> dict:
         "title": content.get("title") or "",
         "oneLiner": content.get("oneLiner") or "",
         "demoMediaId": demo_media,
-        "availability": availability_of(db, level),
+        "availability": availability_of(level),
         "completionKeys": {
             "quizIds": [q["id"] for q in quizzes if q.get("id")],
             "practiceStepIds": [p["id"] for p in practice if p.get("id")],
@@ -84,47 +68,38 @@ def level_summary(db: Session, level: LevelRow) -> dict:
 
 
 def levels_response(db: Session) -> dict:
-    levels = published_levels(db)
+    levels = open_levels(db)
     summaries = [level_summary(db, lv) for lv in levels]
-    published_ids = {lv.id for lv in levels}
+    open_ids = {lv.id for lv in levels}
     skeleton = [
         {"id": lv.id, "order": lv.order, "layer": lv.layer,
-         "targetSound": _draft_target_sound(db, lv.id), "availability": "closed"}
+         "targetSound": JSONText.load(lv.content, {}).get("targetSound") or "",
+         "availability": "closed"}
         for lv in db.query(LevelRow).order_by(LevelRow.order).all()
-        if lv.status != "published" and lv.skeleton_public
+        if not lv.published and lv.skeleton_public
     ]
     pairs = []
     for lv in levels:
-        version = db.get(LevelVersionRow, lv.current_version_id)
-        content = JSONText.load(version.content, {}) if version else {}
+        content = JSONText.load(lv.content, {})
         for other_id in content.get("confusables") or []:
-            if other_id in published_ids and other_id > lv.id:
+            if other_id in open_ids and other_id > lv.id:
                 pairs.append({"a": lv.id, "b": other_id})
     return {"levels": summaries, "skeleton": skeleton, "confusablePairs": pairs}
 
 
-def _draft_target_sound(db: Session, level_id: str) -> str:
-    draft = db.get(LevelDraftRow, level_id)
-    if draft:
-        return JSONText.load(draft.content, {}).get("targetSound") or ""
-    return ""
-
-
 def _nav(db: Session, level: LevelRow, content: dict) -> dict:
-    levels = published_levels(db)
+    levels = open_levels(db)
     ids = [lv.id for lv in levels]
     idx = ids.index(level.id) if level.id in ids else -1
     prev_id = ids[idx - 1] if idx > 0 else None
     next_id = ids[idx + 1] if 0 <= idx < len(ids) - 1 else None
-    published = set(ids)
-    confusables = [c for c in (content.get("confusables") or []) if c in published]
+    opened = set(ids)
+    confusables = [c for c in (content.get("confusables") or []) if c in opened]
     return {"prev": prev_id, "next": next_id, "confusables": confusables}
 
 
-def level_sections(content: dict, *, detection_available: bool) -> dict:
-    """关卡内容 JSON → demos/quizzes/practice/articulation/detection 负载段。
-    发布详情与草稿预览共用同一构造；detection.available 由调用方决定
-    （发布版看检测开关，草稿预览恒 False）。"""
+def level_sections(content: dict) -> dict:
+    """关卡内容 JSON → demos/quizzes/practice/articulation/detection 负载段。"""
     demos = [
         {"mediaId": d["mediaId"], "speed": d.get("speed", "normal"),
          "voice": d.get("voice"), "text": d.get("text", "")}
@@ -163,7 +138,7 @@ def level_sections(content: dict, *, detection_available: bool) -> dict:
         "promptText": detection_raw.get("promptText", ""),
         "sampleMediaId": detection_raw.get("sampleMediaId"),
         "allowedMetrics": detection_raw.get("allowedMetrics", []),
-        "available": detection_available,
+        "available": True,
     }
     return {
         "articulation": articulation,
@@ -175,16 +150,13 @@ def level_sections(content: dict, *, detection_available: bool) -> dict:
 
 
 def level_detail(db: Session, level_id: str) -> dict:
-    """仅已发布详情；含 contentVersion 与 nav；规则阈值与四步模板不下发。"""
+    """已开放关卡详情；规则阈值与四步模板不下发。"""
     level = db.get(LevelRow, level_id)
-    if level is None or level.status != "published" or not level.current_version_id:
-        raise ApiError(404, "NOT_FOUND", "关卡不存在或未发布")
-    version = db.get(LevelVersionRow, level.current_version_id)
-    content = JSONText.load(version.content, {})
+    if level is None or not level.published:
+        raise ApiError(404, "NOT_FOUND", "关卡不存在或未开放")
+    content = JSONText.load(level.content, {})
     return {
         "id": level.id,
-        "contentVersion": version.version,
-        "ruleVersion": version.rule_version,
         "order": level.order,
         "layer": level.layer,
         "type": content.get("type") or LAYER_LABEL.get(level.layer, level.layer),
@@ -199,7 +171,7 @@ def level_detail(db: Session, level_id: str) -> dict:
         "nav": _nav(db, level, content),
         "misconceptions": content.get("misconceptions") or [],
         "professional": content.get("professional") or {},
-        **level_sections(content, detection_available=availability_of(db, level) == "open"),
+        **level_sections(content),
     }
 
 
@@ -209,11 +181,8 @@ def search_levels(db: Session, query: str) -> dict:
     query = (query or "").strip()
     if not query:
         return {"results": [], "near": [], "query": query}
-    levels = published_levels(db)
-    contents: dict[str, dict] = {}
-    for lv in levels:
-        v = db.get(LevelVersionRow, lv.current_version_id)
-        contents[lv.id] = JSONText.load(v.content, {}) if v else {}
+    levels = open_levels(db)
+    contents: dict[str, dict] = {lv.id: JSONText.load(lv.content, {}) for lv in levels}
 
     def text_of(cid: str) -> str:
         c = contents[cid]
@@ -258,7 +227,7 @@ def search_levels(db: Session, query: str) -> dict:
                 seen.add(lv.id)
             if len(near) >= 3:
                 break
-        if not near:   # 同层已发布前几关兜底
+        if not near:   # 同层已开放前几关兜底
             for lv in levels[:3]:
                 near.append(level_summary(db, lv))
     return {"results": matched, "near": near, "query": query}
@@ -292,44 +261,38 @@ def article_categories(db: Session) -> list[dict]:
 
 
 def articles_list(db: Session, category: str | None = None) -> dict:
-    rows = (db.query(ArticleRow).filter(ArticleRow.status == "published")
+    rows = (db.query(ArticleRow).filter(ArticleRow.published.is_(True))
             .order_by(ArticleRow.updated_at.desc()).all())
     out = []
     for a in rows:
-        v = db.get(ArticleVersionRow, a.current_version_id) if a.current_version_id else None
-        if not v:
-            continue
-        c = JSONText.load(v.content, {})
+        c = JSONText.load(a.content, {})
         if category and c.get("category") != category:
             continue
-        published_levels_now = {lv.id for lv in published_levels(db)}
+        open_ids_now = {lv.id for lv in open_levels(db)}
         out.append({
             "slug": a.slug, "title": c.get("title", ""), "category": c.get("category", ""),
             "summary": c.get("summary", ""),
             "demoMediaId": c.get("demoMediaId"),
             "relatedLevelIds": [lid for lid in (c.get("relatedLevelIds") or [])
-                                if lid in published_levels_now],
-            "contentVersion": v.version,
+                                if lid in open_ids_now],
         })
     return {"articles": out}
 
 
 def article_detail(db: Session, slug: str) -> dict:
     a = db.get(ArticleRow, slug)
-    if a is None or a.status != "published" or not a.current_version_id:
-        raise ApiError(404, "NOT_FOUND", "文章不存在或未发布")
-    v = db.get(ArticleVersionRow, a.current_version_id)
-    c = JSONText.load(v.content, {})
-    published_levels_now = {lv.id for lv in published_levels(db)}
-    related = [lid for lid in (c.get("relatedLevelIds") or []) if lid in published_levels_now]
-    unavailable = [lid for lid in (c.get("relatedLevelIds") or []) if lid not in published_levels_now]
+    if a is None or not a.published:
+        raise ApiError(404, "NOT_FOUND", "文章不存在")
+    c = JSONText.load(a.content, {})
+    open_ids_now = {lv.id for lv in open_levels(db)}
+    related = [lid for lid in (c.get("relatedLevelIds") or []) if lid in open_ids_now]
+    unavailable = [lid for lid in (c.get("relatedLevelIds") or []) if lid not in open_ids_now]
     return {
         "slug": a.slug,
         "title": c.get("title", ""),
         "category": c.get("category", ""),
         "summary": c.get("summary", ""),
         "markdown": c.get("markdown", ""),
-        "contentVersion": v.version,
         "demo": {"mediaId": c.get("demoMediaId"), "text": c.get("demoText", "")},
         "practice": c.get("practice") or [],
         "references": c.get("references") or [],
@@ -338,44 +301,16 @@ def article_detail(db: Session, slug: str) -> dict:
     }
 
 
-# ---------------- 媒体读取守卫 ----------------
+# ---------------- 媒体读取 ----------------
 
 def media_publicly_readable(db: Session, media_id: str) -> MediaAssetRow | None:
-    """公开媒体每次读取校验当前发布引用（下架后立即不可读）。"""
     asset = db.get(MediaAssetRow, media_id)
     if asset is None or asset.deleted_at is not None:
         return None
-    refs = db.query(MediaRefRow).filter(MediaRefRow.media_id == media_id).all()
-    for ref in refs:
-        lv = db.query(LevelRow).filter(LevelRow.current_version_id == ref.version_id,
-                                       LevelRow.status == "published").one_or_none()
-        if lv is not None:
-            return asset
-        ar = db.query(ArticleRow).filter(ArticleRow.current_version_id == ref.version_id,
-                                         ArticleRow.status == "published").one_or_none()
-        if ar is not None:
-            return asset
-    return None
+    return asset
 
 
-def media_in_draft(db: Session, *, kind: str, object_id: str, media_id: str) -> bool:
-    """预览媒体：仅令牌绑定的草稿引用的媒体可读。"""
-    if kind == "level":
-        draft = db.get(LevelDraftRow, object_id)
-        content = JSONText.load(draft.content, {}) if draft else {}
-        ids = {d.get("mediaId") for d in content.get("demos") or []}
-        ids |= {q.get("stimulusMediaId") for q in content.get("quizzes") or []}
-        ids |= {o.get("mediaId") for q in content.get("quizzes") or [] for o in q.get("options") or []}
-        ids |= {m.get("mediaId") for m in (content.get("articulation") or {}).get("media") or []}
-        det = content.get("detection") or {}
-        ids.add(det.get("sampleMediaId"))
-        return media_id in ids
-    draft = db.get(ArticleDraftRow, object_id)
-    content = JSONText.load(draft.content, {}) if draft else {}
-    return media_id == content.get("demoMediaId")
-
-
-# ---------------- 发布治理 ----------------
+# ---------------- 内容完整性检查（FR-1203/1204） ----------------
 
 def validate_sagittal_keyframes(frames: list[dict]) -> list[str]:
     errors: list[str] = []
@@ -418,7 +353,7 @@ def validate_sagittal_keyframes(frames: list[dict]) -> list[str]:
 
 
 def precheck_level(db: Session, content: dict) -> list[str]:
-    """发布前置检查：逐项返回缺失/非法（FR-1203/1204）。"""
+    """开放关卡的基本内容完整性检查：逐项返回缺失/非法。"""
     missing: list[str] = []
     if not content.get("targetSound"):
         missing.append("缺少目标音")
@@ -463,7 +398,7 @@ def precheck_level(db: Session, content: dict) -> list[str]:
     if not det.get("evaluationText"):
         missing.append("缺少评测文本")
     if not det.get("sampleMediaId"):
-        missing.append("缺少参考示范（标准曲线来源）")
+        missing.append("缺少参考示范音频")
     if not det.get("fourStepTemplates"):
         missing.append("缺少四步反馈模板")
     if not (content.get("misconceptions") or []):
@@ -478,6 +413,28 @@ def precheck_level(db: Session, content: dict) -> list[str]:
     for mid in all_media:
         if mid and db.get(MediaAssetRow, mid) is None:
             missing.append(f"媒体不存在：{mid}")
+    return missing
+
+
+def precheck_article(db: Session, content: dict) -> list[str]:
+    missing = []
+    if not content.get("title"):
+        missing.append("缺少标题")
+    if not content.get("category"):
+        missing.append("缺少分类")
+    else:
+        if db.query(CategoryRow).filter(CategoryRow.name == content["category"]).count() == 0:
+            missing.append(f"分类不存在：{content['category']}")
+    if not content.get("markdown") or len(content["markdown"]) < 30:
+        missing.append("正文过短")
+    if not content.get("demoMediaId"):
+        missing.append("缺少可播放示范（FR-505）")
+    if not (content.get("references") or []):
+        missing.append("缺少参考资料（FR-506）")
+    if not (content.get("practice") or []):
+        missing.append("缺少短练习（FR-502）")
+    if content.get("demoMediaId") and db.get(MediaAssetRow, content["demoMediaId"]) is None:
+        missing.append("示范媒体不存在")
     return missing
 
 
@@ -498,9 +455,12 @@ def _collect_media_ids(content: dict) -> set[str | None]:
     return ids
 
 
+# ---------------- 标准曲线（检测对比参考） ----------------
+
 def compute_standard_curve(db: Session, content: dict) -> dict | None:
-    """发布时预计算标准曲线：参考示范 F0 → 按参考发音人音域换算 T 值 → 冻结
-    （决策图 #16）。"""
+    """按参考示范与参考发音人计算标准曲线：F0 → T 值换算。
+    提取失败（如清辅音为主、无法提取有效音高）时返回 None，
+    该关结果页曲线对比降级为不可用，不阻断内容保存。"""
     det = content.get("detection") or {}
     media_id = det.get("sampleMediaId")
     speaker_id = det.get("referenceSpeakerId")
@@ -518,23 +478,12 @@ def compute_standard_curve(db: Session, content: dict) -> dict | None:
         provider = get_provider()
         prov = provider.evaluate(str(path), det.get("evaluationText", ""))
         f0res = acx.extract_f0(path)
-    except ProviderError as e:
-        # Provider 不可用/返回异常：发布无法完成，但这是服务故障而非
-        # 「示范无法提取音高」的内容问题，不能误报 422（FR-1413：
-        # 发布失败保留草稿与原公开版本，事务由上层回滚）
-        if e.kind == "down":
-            raise ApiError(503, "PROVIDER_DOWN",
-                           "评分服务暂不可用，无法预计算标准曲线，请稍后重试发布") from e
-        raise ApiError(502, "PROVIDER_ERROR",
-                       "评分服务返回异常，无法预计算标准曲线，请稍后重试发布") from e
     except Exception:
-        logger.exception("标准曲线预计算失败：media=%s speaker=%s text=%r",
-                         media_id, speaker_id, det.get("evaluationText"))
-        raise ApiError(500, "INTERNAL_ERROR", "标准曲线预计算失败，发布已中止")
+        logger.warning("标准曲线计算失败：media=%s speaker=%s", media_id, speaker_id,
+                       exc_info=True)
+        return None
     if not f0res.reliable:
         return None
-    import numpy as np
-
     frames_t = np.array([fr["t"] for fr in f0res.frames], dtype=float)
     frames_hz = np.array([fr.get("hz", np.nan) for fr in f0res.frames], dtype=float)
     segments = []
@@ -575,260 +524,79 @@ def compute_standard_curve(db: Session, content: dict) -> dict | None:
     return curve
 
 
-def _rebuild_media_refs(db: Session, *, level_id: str | None, article_slug: str | None,
-                        version_id: str, content: dict) -> None:
-    """发布/回退时重建该对象全部版本的媒体引用；下架时由调用方整体移除。
-    引用决定公开可读性（下架后即时不可读）。"""
-    if level_id:
-        old_ids = [v.id for v in db.query(LevelVersionRow)
-                   .filter(LevelVersionRow.level_id == level_id).all()]
-        db.query(MediaRefRow).filter(MediaRefRow.version_id.in_(old_ids)).delete(
-            synchronize_session=False)
-    if article_slug:
-        old_ids = [v.id for v in db.query(ArticleVersionRow)
-                   .filter(ArticleVersionRow.article_slug == article_slug).all()]
-        db.query(MediaRefRow).filter(MediaRefRow.version_id.in_(old_ids)).delete(
-            synchronize_session=False)
-    for mid in _collect_media_ids(content):
-        if mid:
-            db.add(MediaRefRow(media_id=mid, version_id=version_id))
-    if article_slug and content.get("demoMediaId"):
-        db.add(MediaRefRow(media_id=content["demoMediaId"], version_id=version_id))
-
-
-def publish_level(db: Session, level_id: str, *, admin_actor: str,
-                  request_id: str | None, change_note: str | None = None) -> dict:
-    """发布（或重新发布）：前置检查 → 标准曲线 → 新版本 → 引用重建 → 审计；
-    任一步失败整体回滚。"""
-    from app.platform.audit import audit
-
-    level = db.get(LevelRow, level_id)
-    draft = db.get(LevelDraftRow, level_id)
-    if level is None or draft is None:
-        raise ApiError(404, "NOT_FOUND", "关卡不存在")
-    content = JSONText.load(draft.content, {})
-    missing = precheck_level(db, content)
-    if missing:
-        raise ApiError(422, "VALIDATION_ERROR",
-                       "发布前置检查未通过：" + "；".join(missing),
-                       data={"missing": missing})
+def prepare_level_content(db: Session, content: dict) -> dict:
+    """保存关卡内容前补齐派生字段（标准曲线）。"""
     curve = compute_standard_curve(db, content)
-    if curve is None:
-        raise ApiError(422, "VALIDATION_ERROR",
-                       "参考示范无法提取有效音高，不能生成标准曲线")
-    content["standardCurve"] = curve
-    last = (db.query(LevelVersionRow).filter(LevelVersionRow.level_id == level_id)
-            .order_by(LevelVersionRow.version.desc()).first())
-    version_no = (last.version + 1) if last else 1
-    version = LevelVersionRow(
-        id=new_id("lv_"), level_id=level_id, version=version_no,
-        rule_version=config.RULE_VERSION, content=JSONText.dump(content),
-        change_note=change_note, published_by=admin_actor, published_at=now(),
-    )
-    db.add(version)
-    db.flush()
-    level.current_version_id = version.id
-    level.status = "published"
-    level.updated_at = now()
-    _rebuild_media_refs(db, level_id=level_id, article_slug=None,
-                        version_id=version.id, content=content)
-    audit.log(db, action="publish", object_type="level", object_id=level_id,
-              actor_type="admin", actor_id=admin_actor,
-              before={"status": level.status},
-              after={"status": "published", "version": version_no},
-              reason=change_note, request_id=request_id)
-    db.commit()
-    return {"levelId": level_id, "contentVersion": version_no,
-            "standardCurveSegments": len(curve["segments"])}
-
-
-def unpublish_level(db: Session, level_id: str, *, admin_actor: str,
-                    request_id: str | None, reason: str | None) -> dict:
-    from app.platform.audit import audit
-
-    level = db.get(LevelRow, level_id)
-    if level is None or level.status != "published":
-        raise ApiError(404, "NOT_FOUND", "关卡不存在或未发布")
-    before_version = level.current_version_id
-    level.status = "unpublished"
-    level.updated_at = now()
-    # 移除该关全部引用：公开媒体立即不可读
-    old_ids = [v.id for v in db.query(LevelVersionRow)
-               .filter(LevelVersionRow.level_id == level_id).all()]
-    db.query(MediaRefRow).filter(MediaRefRow.version_id.in_(old_ids)).delete(
-        synchronize_session=False)
-    affected = _articles_referencing_level(db, level_id)
-    audit.log(db, action="unpublish", object_type="level", object_id=level_id,
-              actor_type="admin", actor_id=admin_actor,
-              before={"status": "published", "version": before_version},
-              after={"status": "unpublished"}, reason=reason, request_id=request_id)
-    db.commit()
-    return {"levelId": level_id, "affectedArticles": affected}
-
-
-def rollback_level(db: Session, level_id: str, *, admin_actor: str,
-                   request_id: str | None) -> dict:
-    """回退 = 以上一公开版本内容插入新版本再走发布（不改写历史）。"""
-    level = db.get(LevelRow, level_id)
-    if level is None or not level.current_version_id:
-        raise ApiError(404, "NOT_FOUND", "关卡不存在")
-    versions = (db.query(LevelVersionRow).filter(LevelVersionRow.level_id == level_id)
-                .order_by(LevelVersionRow.version.desc()).all())
-    if len(versions) < 2:
-        raise ApiError(422, "VALIDATION_ERROR", "没有更早的公开版本可回退")
-    target = versions[1]
-    draft = db.get(LevelDraftRow, level_id)
-    if draft is None:
-        raise ApiError(404, "NOT_FOUND", "关卡草稿不存在")
-    # 把上一公开版本内容写回草稿再发布
-    draft.content = target.content
-    draft.revision += 1
-    draft.updated_at = now()
-    db.commit()
-    return publish_level(db, level_id, admin_actor=admin_actor, request_id=request_id,
-                         change_note=f"回退到版本 {target.version}")
-
-
-def _articles_referencing_level(db: Session, level_id: str) -> list[dict]:
-    out = []
-    for a in db.query(ArticleRow).filter(ArticleRow.status == "published").all():
-        v = db.get(ArticleVersionRow, a.current_version_id) if a.current_version_id else None
-        if not v:
-            continue
-        c = JSONText.load(v.content, {})
-        if level_id in (c.get("relatedLevelIds") or []):
-            out.append({"slug": a.slug, "title": c.get("title", "")})
-    return out
-
-
-# ---------------- 文章治理 ----------------
-
-def precheck_article(db: Session, content: dict) -> list[str]:
-    missing = []
-    if not content.get("title"):
-        missing.append("缺少标题")
-    if not content.get("category"):
-        missing.append("缺少分类")
+    if curve is not None:
+        content["standardCurve"] = curve
     else:
-        if db.query(CategoryRow).filter(CategoryRow.name == content["category"]).count() == 0:
-            missing.append(f"分类不存在：{content['category']}")
-    if not content.get("markdown") or len(content["markdown"]) < 30:
-        missing.append("正文过短")
-    if not content.get("demoMediaId"):
-        missing.append("缺少可播放示范（FR-505）")
-    if not (content.get("references") or []):
-        missing.append("缺少参考资料（FR-506）")
-    if not (content.get("practice") or []):
-        missing.append("缺少短练习（FR-502）")
-    if content.get("demoMediaId") and db.get(MediaAssetRow, content["demoMediaId"]) is None:
-        missing.append("示范媒体不存在")
-    return missing
+        content.pop("standardCurve", None)
+    return content
 
 
-def publish_article(db: Session, slug: str, *, admin_actor: str,
-                    request_id: str | None, change_note: str | None = None) -> dict:
-    from app.platform.audit import audit
+# ---------------- 保存与开放切换（保存即生效） ----------------
 
-    article = db.get(ArticleRow, slug)
-    draft = db.get(ArticleDraftRow, slug)
-    if article is None or draft is None:
-        raise ApiError(404, "NOT_FOUND", "文章不存在")
-    content = JSONText.load(draft.content, {})
-    missing = precheck_article(db, content)
-    if missing:
-        raise ApiError(422, "VALIDATION_ERROR",
-                       "文章发布前置检查未通过：" + "；".join(missing),
-                       data={"missing": missing})
-    last = (db.query(ArticleVersionRow).filter(ArticleVersionRow.article_slug == slug)
-            .order_by(ArticleVersionRow.version.desc()).first())
-    version_no = (last.version + 1) if last else 1
-    version = ArticleVersionRow(
-        id=new_id("av_"), article_slug=slug, version=version_no,
-        content=JSONText.dump(content), change_note=change_note,
-        published_by=admin_actor, published_at=now(),
-    )
-    db.add(version)
-    db.flush()
-    article.current_version_id = version.id
-    article.status = "published"
-    article.updated_at = now()
-    _rebuild_media_refs(db, level_id=None, article_slug=slug,
-                        version_id=version.id, content=content)
-    audit.log(db, action="publish", object_type="article", object_id=slug,
-              actor_type="admin", actor_id=admin_actor,
-              after={"status": "published", "version": version_no},
-              reason=change_note, request_id=request_id)
+def save_level(db: Session, level_id: str, content: dict) -> dict:
+    level = db.get(LevelRow, level_id)
+    if level is None:
+        raise ApiError(404, "NOT_FOUND", "关卡不存在")
+    content = prepare_level_content(db, content)
+    level.content = JSONText.dump(content)
+    level.updated_at = now()
     db.commit()
-    return {"slug": slug, "contentVersion": version_no}
+    return {"levelId": level_id}
 
 
-def unpublish_article(db: Session, slug: str, *, admin_actor: str,
-                      request_id: str | None, reason: str | None) -> dict:
-    from app.platform.audit import audit
+def set_level_published(db: Session, level_id: str, published: bool) -> dict:
+    level = db.get(LevelRow, level_id)
+    if level is None:
+        raise ApiError(404, "NOT_FOUND", "关卡不存在")
+    level.published = bool(published)
+    level.updated_at = now()
+    db.commit()
+    return {"levelId": level_id, "published": level.published}
 
-    article = db.get(ArticleRow, slug)
-    if article is None or article.status != "published":
-        raise ApiError(404, "NOT_FOUND", "文章不存在或未发布")
-    article.status = "unpublished"
-    article.updated_at = now()
-    old_ids = [v.id for v in db.query(ArticleVersionRow)
-               .filter(ArticleVersionRow.article_slug == slug).all()]
-    db.query(MediaRefRow).filter(MediaRefRow.version_id.in_(old_ids)).delete(
-        synchronize_session=False)
-    audit.log(db, action="unpublish", object_type="article", object_id=slug,
-              actor_type="admin", actor_id=admin_actor,
-              before={"status": "published"}, after={"status": "unpublished"},
-              reason=reason, request_id=request_id)
+
+def save_article(db: Session, slug: str, content: dict, *, create: bool = False) -> dict:
+    if create:
+        slug = (slug or "").strip()
+        if not slug or db.get(ArticleRow, slug) is not None:
+            raise ApiError(409, "INVALID_STATE", "slug 缺失或已存在")
+        db.add(ArticleRow(slug=slug, published=False,
+                          content=JSONText.dump(content),
+                          created_at=now(), updated_at=now()))
+    else:
+        article = db.get(ArticleRow, slug)
+        if article is None:
+            raise ApiError(404, "NOT_FOUND", "文章不存在")
+        article.content = JSONText.dump(content)
+        article.updated_at = now()
     db.commit()
     return {"slug": slug}
 
 
-def rollback_article(db: Session, slug: str, *, admin_actor: str,
-                     request_id: str | None) -> dict:
+def set_article_published(db: Session, slug: str, published: bool) -> dict:
     article = db.get(ArticleRow, slug)
     if article is None:
         raise ApiError(404, "NOT_FOUND", "文章不存在")
-    versions = (db.query(ArticleVersionRow).filter(ArticleVersionRow.article_slug == slug)
-                .order_by(ArticleVersionRow.version.desc()).all())
-    if len(versions) < 2:
-        raise ApiError(422, "VALIDATION_ERROR", "没有更早的公开版本可回退")
-    draft = db.get(ArticleDraftRow, slug)
-    draft.content = versions[1].content
-    draft.revision += 1
-    draft.updated_at = now()
+    article.published = bool(published)
+    article.updated_at = now()
     db.commit()
-    return publish_article(db, slug, admin_actor=admin_actor, request_id=request_id,
-                           change_note=f"回退到版本 {versions[1].version}")
+    return {"slug": slug, "published": article.published}
 
 
-# ---------------- 标定文本 / 熔断 ----------------
+def delete_article(db: Session, slug: str) -> dict:
+    article = db.get(ArticleRow, slug)
+    if article is None:
+        raise ApiError(404, "NOT_FOUND", "文章不存在")
+    db.delete(article)
+    db.commit()
+    return {"slug": slug}
+
+
+# ---------------- 标定文本 ----------------
 
 def get_active_calibration_text(db: Session) -> CalibrationTextRow | None:
     return (db.query(CalibrationTextRow)
             .filter(CalibrationTextRow.active.is_(True))
             .order_by(CalibrationTextRow.id.desc()).first())
-
-
-def set_detection_switch(db: Session, *, level_id: str | None, enabled: bool,
-                         reason: str, admin_actor: str, request_id: str | None) -> dict:
-    from app.platform.audit import audit
-
-    q = db.query(DetectionSwitchRow)
-    if level_id:
-        row = q.filter(DetectionSwitchRow.level_id == level_id).one_or_none()
-    else:
-        row = q.filter(DetectionSwitchRow.level_id.is_(None)).one_or_none()
-    if row is None:
-        row = DetectionSwitchRow(level_id=level_id, enabled=enabled, reason=reason,
-                                 operated_by=admin_actor, updated_at=now())
-        db.add(row)
-    else:
-        row.enabled = enabled
-        row.reason = reason
-        row.operated_by = admin_actor
-        row.updated_at = now()
-    audit.log(db, action="detection_switch", object_type="level",
-              object_id=level_id or "global", actor_type="admin", actor_id=admin_actor,
-              after={"enabled": enabled}, reason=reason, request_id=request_id)
-    db.commit()
-    return {"levelId": level_id, "enabled": enabled}

@@ -21,7 +21,7 @@ export const useLevelsStore = defineStore('levels', () => {
     return map
   })
 
-  /** 按公开顺序排列的已发布关（P01/P02/P06/P08 一律使用，过滤骨架） */
+  /** 按公开顺序排列的已开放关（P01/P02/P05/P06 使用，过滤骨架） */
   const published = computed(() =>
     [...levels.value].sort((a, b) => a.order - b.order).filter((l) => l.availability !== 'closed'),
   )

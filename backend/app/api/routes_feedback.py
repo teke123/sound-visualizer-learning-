@@ -1,10 +1,10 @@
-"""反馈与希望增加路由（公开提交、限流）。"""
+"""反馈与希望增加路由（登录后提交、限流）。"""
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 
-from app.api.deps import Actor, get_actor
+from app.api.deps import Actor, get_actor, require_user
 from app.feedback import usecases as feedback_uc
 from app.api.schemas import Envelope, FeedbackResponse, WishResponse
 from app.platform.envelope import envelope
@@ -26,11 +26,10 @@ class FeedbackBody(BaseModel):
 @router.post("/feedback", response_model=Envelope[FeedbackResponse])
 async def submit_feedback(request: Request, body: FeedbackBody,
                           actor: Actor = Depends(get_actor)):
+    user = require_user(actor)
     actor.rate_limit("feedback")
-    result = feedback_uc.submit_feedback(actor.db, owner_type=actor.owner_type,
-                                         owner_id=actor.owner_id,
-                                         body=body.model_dump(exclude_none=True),
-                                         request_id=actor.request_id)
+    result = feedback_uc.submit_feedback(actor.db, user_id=user.id,
+                                         body=body.model_dump(exclude_none=True))
     return envelope(request, result)
 
 
@@ -42,7 +41,7 @@ class WishBody(BaseModel):
 @router.post("/wishes", response_model=Envelope[WishResponse])
 async def submit_wish(request: Request, body: WishBody,
                       actor: Actor = Depends(get_actor)):
+    user = require_user(actor)
     actor.rate_limit("wish")
-    result = feedback_uc.submit_wish(actor.db, owner_type=actor.owner_type,
-                                     owner_id=actor.owner_id, body=body.model_dump())
+    result = feedback_uc.submit_wish(actor.db, user_id=user.id, body=body.model_dump())
     return envelope(request, result)

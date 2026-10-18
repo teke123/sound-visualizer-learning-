@@ -100,7 +100,7 @@ export function useComparePanel() {
   }
   const canCompare = computed(() => selected.value.length === 2)
 
-  /** 易混对快捷项（仅双方已发布） */
+  /** 易混对快捷项（仅双方已开放） */
   const quickPairs = computed(() => levelsStore.confusablePairs)
 
   return {

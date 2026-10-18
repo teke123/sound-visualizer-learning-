@@ -1,7 +1,7 @@
 /**
- * 账号流程：注册、登录、退出、撤回、注销（docs/architecture/04 §5 身份切换表 / §6.6–6.7）。
- * 登录响应直接携带替换后的 context；未处理同意立即弹 ConsentDialog；
- * 已有同意账号登录触发转存提示。退出/撤回/注销按表清除本地数据。
+ * 账号流程：注册、登录、退出、注销（FR-102–108）。
+ * 注册 / 登录即默认同意服务条款；登录响应携带替换后的 context；
+ * 退出 / 注销按身份切换表清除本地数据。
  */
 import { ref } from 'vue'
 import { identityApi } from '@/api'
@@ -38,7 +38,7 @@ export function useAuth() {
     busy.value = true
     error.value = null
     try {
-      // 注册不自动登录、不认领（后端契约）
+      // 注册不自动登录（后端契约）
       await identityApi.register(payload)
       return true
     } catch (err) {
@@ -49,28 +49,20 @@ export function useAuth() {
     }
   }
 
-  /** 登录：成功后用响应 context 替换；未处理同意由调用方弹出；transfer 由调用方展示 */
-  async function login(
-    payload: { username: string; password: string },
-    hooks: {
-      onNeedConsent?: () => void
-      onTransfer?: (transfer: { status: string; transferredCount: number } | undefined) => void
-    } = {},
-  ): Promise<boolean> {
+  /** 登录：成功后用响应 context 替换并拉取全量（标定 / 进度） */
+  async function login(payload: { username: string; password: string }): Promise<boolean> {
     busy.value = true
     error.value = null
     try {
       const res = await identityApi.login(payload)
-      // 登录成功：清除上一账号内存状态，替换 context（§5 表）。
-      // 后端 login 响应只携带部分身份字段（authenticated/accountId/username/dataEpoch），
-      // 先合并避免 context 出现空洞，再拉取全量（consent/calibration/pendingTransfer）。
+      // 登录成功：清除上一账号内存状态，替换 context。
+      // 后端 login 响应只携带部分身份字段（authenticated/accountId/username），
+      // 先合并避免 context 出现空洞，再拉取全量。
       progressStore.onLogout()
       recorder.release()
       contextStore.apply({ ...contextStore.context, ...res.data.context })
       await contextStore.refresh()
       progressStore.onIdentityEstablished()
-      if (contextStore.consentStatus === 'none') hooks.onNeedConsent?.()
-      if (res.data.transfer) hooks.onTransfer?.(res.data.transfer)
       return true
     } catch (err) {
       error.value = err
@@ -80,7 +72,7 @@ export function useAuth() {
     }
   }
 
-  /** 退出：清除账号桶、outbox 与全部账号内存状态；重新拉 context；回到访客桶 */
+  /** 退出：清除 outbox 与账号内存状态；重新拉 context */
   async function logout(): Promise<void> {
     busy.value = true
     try {
@@ -95,20 +87,7 @@ export function useAuth() {
     await contextStore.refresh()
   }
 
-  /** 撤回同意：dataEpoch 递增；清除本设备该账号本地数据并刷新 context */
-  async function revokeConsent(): Promise<void> {
-    busy.value = true
-    error.value = null
-    try {
-      await identityApi.revokeConsent()
-    } finally {
-      busy.value = false
-    }
-    progressStore.onAccountErased()
-    await contextStore.refresh()
-  }
-
-  /** 注销：按撤回范围清理；全部会话失效；注销后回到首页 */
+  /** 注销：清空该账号全部数据；全部会话失效；注销后回到首页 */
   async function deleteAccount(password: string): Promise<boolean> {
     busy.value = true
     error.value = null
@@ -130,5 +109,5 @@ export function useAuth() {
     void contextStore.refresh()
   }
 
-  return { busy, error, register, login, logout, revokeConsent, deleteAccount, finishAccountDeletion }
+  return { busy, error, register, login, logout, deleteAccount, finishAccountDeletion }
 }

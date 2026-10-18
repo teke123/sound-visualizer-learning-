@@ -1,4 +1,4 @@
-"""运行配置：环境变量 + 缺省值（docs/architecture/03 第 1 节「配置」行）。
+"""运行配置：环境变量 + 缺省值。
 
 Provider 凭据只从环境变量读取；其余为部署可调参数。单进程单 worker 是
 全部进程内状态（限流、执行器、调度）的前提，扩容前须迁移这些状态。
@@ -11,9 +11,8 @@ from pathlib import Path
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = Path(os.environ.get("SVS_DATA_DIR", BACKEND_DIR / "data"))
-PRIVATE_DIR = DATA_DIR / "private"     # 用户音频、标定音频
-PUBLIC_DIR = DATA_DIR / "public"       # 已发布引用媒体（读取时仍校验发布引用）
-DRAFT_DIR = DATA_DIR / "draft"         # 草稿媒体、授权材料
+PRIVATE_DIR = DATA_DIR / "private"     # 用户录音、标定音频
+MEDIA_DIR = DATA_DIR / "media"         # 内容媒体（示范音、构形图、文章配图）
 DB_PATH = DATA_DIR / "app.db"
 DELETION_LOG_PATH = DATA_DIR / "deletion_log.jsonl"
 
@@ -48,11 +47,7 @@ def _load_or_create_secret() -> str:
 
 SECRET: str = _load_or_create_secret()
 
-# --- 临时数据留存（D-15）---
-TEMP_DATA_TTL_HOURS: int = 72          # 私有上传/临时录音/会话标定及缓存
-PREVIEW_TOKEN_TTL_MINUTES: int = 15    # 预览令牌（D 决策图 #21）
-
-# --- 检测处理模型（决策图「检测处理模型」）---
+# --- 检测处理模型（D-19：短同步 + 30 秒硬截止）---
 SYNC_WINDOW_SECONDS: float = float(os.environ.get("SVS_SYNC_WINDOW", "8"))
 HARD_DEADLINE_SECONDS: float = float(os.environ.get("SVS_HARD_DEADLINE", "30"))  # 自受理起
 # 标定路由等待上限：与录音硬截止解耦（标定不受调度器 sweep 约束，
@@ -62,19 +57,11 @@ RETRY_AFTER_SECONDS: int = 2           # 202 响应 Retry-After
 EXECUTOR_WORKERS: int = int(os.environ.get("SVS_EXECUTOR_WORKERS", "4"))
 EXECUTOR_QUEUE_LIMIT: int = int(os.environ.get("SVS_EXECUTOR_QUEUE", "32"))
 
-# --- 版本常量（进入缓存键与结果快照）---
-RULE_VERSION: str = "rules-1.0.0"
 # 声学算法版本：tone_py + parselmouth + 自研共振峰/质量分析
 ALGORITHM_VERSION: str = "acx-1.0.0+tp0.1.0+pm0.4.7"
-CONSENT_TEXT_VERSION: str = "v1"
 
-CONSENT_TEXT: str = (
-    "同意保存后，我们将保存你的学习进度、录音与检测结果，用于生成你的声音档案与进步对比；"
-    "当前会话未过期的临时录音与音域标定会一并转存为长期档案。"
-    "临时录音最长保留 72 小时，存档内容保留至你删除。"
-    "你可以随时删除单条记录、清空档案或撤回同意（撤回将删除全部录音、进度与音域）。"
-    "录音仅用于你的学习反馈，不会公开给他人。"
-)
+# 未标定用户的默认成人参考音域（Hz，D-20：跳过标定时正常检测）
+DEFAULT_ADULT_F0_RANGE: tuple[float, float] = (90.0, 230.0)
 
 # --- 上传限制 ---
 MAX_UPLOAD_BYTES: int = 20 * 1024 * 1024   # 20 MB
@@ -103,17 +90,15 @@ RATE_LIMITS: dict[str, tuple[int, int]] = {
     "auth": (120, 300),
 }
 
-# --- 管理员（独立凭据，不与学习账号互通）---
+# --- 管理员（团队自用后台的简单口令）---
 ADMIN_USERNAME: str = os.environ.get("SVS_ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD: str = os.environ.get("SVS_ADMIN_PASSWORD", "admin12345")
 
-# --- 调度周期（docs/architecture/03 第 5.6 节）---
+# --- 调度周期 ---
 SWEEP_INTERVAL_SECONDS: float = 5.0        # 处理超时
-EXPIRY_SWEEP_INTERVAL_SECONDS: float = 300  # 临时到期
 CLEANUP_INTERVAL_SECONDS: float = 300       # 物理清理
-PREVIEW_CLEAN_INTERVAL_SECONDS: float = 900 # 预览令牌清理
 
 
 def ensure_dirs() -> None:
-    for d in (DATA_DIR, PRIVATE_DIR, PUBLIC_DIR, DRAFT_DIR):
+    for d in (DATA_DIR, PRIVATE_DIR, MEDIA_DIR):
         d.mkdir(parents=True, exist_ok=True)

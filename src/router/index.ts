@@ -1,8 +1,7 @@
 /**
- * 路由表与守卫（docs/decision-map-frontend「页面与路由」）：
+ * 路由表与守卫（docs/srs/02「页面清单」，D-03：P01–P06、P09–P11 共 9 页）：
  * - history 模式、路由级懒加载（首屏只含 P01）
  * - /learn → /library；登录/注册在已登录时转 /account
- * - /preview/* 为管理员预览（meta.bare：不渲染 AppShell 账号入口）
  * - 锚点 #quiz/#practice/#record/#step-{id} 滚动
  */
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
@@ -10,10 +9,8 @@ import { useContextStore } from '@/stores/context'
 
 declare module 'vue-router' {
   interface RouteMeta {
-    /** 页面编号（P01–P11）；preview 与 NotFound 为空 */
+    /** 页面编号（P01–P11）；NotFound 为空 */
     pageCode?: string
-    /** 预览等不套 AppShell 的页面 */
-    bare?: boolean
     title?: string
   }
 }
@@ -32,16 +29,12 @@ const routes: RouteRecordRaw[] = [
   { path: '/principles', name: 'principles', component: () => import('@/pages/PrinciplesPage.vue'), meta: { pageCode: 'P04', title: '发音原理' } },
   { path: '/principles/:slug', name: 'article', component: () => import('@/pages/ArticlePage.vue'), meta: { pageCode: 'P04', title: '文章' } },
 
-  // P05 关卡页：/learn 重定向 /library；#record 等锚点由页面处理
+  // P05 关卡页：学习与录音检测一体；/learn 重定向 /library；#record 等锚点由页面处理
   { path: '/learn', redirect: '/library' },
   { path: '/learn/:id', name: 'level', component: () => import('@/pages/LevelPage.vue'), meta: { pageCode: 'P05', title: '关卡' } },
 
   // P06 发音库
   { path: '/library', name: 'library', component: () => import('@/pages/LibraryPage.vue'), meta: { pageCode: 'P06', title: '发音库' } },
-
-  // P08 检测中心：无 levelId 先选关
-  { path: '/test', name: 'test', component: () => import('@/pages/TestPage.vue'), meta: { pageCode: 'P08', title: '检测中心' } },
-  { path: '/test/:levelId', name: 'test-task', component: () => import('@/pages/TestPage.vue'), meta: { pageCode: 'P08', title: '录音检测' } },
 
   // P09 结果
   { path: '/result/:id', name: 'result', component: () => import('@/pages/ResultPage.vue'), meta: { pageCode: 'P09', title: '检测结果' } },
@@ -63,20 +56,6 @@ const routes: RouteRecordRaw[] = [
     name: 'account-register',
     component: () => import('@/pages/AccountRegisterPage.vue'),
     meta: { pageCode: 'P11', title: '注册' },
-  },
-
-  // 管理员草稿预览（不计入大众端页面；meta.bare 不渲染 AppShell）
-  {
-    path: '/preview/levels/:id',
-    name: 'preview-level',
-    component: () => import('@/pages/PreviewLevelPage.vue'),
-    meta: { bare: true, title: '草稿预览' },
-  },
-  {
-    path: '/preview/articles/:slug',
-    name: 'preview-article',
-    component: () => import('@/pages/PreviewArticlePage.vue'),
-    meta: { bare: true, title: '文章草稿预览' },
   },
 
   // 其余路径统一 NotFound

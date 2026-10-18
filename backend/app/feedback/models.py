@@ -13,17 +13,14 @@ class FeedbackRow(Base):
     __tablename__ = "feedback"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
-    owner_type: Mapped[str] = mapped_column(String(8))     # sid | user
-    owner_id: Mapped[str] = mapped_column(String(64))
+    user_id: Mapped[str] = mapped_column(String(64))
     source_page: Mapped[str] = mapped_column(String(32))   # P01..P11
     type: Mapped[str] = mapped_column(String(32))          # clarity | result_match | content_error | wish
     subtype: Mapped[str | None] = mapped_column(String(32))  # 纠错：text|audio|image|subtitle
     content: Mapped[str | None] = mapped_column(Text)
     article_slug: Mapped[str | None] = mapped_column(String(128))
-    article_version: Mapped[int | None] = mapped_column(Integer)
     level_id: Mapped[str | None] = mapped_column(String(16))
     recording_id: Mapped[str | None] = mapped_column(String(64))
-    recording_content_version: Mapped[int | None] = mapped_column(Integer)
     rating: Mapped[int | None] = mapped_column(Integer)    # 结果是否符合感受
     status: Mapped[str] = mapped_column(String(16), default="pending")  # pending|adopted|rejected
     handled_by: Mapped[str | None] = mapped_column(String(64))
@@ -35,8 +32,7 @@ class WishRow(Base):
     __tablename__ = "wish"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
-    owner_type: Mapped[str] = mapped_column(String(8))
-    owner_id: Mapped[str] = mapped_column(String(64))
+    user_id: Mapped[str] = mapped_column(String(64))
     content: Mapped[str] = mapped_column(Text)             # 希望增加的音/字
     search_query: Mapped[str | None] = mapped_column(String(255))
     status: Mapped[str] = mapped_column(String(16), default="pending")

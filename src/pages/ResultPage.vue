@@ -1,9 +1,9 @@
 <script setup lang="ts">
 /**
  * P09 结果页（FR-1001–1008 / §6.4）：
- * 202 → ProcessingStage 轮询（页面隐藏暂停）；质量先行；合格时分数、现象、
- * 曲线、共振峰（单韵母）、频谱图、四步、回放、AcousticDetail、SaveStatusBanner；
- * 404 → 「记录已过期或不可见」；同键重试仅当从提交页跳转（FD-15）。
+ * 202 → ProcessingStage 轮询（页面隐藏暂停）；录音质量为友好提示、不拦截展示；
+ * 分数、现象、曲线、共振峰（单韵母）、频谱图、四步、回放、AcousticDetail、保存状态；
+ * 404 → 「记录不存在或不可见」；同键重试仅当从提交页跳转（FD-15）。
  */
 import { computed, defineAsyncComponent, ref } from 'vue'
 import { useRoute } from 'vue-router'
@@ -35,7 +35,6 @@ const recording = result.recording
 const assessment = result.result
 
 const quality = computed(() => assessment.value?.quality)
-const passed = computed(() => quality.value?.verdict === 'pass')
 
 const playbackKey = computed(() => `audio:${recording.value?.audioId ?? ''}`)
 
@@ -70,7 +69,7 @@ const spectrogramError = ref(false)
     <PageState
       v-else-if="phase === 'not-found'"
       state="not-visible"
-      text="记录已过期或不可见（临时记录最多保留 72 小时）"
+      text="记录不存在或不可见"
     />
 
     <!-- 失败（504 / 500 等） -->
@@ -91,47 +90,45 @@ const spectrogramError = ref(false)
         <h1>{{ levelTitle }} · 检测结果</h1>
       </header>
 
-      <!-- 质量先行（FR-1001） -->
+      <!-- 录音质量提示（FR-1001：友好提示，不拦截评分与可视化） -->
       <QualityVerdict v-if="quality" :quality="quality" />
 
-      <template v-if="passed">
-        <!-- 分数（FR-1002） -->
-        <ScoreCard v-if="typeof assessment.score === 'number'" :score="assessment.score" />
+      <!-- 分数（FR-1002） -->
+      <ScoreCard v-if="typeof assessment.score === 'number'" :score="assessment.score" />
 
-        <!-- 曲线对比（FR-1005） -->
-        <section class="result-section" aria-label="音高曲线对比">
-          <h2>音高曲线对比</h2>
-          <p class="curve-note">实线是这次录音，虚线是标准参考；已按你的音域换算到统一标度。</p>
-          <ToneCurveChart v-if="assessment.curve" :curve="assessment.curve" />
-        </section>
+      <!-- 曲线对比（FR-1005） -->
+      <section class="result-section" aria-label="音高曲线对比">
+        <h2>音高曲线对比</h2>
+        <p class="curve-note">实线是这次录音，虚线是标准参考；已按你的音域换算到统一标度。</p>
+        <ToneCurveChart v-if="assessment.curve" :curve="assessment.curve" />
+      </section>
 
-        <!-- 共振峰（仅单韵母关，FR-1005） -->
-        <section v-if="assessment.formants" class="result-section" aria-label="共振峰对比">
-          <h2>共振峰对比</h2>
-          <FormantChart :formants="assessment.formants" />
-        </section>
+      <!-- 共振峰（仅单韵母关，FR-1005） -->
+      <section v-if="assessment.formants" class="result-section" aria-label="共振峰对比">
+        <h2>共振峰对比</h2>
+        <FormantChart :formants="assessment.formants" />
+      </section>
 
-        <!-- 频谱图（FR-1005：时间×频率能量分布） -->
-        <section class="result-section" aria-label="频谱图">
-          <h2>频谱图</h2>
-          <p class="curve-note">横轴是时间，纵轴是频率，颜色越亮表示这一时刻该频率的能量越强，用来整体查看这次录音的频率能量分布。</p>
-          <img
-            v-if="!spectrogramError"
-            :src="audioSpectrogramPngUrl(recording.audioId)"
-            alt="本次录音频谱图（时间×频率热力图）"
-            loading="lazy"
-            class="spectrogram-img"
-            @error="spectrogramError = true"
-          />
-          <p v-else class="curve-note">频谱图暂时读取不到，可刷新页面重试。</p>
-        </section>
+      <!-- 频谱图（FR-1005：时间×频率能量分布） -->
+      <section class="result-section" aria-label="频谱图">
+        <h2>频谱图</h2>
+        <p class="curve-note">横轴是时间，纵轴是频率，颜色越亮表示这一时刻该频率的能量越强，用来整体查看这次录音的频率能量分布。</p>
+        <img
+          v-if="!spectrogramError"
+          :src="audioSpectrogramPngUrl(recording.audioId)"
+          alt="本次录音频谱图（时间×频率热力图）"
+          loading="lazy"
+          class="spectrogram-img"
+          @error="spectrogramError = true"
+        />
+        <p v-else class="curve-note">频谱图暂时读取不到，可刷新页面重试。</p>
+      </section>
 
-        <!-- 现象（FR-1004） -->
-        <PhenomenaList v-if="assessment.phenomena" :phenomena="assessment.phenomena" />
+      <!-- 现象（FR-1004） -->
+      <PhenomenaList v-if="assessment.phenomena" :phenomena="assessment.phenomena" />
 
-        <!-- 四步（FR-1007） -->
-        <FourStepsList v-if="assessment.fourSteps" :steps="assessment.fourSteps" />
-      </template>
+      <!-- 四步（FR-1007） -->
+      <FourStepsList v-if="assessment.fourSteps" :steps="assessment.fourSteps" />
 
       <!-- 回放与行动（FR-1008） -->
       <section class="result-section" aria-label="回放与下一步">
@@ -150,8 +147,8 @@ const spectrogramError = ref(false)
       <!-- 原始声学折叠区（FD-16） -->
       <AcousticDetail v-if="recording.audioId" :audio-id="recording.audioId" />
 
-      <!-- 保存状态（§6.4） -->
-      <SaveStatusBanner :storage="assessment.storage" :expires-at="assessment.expiresAt ?? undefined" />
+      <!-- 保存状态：结果自动保存到声音档案（FR-1008） -->
+      <SaveStatusBanner />
     </template>
   </div>
 </template>

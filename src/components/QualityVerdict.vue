@@ -1,7 +1,8 @@
 <script setup lang="ts">
 /**
- * QualityVerdict：质量结论先行（FR-1001 / FR-1301）。
- * 质量结论与本关分数分开显示；不合格显示「本次不能评」+ 原因 + 重录指引，不显示分数。
+ * QualityVerdict：录音质量友好提示卡（FR-1001 / FR-1301）。
+ * 只作辅助提示、不拦截评分与声学可视化：展示音量偏小 / 底噪偏大 / 爆音 /
+ * 时长过短等信号状态与朗读完整性提示，并给出环境改善建议。
  * 信号维为结构化检查项（dbfs/snrDb/ratio/valueSec），朗读维为漏读/增读等列表。
  */
 import { computed } from 'vue'
@@ -10,10 +11,10 @@ import type { Quality } from '@/api'
 const props = defineProps<{ quality: Quality }>()
 
 const SIGNAL_CHECKS: Array<{ key: 'volume' | 'noise' | 'clipping' | 'duration'; label: string }> = [
-  { key: 'volume', label: '音量' },
-  { key: 'noise', label: '噪音' },
+  { key: 'volume', label: '音量偏小' },
+  { key: 'noise', label: '底噪偏大' },
   { key: 'clipping', label: '爆音' },
-  { key: 'duration', label: '时长' },
+  { key: 'duration', label: '时长过短' },
 ]
 
 const READING_CHECKS: Array<{ key: 'missing' | 'extra' | 'repeated' | 'replaced' | 'disordered'; label: string }> = [
@@ -24,13 +25,13 @@ const READING_CHECKS: Array<{ key: 'missing' | 'extra' | 'repeated' | 'replaced'
   { key: 'disordered', label: '乱读' },
 ]
 
-/** 不合格检查项（label + 指引），失败项优先 */
-const failedChecks = computed(() => {
+/** 检测到的质量提示项（label + 改善建议） */
+const tips = computed(() => {
   const found: Array<{ label: string; note: string }> = []
   for (const { key, label } of SIGNAL_CHECKS) {
     const check = props.quality.signal?.[key]
     if (check && check.pass === false) {
-      found.push({ label, note: check.advice ?? '未通过' })
+      found.push({ label, note: check.advice ?? '建议调整后重录' })
     }
   }
   const reading = props.quality.reading
@@ -45,35 +46,38 @@ const failedChecks = computed(() => {
       }
     }
     if (found.some((item) => READING_CHECKS.some((rc) => rc.label === item.label)) && reading.advice) {
-      found.push({ label: '指引', note: reading.advice })
+      found.push({ label: '建议', note: reading.advice })
     }
   }
   return found
 })
 
-const passed = computed(() => props.quality.verdict === 'pass')
+const clean = computed(() => tips.value.length === 0)
+const advice = computed(
+  () => props.quality.advice || '找一个安静的地方，嘴巴离麦克风约一拳距离，用平常说话的音量再录一次，声学图像会更清晰。',
+)
 </script>
 
 <template>
-  <section class="quality-verdict" :class="passed ? 'pass' : 'fail'" aria-label="录音质量结论">
+  <section class="quality-verdict" :class="clean ? 'clean' : 'tips'" aria-label="录音质量提示">
     <div class="verdict-head">
-      <span class="verdict-icon" aria-hidden="true">{{ passed ? '✅' : '🛑' }}</span>
+      <span class="verdict-icon" aria-hidden="true">{{ clean ? '✅' : '💡' }}</span>
       <div>
-        <p class="verdict-title">{{ passed ? '录音质量合格' : '本次不能评' }}</p>
+        <p class="verdict-title">{{ clean ? '录音质量良好' : '录音质量小提示' }}</p>
         <p class="verdict-sub">
-          {{ passed ? '下面展示本次评分与曲线对比。' : '这次录音不满足评分要求——这不是发音问题，请按下面的指引重录一次。' }}
+          {{ clean ? '下面展示本次评分与声学对比。' : '这些提示只关于录音环境与朗读完整性，不影响本次评分和对比展示。' }}
         </p>
       </div>
     </div>
-    <ul v-if="failedChecks.length > 0" class="issue-list">
-      <li v-for="issue in failedChecks" :key="issue.label + issue.note">
+    <ul v-if="tips.length > 0" class="issue-list">
+      <li v-for="issue in tips" :key="issue.label + issue.note">
         <span class="issue-label">{{ issue.label }}</span>
         <span>{{ issue.note }}</span>
       </li>
     </ul>
-    <div v-if="!passed" class="retake">
-      <h3>怎么重录</h3>
-      <p>{{ quality.retakeAdvice || '找一个安静的地方，按页面上的朗读提示，用平常说话的音量再录一次。' }}</p>
+    <div v-if="!clean" class="advice">
+      <h3>怎样录得更清楚</h3>
+      <p>{{ advice }}</p>
     </div>
   </section>
 </template>
@@ -83,12 +87,12 @@ const passed = computed(() => props.quality.verdict === 'pass')
   border-radius: 12px
   padding: 16px
   border: 1px solid
-  &.pass
+  &.clean
     background: #f1f8e9
     border-color: #c5e1a5
-  &.fail
-    background: #fff3e0
-    border-color: #ffcc80
+  &.tips
+    background: #fffde7
+    border-color: #ffe082
 
 .verdict-head
   display: flex
@@ -130,7 +134,7 @@ const passed = computed(() => props.quality.verdict === 'pass')
   height: fit-content
   white-space: nowrap
 
-.retake
+.advice
   margin-top: 12px
   background: #fff
   border-radius: 8px

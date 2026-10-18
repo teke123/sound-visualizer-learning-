@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * P06 发音库（FR-701–703）：已发布关目录（分层）、试听、任选两关比较、易混快捷项。
+ * P06 发音库（FR-701–703）：已开放关目录（分层）、试听、任选两关比较、易混快捷项。
  * 工具页：不承载进度（进度呈现归 P03）。
  */
 import { computed, onMounted, ref } from 'vue'
@@ -101,7 +101,7 @@ function comparePair(aId: string, bId: string) {
     <template v-else>
       <section v-for="layer in byLayer" :key="layer.key" class="lib-layer" :aria-label="layer.name">
         <h2>{{ layer.name }}</h2>
-        <p v-if="layer.levels.length === 0" class="layer-empty">暂无已发布关卡</p>
+        <p v-if="layer.levels.length === 0" class="layer-empty">暂无已开放关卡</p>
         <div class="lib-grid">
           <div v-for="level in layer.levels" :key="level.id" class="lib-cell">
             <button v-if="pickMode" type="button" :class="['pick-check', { checked: selected.includes(level.id) }]" @click="togglePick(level.id)">

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * ConfusablePairList：易混关并排入口（FR-403 / FD-05）。
- * 仅显示双方都已发布的比较；点击打开 ComparePanel（?compare=，可分享）。
+ * 仅显示双方都已开放的比较；点击打开 ComparePanel（?compare=，可分享）。
  */
 import { computed } from 'vue'
 import type { ConfusablePair, LevelSummary } from '@/api'
@@ -30,7 +30,7 @@ const visiblePairs = computed<PairView[]>(() =>
   <section class="confusable-pairs" aria-label="易混关比较">
     <h2>易混音并排看</h2>
     <p class="pair-hint">两个容易混淆的音放在一起听、一起看，更容易分辨。</p>
-    <div v-if="visiblePairs.length === 0" class="pair-empty">暂无可比较的易混关（需双方都已发布）</div>
+    <div v-if="visiblePairs.length === 0" class="pair-empty">暂无可比较的易混关（需双方都已开放）</div>
     <ul v-else class="pair-list">
       <li v-for="item in visiblePairs" :key="item.pair.a" class="pair-item">
         <div class="pair-sounds">

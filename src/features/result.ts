@@ -18,7 +18,6 @@ export interface SubmittedEntry {
   submissionId: string
   audioId: string
   levelId: string
-  contentVersion: number
 }
 
 let submittedEntry: SubmittedEntry | null = null
@@ -91,7 +90,7 @@ export function useRecordingResult(recordingId: Ref<string>) {
           return
         }
       }
-      if (err instanceof ApiError && (err.code === 'AUTH_REQUIRED' || err.code === 'CONSENT_REQUIRED')) {
+      if (err instanceof ApiError && err.code === 'AUTH_REQUIRED') {
         contextStore.onAuthError(err)
       }
       error.value = err
@@ -135,7 +134,6 @@ export function useRecordingResult(recordingId: Ref<string>) {
     const res = await detectionApi.submitRecording({
       audioId: current.audioId,
       levelId: current.levelId,
-      contentVersion: current.contentVersion,
       submissionId: current.submissionId,
     })
     if (res.data.recording.recordingId !== current.recordingId) {
@@ -148,10 +146,10 @@ export function useRecordingResult(recordingId: Ref<string>) {
     void fetchOnce()
   }
 
-  /** 重新录音去向：从关卡页来 → /learn/:levelId#record；从检测中心来 → /test/:levelId */
+  /** 重新录音去向：回到关卡页 P05 录音区 */
   function retakeRoute(): string {
     const levelId = recording.value?.levelId ?? entry.value?.levelId
-    return levelId ? `/test/${levelId}` : '/test'
+    return levelId ? `/learn/${levelId}#record` : '/library'
   }
 
   function refreshLevels() {

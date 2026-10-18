@@ -20,10 +20,9 @@ const compareData = ref<ArchiveCompareResponse | null>(null)
 const compareLoading = ref(false)
 const compareError = ref<unknown>(null)
 
-/** 三种态：访客 / 未同意（无档案说明）/ 已同意（档案列表）—— P10 按 context 渲染 */
+/** 两种态：未登录（登录引导）/ 已登录（档案列表）—— P10 按 context 渲染 */
 function viewOf(contextStore: ReturnType<typeof useContextStore>) {
-  if (!contextStore.isAuthenticated) return 'guest' as const
-  return contextStore.consentGranted ? ('archive' as const) : ('no-consent' as const)
+  return contextStore.isAuthenticated ? ('archive' as const) : ('guest' as const)
 }
 
 export function useArchive() {
