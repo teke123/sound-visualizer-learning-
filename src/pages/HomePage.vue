@@ -36,29 +36,28 @@ function onSearch(q: string) {
   <div class="home-page">
     <section class="hero">
       <h1>看得见的声音</h1>
-      <p class="hero-sub">看口型、听示范、跟着练、录一录——用眼睛和耳朵一起学普通话发音。</p>
       <SearchBox class="hero-search" @search="onSearch" />
     </section>
 
     <nav class="main-buttons" aria-label="四个主入口">
-      <RouterLink to="/search" class="main-btn">🔍 搜一个音</RouterLink>
-      <RouterLink to="/principles" class="main-btn">📖 看懂发音</RouterLink>
+      <RouterLink to="/search" class="main-btn">搜一个音</RouterLink>
+      <RouterLink to="/principles" class="main-btn">看懂发音</RouterLink>
       <RouterLink
         v-if="hasPublished"
         :to="nextLevelId ? `/learn/${nextLevelId}#practice` : '/library'"
         class="main-btn"
       >
-        🏃 跟着练
+        跟着练
       </RouterLink>
-      <span v-else class="main-btn disabled">🏃 跟着练<span class="btn-note">暂无已开放内容</span></span>
+      <span v-else class="main-btn disabled">跟着练<span class="btn-note">暂无已开放内容</span></span>
       <RouterLink
         v-if="hasPublished"
         :to="nextLevelId ? `/learn/${nextLevelId}#record` : '/library'"
         class="main-btn"
       >
-        🎤 录音比较
+        录音比较
       </RouterLink>
-      <span v-else class="main-btn disabled">🎤 录音比较<span class="btn-note">暂无已开放内容</span></span>
+      <span v-else class="main-btn disabled">录音比较<span class="btn-note">暂无已开放内容</span></span>
     </nav>
 
     <section v-if="nextLevel" class="next-level" aria-label="下一关推荐">
@@ -101,11 +100,6 @@ function onSearch(q: string) {
     margin: 0 0 8px
     font-size: 30px
     color: #00695c
-
-.hero-sub
-  color: #546e7a
-  margin: 0 auto 16px
-  max-width: 480px
 
 .hero-search
   margin: 0 auto

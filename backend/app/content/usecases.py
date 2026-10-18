@@ -102,7 +102,7 @@ def level_sections(content: dict) -> dict:
     """关卡内容 JSON → demos/quizzes/practice/articulation/detection 负载段。"""
     demos = [
         {"mediaId": d["mediaId"], "speed": d.get("speed", "normal"),
-         "voice": d.get("voice"), "text": d.get("text", "")}
+         "voice": d.get("voice")}
         for d in (content.get("demos") or []) if d.get("mediaId")
     ]
     quizzes = [
@@ -373,8 +373,8 @@ def precheck_level(db: Session, content: dict) -> list[str]:
         if not q.get("stimulusMediaId"):
             missing.append(f"听辨题 {q.get('id')} 缺少题干音频")
     practice = content.get("practice") or []
-    if not 3 <= len(practice) <= 5:
-        missing.append("练习步骤须为 3–5 步")
+    if not practice:
+        missing.append("缺少练习步骤")
     pids = [p.get("id") for p in practice]
     if len(pids) != len(set(pids)):
         missing.append("练习步骤 id 重复")
@@ -389,9 +389,6 @@ def precheck_level(db: Session, content: dict) -> list[str]:
     demos = content.get("demos") or []
     if not any(d.get("speed") == "normal" and d.get("mediaId") for d in demos):
         missing.append("缺少正常语速示范音频")
-    for d in demos:
-        if d.get("mediaId") and not d.get("text"):
-            missing.append("示范音频缺少对应文字")
     det = content.get("detection") or {}
     if not det.get("promptText"):
         missing.append("缺少朗读提示词")
@@ -406,8 +403,6 @@ def precheck_level(db: Session, content: dict) -> list[str]:
     prof = content.get("professional") or {}
     if not prof.get("description"):
         missing.append("缺少专业折叠说明")
-    if not (prof.get("sources") or []):
-        missing.append("缺少资料来源与授权")
     # 引用的媒体必须存在且未删除
     all_media = _collect_media_ids(content)
     for mid in all_media:

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * PracticeStepper：跟着练（FR-605）：3–5 步，每步可播放、暂停、重做、标记完成，
+ * PracticeStepper：跟着练（FR-605）：每步可播放、暂停、重做、标记完成，
  * 显示次数或时长；步骤卡片锚点 #step-{stepId}。
  */
 import type { PracticeStep } from '@/api'

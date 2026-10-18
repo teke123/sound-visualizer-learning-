@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
- * AppShell：桌面顶部导航（一级页面 + 常驻搜索）与手机底部 5 标签
- * （首页 / 地图 / 发音库 / 档案 / 我的）。
+ * AppShell：桌面左侧导航栏（标题下常驻搜索 + 一级页面 + 账号入口）与
+ * 手机端顶部细栏 + 底部 5 标签（首页 / 地图 / 发音库 / 档案 / 我的）。
  */
 import { useRoute, useRouter } from 'vue-router'
 import { useContextStore } from '@/stores/context'
@@ -11,7 +11,7 @@ const route = useRoute()
 const router = useRouter()
 const contextStore = useContextStore()
 
-const topLinks = [
+const navLinks = [
   { to: '/', label: '首页' },
   { to: '/map', label: '发音地图' },
   { to: '/principles', label: '发音原理' },
@@ -20,11 +20,11 @@ const topLinks = [
 ]
 
 const bottomTabs = [
-  { to: '/', label: '首页', icon: '🏠' },
-  { to: '/map', label: '地图', icon: '🗺️' },
-  { to: '/library', label: '发音库', icon: '📚' },
-  { to: '/archive', label: '档案', icon: '📁' },
-  { to: '/account', label: '我的', icon: '👤' },
+  { to: '/', label: '首页' },
+  { to: '/map', label: '地图' },
+  { to: '/library', label: '发音库' },
+  { to: '/archive', label: '档案' },
+  { to: '/account', label: '我的' },
 ]
 
 function onSearch(q: string) {
@@ -39,19 +39,34 @@ function isActive(to: string): boolean {
 
 <template>
   <div class="app-shell">
-    <header class="top-nav">
-      <RouterLink to="/" class="brand">看得见的声音</RouterLink>
-      <nav class="top-links" aria-label="一级导航">
-        <RouterLink v-for="link in topLinks" :key="link.to" :to="link.to" :class="{ active: isActive(link.to) }">
+    <aside class="side-nav">
+      <div class="side-head">
+        <RouterLink to="/" class="brand">看得见的声音</RouterLink>
+        <SearchBox @search="onSearch" />
+      </div>
+      <nav class="side-links" aria-label="一级导航">
+        <RouterLink
+          v-for="link in navLinks"
+          :key="link.to"
+          :to="link.to"
+          class="side-link"
+          :class="{ active: isActive(link.to) }"
+        >
           {{ link.label }}
         </RouterLink>
       </nav>
-      <div class="top-right">
-        <SearchBox class="top-search" @search="onSearch" />
+      <div class="side-foot">
         <RouterLink to="/account" class="account-entry">
           {{ contextStore.isAuthenticated ? contextStore.context.username : '登录 / 注册' }}
         </RouterLink>
       </div>
+    </aside>
+
+    <header class="mobile-bar">
+      <RouterLink to="/" class="brand">看得见的声音</RouterLink>
+      <RouterLink to="/account" class="account-entry">
+        {{ contextStore.isAuthenticated ? contextStore.context.username : '登录 / 注册' }}
+      </RouterLink>
     </header>
 
     <main class="shell-main">
@@ -60,8 +75,7 @@ function isActive(to: string): boolean {
 
     <nav class="bottom-tabs" aria-label="手机导航">
       <RouterLink v-for="tab in bottomTabs" :key="tab.to" :to="tab.to" :class="{ active: isActive(tab.to) }">
-        <span class="tab-icon" aria-hidden="true">{{ tab.icon }}</span>
-        <span class="tab-label">{{ tab.label }}</span>
+        {{ tab.label }}
       </RouterLink>
     </nav>
   </div>
@@ -71,81 +85,115 @@ function isActive(to: string): boolean {
 .app-shell
   min-height: 100vh
   display: flex
-  flex-direction: column
   background: #f7f9fa
 
-.top-nav
-  display: flex
-  align-items: center
-  gap: 18px
-  padding: 10px 20px
-  background: #fff
-  border-bottom: 1px solid #eceff1
+/* —— 桌面左侧导航栏 —— */
+.side-nav
+  width: 240px
+  flex-shrink: 0
   position: sticky
   top: 0
+  height: 100vh
+  display: flex
+  flex-direction: column
+  gap: 18px
+  padding: 20px 14px 16px
+  box-sizing: border-box
+  background: #fff
+  border-right: 1px solid #eceff1
+  box-shadow: 4px 0 16px rgba(69, 90, 100, 0.04)
+  overflow-y: auto
   z-index: 100
 
+/* 标题与搜索组成一组，置于导航链接上方 */
+.side-head
+  display: flex
+  flex-direction: column
+  gap: 14px
+  padding-bottom: 16px
+  border-bottom: 1px solid #f1f4f5
+
 .brand
+  display: block
+  padding: 2px 2px 0
   font-weight: 800
-  font-size: 17px
+  font-size: 18px
   color: #00695c
   text-decoration: none
   white-space: nowrap
 
-.top-links
+.side-links
   display: flex
+  flex-direction: column
   gap: 4px
-  flex-wrap: wrap
-  a
-    padding: 8px 12px
-    border-radius: 8px
-    text-decoration: none
-    color: #455a64
-    font-size: 14px
-    min-height: 40px
-    display: inline-flex
-    align-items: center
-    &:hover
-      background: #e0f2f1
-    &.active
-      background: #e0f2f1
-      color: #00695c
-      font-weight: 700
 
-.top-right
-  margin-left: auto
+.side-link
   display: flex
   align-items: center
-  gap: 12px
-  flex: 1
-  justify-content: flex-end
-  max-width: 620px
+  padding: 10px 12px
+  border-radius: 10px
+  text-decoration: none
+  color: #455a64
+  font-size: 14px
+  min-height: 42px
+  transition: background 0.15s ease, color 0.15s ease
+  &:hover
+    background: #e0f2f1
+  &.active
+    background: #e0f2f1
+    color: #00695c
+    font-weight: 700
 
-.top-search
-  flex: 1
-  max-width: 380px
+.side-foot
+  margin-top: auto
+  border-top: 1px solid #f1f4f5
+  padding-top: 14px
 
 .account-entry
+  display: flex
+  align-items: center
+  justify-content: center
   white-space: nowrap
-  padding: 8px 14px
+  padding: 10px 14px
   border-radius: 999px
   background: #e0f2f1
   color: #00695c
   text-decoration: none
   font-size: 14px
   font-weight: 600
-  min-height: 40px
-  display: inline-flex
-  align-items: center
+  min-height: 42px
+  overflow: hidden
+  text-overflow: ellipsis
 
+/* —— 手机顶部细栏 —— */
+.mobile-bar
+  display: none
+  align-items: center
+  justify-content: space-between
+  gap: 12px
+  padding: 10px 16px
+  background: #fff
+  border-bottom: 1px solid #eceff1
+  position: sticky
+  top: 0
+  z-index: 100
+  .brand
+    padding: 0
+    font-size: 17px
+  .account-entry
+    min-height: 40px
+
+/* —— 主内容区 —— */
 .shell-main
   flex: 1
+  min-width: 0
   width: 100%
   max-width: 1080px
   margin: 0 auto
-  padding: 20px 16px 90px
+  padding: 24px 28px 56px
   box-sizing: border-box
 
+/* —— 手机底部标签 —— */
 .bottom-tabs
   display: none
   position: fixed
@@ -158,28 +206,27 @@ function isActive(to: string): boolean {
   a
     flex: 1
     display: flex
-    flex-direction: column
     align-items: center
-    gap: 2px
-    padding: 8px 0 calc(8px + env(safe-area-inset-bottom))
+    justify-content: center
+    padding: 10px 0 calc(10px + env(safe-area-inset-bottom))
     text-decoration: none
     color: #78909c
-    font-size: 11px
-    min-height: 56px
+    font-size: 13px
+    min-height: 52px
+    white-space: nowrap
     &.active
       color: #00897b
       font-weight: 700
 
-.tab-icon
-  font-size: 20px
-
 @media (max-width: 760px)
-  .top-links
+  .app-shell
+    flex-direction: column
+  .side-nav
     display: none
-  .top-search
-    display: none
+  .mobile-bar
+    display: flex
   .bottom-tabs
     display: flex
   .shell-main
-    padding-bottom: 110px
+    padding: 16px 16px 96px
 </style>

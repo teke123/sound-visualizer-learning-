@@ -88,7 +88,7 @@ function onSearch(term: string) {
         </button>
       </section>
     </template>
-    <p v-else class="empty-hint">输入汉字、拼音或关卡名开始搜索，例如 a、妈、翘舌。</p>
+    <p v-else class="empty-hint">输入拼音开始搜索。</p>
 
     <WishDialog :open="wishOpen" :search-query="q" @close="wishOpen = false" />
   </div>

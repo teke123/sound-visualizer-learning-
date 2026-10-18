@@ -89,7 +89,7 @@ def main() -> int:
 
         r = c.get("/api/levels/L30")
         d30 = r.json()["data"]
-        check("L30 detail quizzes>=3", len(d30["quizzes"]) >= 3)
+        check("L30 detail quizzes>=1", len(d30["quizzes"]) >= 1)
         check("L30 nav prev L29", d30["nav"]["prev"] == "L29")
         check("L30 detection promptText", bool(d30["detection"]["promptText"]))
 

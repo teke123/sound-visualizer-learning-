@@ -42,10 +42,6 @@ const requestId = computed(() => (props.state === 'error' ? requestIdOf(props.er
 <template>
   <div class="page-state" :class="`state-${state}`" role="status">
     <span v-if="state === 'loading'" class="spinner" aria-hidden="true"></span>
-    <span v-else-if="state === 'error'" class="state-icon" aria-hidden="true">⚠</span>
-    <span v-else-if="state === 'not-visible'" class="state-icon" aria-hidden="true">🚫</span>
-    <span v-else-if="state === 'forbidden'" class="state-icon" aria-hidden="true">🔒</span>
-    <span v-else class="state-icon" aria-hidden="true">📭</span>
     <p class="state-title">{{ title }}</p>
     <p v-if="hint" class="state-hint">{{ hint }}</p>
     <p v-if="requestId" class="state-request-id">requestId：{{ requestId }}</p>
@@ -76,9 +72,6 @@ const requestId = computed(() => (props.state === 'error' ? requestIdOf(props.er
   margin: 0
   font-size: 12px
   color: #b0bec5
-
-.state-icon
-  font-size: 30px
 
 .spinner
   width: 28px

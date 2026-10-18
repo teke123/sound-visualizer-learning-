@@ -93,22 +93,6 @@ const emit = defineEmits<{
     <section v-if="level.professional" class="level-section" aria-label="专业说明">
       <h2>专业与声学说明</h2>
       <p class="pro-content">{{ level.professional.description }}</p>
-      <div v-if="level.professional.acousticRefs?.length" class="pro-notes">
-        <h3>声学参考值</h3>
-        <ul>
-          <li v-for="ref in level.professional.acousticRefs" :key="ref.name">
-            {{ ref.name }}：{{ ref.value }}<template v-if="ref.note">（{{ ref.note }}）</template>
-          </li>
-        </ul>
-      </div>
-      <div v-if="level.professional.sources?.length" class="pro-references">
-        <h3>来源</h3>
-        <ul>
-          <li v-for="source in level.professional.sources" :key="source.title">
-            {{ source.title }} — {{ source.source }}（许可：{{ source.license }}）
-          </li>
-        </ul>
-      </div>
     </section>
   </article>
 </template>
@@ -170,17 +154,4 @@ const emit = defineEmits<{
   line-height: 1.8
   color: #37474f
   margin: 0
-
-.pro-notes, .pro-references
-  margin-top: 12px
-  h3
-    margin: 0 0 6px
-    font-size: 14px
-  ul
-    margin: 0
-    padding-left: 18px
-  li
-    font-size: 13px
-    color: #546e7a
-    line-height: 1.8
 </style>

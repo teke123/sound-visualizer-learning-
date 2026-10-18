@@ -141,7 +141,6 @@ class DemoItem(BaseModel):
     mediaId: str
     speed: Literal["normal", "slow"]
     voice: Optional[str] = None
-    text: Optional[str] = None
 
 
 class QuizOption(BaseModel):
@@ -173,22 +172,8 @@ class Misconception(BaseModel):
     fix: str
 
 
-class AcousticRef(BaseModel):
-    name: str
-    value: str
-    note: Optional[str] = None
-
-
-class ProSource(BaseModel):
-    title: str
-    source: str
-    license: str
-
-
 class Professional(BaseModel):
     description: str
-    acousticRefs: Optional[List[AcousticRef]] = None
-    sources: Optional[List[ProSource]] = None
 
 
 class DetectionTask(BaseModel):

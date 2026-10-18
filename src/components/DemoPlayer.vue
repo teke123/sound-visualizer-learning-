@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * DemoPlayer：正式示范播放（FR-604）：正常 / 慢速、支持多发音人（FV1~3 女声 1~3、MV1~3 男声 1~3）切换试听、字幕；
+ * DemoPlayer：正式示范播放（FR-604）：正常 / 慢速、支持多发音人（FV1~3 女声 1~3、MV1~3 男声 1~3）切换试听；
  * 经 player store 全局唯一播放；音频 preload none（§9）。
  */
 import { computed } from 'vue'
@@ -75,10 +75,6 @@ const grouped = computed(() => ({
         </button>
       </div>
     </div>
-    <p v-for="item in items" :key="`text-${item.mediaId}`" v-show="false" class="sr-only">
-      {{ item.text ?? '示范音频' }}
-    </p>
-    <p v-if="items[0]?.text" class="demo-subtitle">示范文字：{{ items[0].text }}</p>
     <p v-if="player.current?.key?.startsWith('demo:') && player.errorMessage" class="demo-error">
       {{ player.errorMessage }}
     </p>
@@ -125,11 +121,6 @@ const grouped = computed(() => ({
 .demo-icon
   font-size: 12px
 
-.demo-subtitle
-  font-size: 14px
-  color: #546e7a
-  margin: 0
-
 .demo-error
   font-size: 13px
   color: #c62828
@@ -138,11 +129,4 @@ const grouped = computed(() => ({
 .demo-empty
   color: #90a4ae
   font-size: 14px
-
-.sr-only
-  position: absolute
-  width: 1px
-  height: 1px
-  overflow: hidden
-  clip: rect(0 0 0 0)
 </style>

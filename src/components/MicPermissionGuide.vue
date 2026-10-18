@@ -6,7 +6,7 @@ const GUIDES: Array<{ browser: string; steps: string[] }> = [
   {
     browser: 'Chrome（电脑）',
     steps: [
-      '点击地址栏左侧的「🔒 / ⚙」图标',
+      '点击地址栏左侧的小锁或齿轮图标',
       '找到「麦克风」，将权限改为「允许」',
       '刷新本页后重新点击录音',
     ],

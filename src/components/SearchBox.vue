@@ -1,5 +1,5 @@
 <script setup lang="ts">
-/** SearchBox：P01 / P02 搜索入口（FR-203 提示可输入汉字、拼音或关卡名） */
+/** SearchBox：P01 / P02 搜索入口（FR-203，提示“请输入拼音”；也支持汉字、关卡名） */
 import { ref } from 'vue'
 
 const props = defineProps<{
@@ -22,42 +22,55 @@ function submit() {
       v-model="query"
       type="search"
       class="search-input"
-      placeholder="搜一个音：可输入汉字、拼音或关卡名，例如 a、妈、翘舌"
+      placeholder="请输入拼音"
       aria-label="搜索关卡"
       enterkeyhint="search"
     />
-    <button type="submit" class="search-btn">搜一个音</button>
+    <button type="submit" class="search-btn" aria-label="搜索">
+      <span class="material-icons" aria-hidden="true">search</span>
+    </button>
   </form>
 </template>
 
 <style scoped lang="sass">
 .search-box
-  display: flex
-  gap: 8px
+  position: relative
   width: 100%
   max-width: 560px
 
 .search-input
-  flex: 1
+  width: 100%
   min-height: 46px
-  padding: 6px 14px
+  padding: 6px 52px 6px 14px
   border: 2px solid #b2dfdb
   border-radius: 10px
   font-size: 15px
   outline: none
+  box-sizing: border-box
   &:focus
     border-color: #00897b
+  /* 隐藏 WebKit 原生清除按钮，避免与右侧图标按钮重叠 */
+  &::-webkit-search-cancel-button
+    display: none
 
 .search-btn
-  min-height: 46px
-  padding: 6px 20px
+  position: absolute
+  top: 50%
+  right: 5px
+  transform: translateY(-50%)
+  width: 34px
+  height: 34px
   border: none
-  border-radius: 10px
+  border-radius: 8px
   background: #00897b
   color: #fff
-  font-size: 15px
-  font-weight: 600
+  display: inline-flex
+  align-items: center
+  justify-content: center
   cursor: pointer
   &:hover
     background: #00796b
+
+.material-icons
+  font-size: 20px
 </style>

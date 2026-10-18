@@ -859,15 +859,6 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** AcousticRef */
-        AcousticRef: {
-            /** Name */
-            name: string;
-            /** Value */
-            value: string;
-            /** Note */
-            note?: string | null;
-        };
         /** AdminLoginBody */
         AdminLoginBody: {
             /** Username */
@@ -1244,8 +1235,6 @@ export interface components {
             speed: "normal" | "slow";
             /** Voice */
             voice?: string | null;
-            /** Text */
-            text?: string | null;
         };
         /** DetectionTask */
         DetectionTask: {
@@ -2152,23 +2141,10 @@ export interface components {
             /** Mediaid */
             mediaId?: string | null;
         };
-        /** ProSource */
-        ProSource: {
-            /** Title */
-            title: string;
-            /** Source */
-            source: string;
-            /** License */
-            license: string;
-        };
         /** Professional */
         Professional: {
             /** Description */
             description: string;
-            /** Acousticrefs */
-            acousticRefs?: components["schemas"]["AcousticRef"][] | null;
-            /** Sources */
-            sources?: components["schemas"]["ProSource"][] | null;
         };
         /**
          * ProfileBody

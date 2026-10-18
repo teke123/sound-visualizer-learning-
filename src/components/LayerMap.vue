@@ -73,7 +73,6 @@ const layers = computed(() =>
             :class="{ completed: node.completed }"
           >
             <span class="node-sound">{{ node.label }}</span>
-            <span class="node-id">{{ node.id }}</span>
             <span v-if="node.completed" class="node-done" aria-label="已完成">✓</span>
           </RouterLink>
           <span v-else class="map-node skeleton" aria-label="未开放">

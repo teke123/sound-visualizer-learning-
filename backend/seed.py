@@ -257,7 +257,6 @@ def seed_levels(db, corpus: Path, speakers: dict[str, str], open_count: int) -> 
                 "ref": f"{level_id}_demo_normal_{code}",
                 "speed": "normal",
                 "voice": voice_tag,
-                "text": demo_text,
                 "mediaId": media_id,
             })
         content["demos"] = demos

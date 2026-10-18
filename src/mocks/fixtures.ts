@@ -251,8 +251,8 @@ export const LEVEL_SUMMARIES: LevelSummary[] = SEEDS.map((seed) => ({
   demoMediaId: `aud-${seed.id}-demo`,
   availability: 'open' as const,
   completionKeys: {
-    quizIds: [`${seed.id}-q1`, `${seed.id}-q2`],
-    practiceStepIds: [`${seed.id}-s1`, `${seed.id}-s2`, `${seed.id}-s3`],
+    quizIds: [`${seed.id}-q1`],
+    practiceStepIds: [`${seed.id}-s1`],
   },
 }))
 
@@ -296,79 +296,34 @@ export const LEVEL_DETAILS: Record<string, LevelDetail> = Object.fromEntries(
           mediaId: `aud-${seed.id}-demo-${spk}`,
           speed: 'normal' as const,
           voice: spk,
-          text: seed.promptText.replace('请朗读：', ''),
         })),
         quizzes: [
           {
             id: `${seed.id}-q1`,
             stimulusMediaId: `aud-${seed.id}-quiz1`,
-            prompt: '听一听，这是哪个音？',
-            options: [
-              { text: seed.targetSound },
-              { text: seed.id === 'L07' ? 'p' : seed.id === 'L13' ? 'l' : seed.id === 'L01' ? 'o' : 'm' },
-            ],
+            prompt: '占位题干。',
+            options: [{ text: '占位选项 A' }, { text: '占位选项 B' }],
             answerIndex: 0,
-            explanation: `题干示范就是 ${seed.targetSound}；注意与易混音的差别。`,
-          },
-          {
-            id: `${seed.id}-q2`,
-            stimulusMediaId: `aud-${seed.id}-quiz2`,
-            prompt: '再听一个，选对的。',
-            options: [
-              { text: seed.id === 'L07' ? 'p' : seed.id === 'L13' ? 'l' : seed.id === 'L01' ? 'o' : 'm' },
-              { text: seed.targetSound },
-            ],
-            answerIndex: 1,
+            explanation: '占位解析。',
           },
         ],
         practice: [
           {
             id: `${seed.id}-s1`,
-            title: '对着镜子摆口型',
-            instruction: '按本关口型慢慢摆 5 次，看清镜子里的变化。',
-            repeat: 5,
-            bodyCue: '嘴唇和舌头的位置有明确感觉，不勉强用力',
-            mediaId: `aud-${seed.id}-demo`,
-          },
-          {
-            id: `${seed.id}-s2`,
-            title: '听示范跟读',
-            instruction: '播放示范，跟读模仿；可以先慢速，再正常语速。',
-            repeat: 5,
-            bodyCue: '喉咙放松，声音自然',
-            mediaId: `aud-${seed.id}-demo-slow`,
-          },
-          {
-            id: `${seed.id}-s3`,
-            title: '连着说三个',
-            instruction: `把「${seed.representativeChar ?? seed.targetSound}」连说三遍，中间不换气。`,
-            durationSec: 10,
-            bodyCue: '呼吸平稳',
+            title: '占位练习',
+            instruction: '占位练习指令。',
+            repeat: 3,
+            bodyCue: '占位身体提示。',
           },
         ],
         misconceptions: [
           {
-            phenomenon: `别人可能把 ${seed.targetSound} 听成与它易混的音`,
-            fix: '回到剖面图看清舌位与唇形，再对照示范慢速跟读。',
+            phenomenon: '占位误区现象。',
+            fix: '占位纠正建议。',
           },
         ],
         professional: {
-          description: `${seed.title}：${seed.description} 发音部位与方法的语音学描述以关卡专业资料为准。`,
-          acousticRefs: isVowel
-            ? [
-                { name: 'F1（第一共振峰）', value: '约 700–1000 Hz', note: '开口度越大 F1 越高，因人而异' },
-                { name: 'F2（第二共振峰）', value: '约 1100–1500 Hz', note: '舌位越前 F2 越高，因人而异' },
-              ]
-            : [
-                { name: 'VOT（嗓音起始时间）', value: '不送气塞音约 0–20 ms，送气约 60–100 ms', note: '因语速与个体浮动' },
-              ],
-          sources: [
-            {
-              title: '普通话语音学基础资料（示例）',
-              source: '教学团队提供',
-              license: '仅本站教学使用',
-            },
-          ],
+          description: '占位专业与声学说明。',
         },
         detection: {
           promptText: seed.promptText,

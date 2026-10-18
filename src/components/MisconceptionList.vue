@@ -10,8 +10,8 @@ defineProps<{ items: Misconception[] }>()
     <p v-if="items.length === 0" class="m-empty">本关暂无误区说明</p>
     <ul v-else class="m-list">
       <li v-for="(item, index) in items" :key="index" class="m-item">
-        <p class="m-observable">👂 {{ item.phenomenon }}</p>
-        <p class="m-fix">✅ 可以这样改：{{ item.fix }}</p>
+        <p class="m-observable">{{ item.phenomenon }}</p>
+        <p class="m-fix">可以这样改：{{ item.fix }}</p>
       </li>
     </ul>
   </div>
