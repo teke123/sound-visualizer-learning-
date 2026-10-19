@@ -3,13 +3,14 @@
  * LevelLearnSection：关卡页内容区（level 已就绪，P05 = 学习与录音检测一体，FR-609）。
  * 在此一次性建立 quiz / practice / assessment 流程（level 引用稳定）。
  */
-import { computed, onBeforeUnmount, toRef } from 'vue'
-import { mediaUrl, type LevelDetail } from '@/api'
+import { computed, onBeforeUnmount, ref, toRef } from 'vue'
+import { detectionApi, mediaUrl, type LevelDetail } from '@/api'
 import { useQuiz } from '@/features/quiz'
 import { usePractice } from '@/features/practice'
 import { useAssessmentFlow } from '@/features/assessment'
 import { useComparePanel } from '@/features/compare'
 import { useLevelsStore } from '@/stores/levels'
+import { useContextStore } from '@/stores/context'
 import { usePlayerStore } from '@/stores/player'
 import { useRecorderStore } from '@/stores/recorder'
 import LevelView from '@/renderers/LevelView.vue'
@@ -18,7 +19,7 @@ import ComparePanel from '@/components/ComparePanel.vue'
 import RecorderPanel from '@/components/RecorderPanel.vue'
 import CalibrationPanel from '@/components/CalibrationPanel.vue'
 import FeedbackWidget from '@/components/FeedbackWidget.vue'
-import { toneOfPinyin } from '@/utils/realtimeAcoustics'
+import { toneOfPinyin, type PitchRangeHz } from '@/utils/realtimeAcoustics'
 
 const props = defineProps<{ level: LevelDetail }>()
 const emit = defineEmits<{ (e: 'reload'): void }>()
@@ -26,6 +27,7 @@ const emit = defineEmits<{ (e: 'reload'): void }>()
 const levelsStore = useLevelsStore()
 const player = usePlayerStore()
 const recorder = useRecorderStore()
+const contextStore = useContextStore()
 
 const levelRef = toRef(props, 'level')
 
@@ -69,6 +71,22 @@ const realtimeFocus = computed<'pitch' | 'onset'>(() => (props.level.layer === '
 /** 目标调型：从关卡 pinyin 声调符号推导，推不出则不画引导带 */
 const realtimeTargetTone = computed(() => toneOfPinyin(props.level.pinyin))
 
+/** 个人音域（已标定时读一次并冻结，练习期间不重建；docs §1/§6.1） */
+const realtimeRangeHz = ref<PitchRangeHz | null>(null)
+if (contextStore.isAuthenticated) {
+  void detectionApi
+    .getCalibration()
+    .then((info) => {
+      const r = info.pitchRange
+      if (r && typeof r.fLo === 'number' && typeof r.fHi === 'number' && r.fLo < r.fHi) {
+        realtimeRangeHz.value = { fLo: r.fLo, fHi: r.fHi }
+      }
+    })
+    .catch(() => {
+      /* 未标定/读取失败：回落自适应窗口 */
+    })
+}
+
 onBeforeUnmount(() => recorder.release())
 </script>
 
@@ -107,6 +125,7 @@ onBeforeUnmount(() => recorder.release())
           :recorder-error="recorder.error"
           :focus="realtimeFocus"
           :target-tone="realtimeTargetTone"
+          :range-hz="realtimeRangeHz"
           @begin="flow.begin"
           @retry-mic="flow.requestMic"
           @start="flow.startRecording"

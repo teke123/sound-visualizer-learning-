@@ -37,6 +37,13 @@ function pushFrames(tracker: RealtimePitchTracker, signal: Float32Array, count: 
   }
 }
 
+/** 按 10ms 分析步长推帧（与生产画布一致，docs §6.1） */
+function pushFrames10ms(tracker: RealtimePitchTracker, signal: Float32Array, count: number, startT = 0): void {
+  for (let i = 0; i < count; i += 1) {
+    tracker.push(signal, startT + i * 0.01)
+  }
+}
+
 describe('半音换算', () => {
   it('Hz 与半音互为反函数', () => {
     for (const hz of [65, 85, 110, 220, 320, 500]) {
@@ -74,16 +81,47 @@ describe('RealtimePitchTracker', () => {
     expect(tracker.frames.every((f) => f.kind === 'unvoicedNoise' && f.f0Hz === null)).toBe(true)
   })
 
-  it('中值滤波剃掉单帧八度跳变', () => {
+  it('单帧八度毛刺被滤除（10ms 邻近帧率下走观察缓冲留空）', () => {
+    const step = ANALYSIS_FFT_SIZE / SAMPLE_RATE
     const tracker = new RealtimePitchTracker(SAMPLE_RATE)
     pushFrames(tracker, sineWave(220), 5) // 稳态 220Hz
-    tracker.push(sineWave(440), 1) // 注入一帧八度毛刺
-    pushFrames(tracker, sineWave(220), 2)
+    tracker.push(sineWave(440), 5 * step) // 注入一帧八度毛刺（时间单调递增）
+    pushFrames(tracker, sineWave(220), 2, 6 * step)
     const around = tracker.frames.slice(-3)
     for (const frame of around) {
-      expect(frame.f0Hz!).toBeGreaterThan(180)
-      expect(frame.f0Hz!).toBeLessThan(260)
+      // 毛刺帧按 docs §6.1 留空或被中值滤波压回，后续帧回到 220Hz 邻域
+      if (frame.f0Hz === null) continue
+      expect(frame.f0Hz).toBeGreaterThan(180)
+      expect(frame.f0Hz).toBeLessThan(260)
     }
+    const last = tracker.frames.at(-1)!
+    expect(last.f0Hz).not.toBeNull()
+    expect(last.f0Hz!).toBeGreaterThan(180)
+    expect(last.f0Hz!).toBeLessThan(260)
+  })
+
+  it('10ms 步长下八度跳变进入观察缓冲：毛刺留空，回原轨迹后恢复', () => {
+    const tracker = new RealtimePitchTracker(SAMPLE_RATE)
+    pushFrames10ms(tracker, sineWave(220), 6)   // 稳态
+    const glitch = tracker.push(sineWave(440), 0.06)  // 10ms 内跳八度：rate=12 ST/10ms
+    expect(glitch.f0Hz).toBeNull()                    // 待判定留白
+    const back = tracker.push(sineWave(220), 0.07)    // 回到原轨迹
+    expect(back.f0Hz).toBeNull()                      // 毛刺期间保持留空
+    const resumed = tracker.push(sineWave(220), 0.08) // 之后恢复正常显示
+    expect(resumed.f0Hz).not.toBeNull()
+    expect(resumed.f0Hz!).toBeGreaterThan(180)
+    expect(resumed.f0Hz!).toBeLessThan(260)
+  })
+
+  it('10ms 步长下持续新平台（3 帧）被接纳为新轨迹', () => {
+    const tracker = new RealtimePitchTracker(SAMPLE_RATE)
+    pushFrames10ms(tracker, sineWave(220), 6)
+    expect(tracker.push(sineWave(440), 0.06).f0Hz).toBeNull()  // 观察第 1 帧
+    expect(tracker.push(sineWave(440), 0.07).f0Hz).toBeNull()  // 观察第 2 帧
+    const accepted = tracker.push(sineWave(440), 0.08)         // 第 3 帧：接纳
+    expect(accepted.f0Hz).not.toBeNull()
+    expect(accepted.f0Hz!).toBeGreaterThan(380)
+    expect(accepted.f0Hz!).toBeLessThan(500)
   })
 
   it('无声断开超过 3 帧后清空平滑状态（新音节不跨段连线）', () => {

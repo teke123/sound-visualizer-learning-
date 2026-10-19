@@ -187,6 +187,23 @@ export const handlers = [
     new HttpResponse(TINY_PNG, { headers: { 'Content-Type': 'image/png', 'Cache-Control': 'private, no-store' } }),
   ),
 
+  // 音高哼鸣（docs §5.2）：用户侧与标准侧共用合成音
+  http.get('/api/audio/:id/f0-hum.wav', ({ request, params }) => {
+    const url = new URL(request.url)
+    const freq = url.searchParams.has('fhi') ? 220 : freqForMediaId(String(params.id))
+    return new HttpResponse(makeToneWav({ durationSec: 0.7, freq: Math.max(80, freq % 400 + 120) }), {
+      headers: { 'Content-Type': 'audio/wav', 'Cache-Control': 'private, no-store' },
+    })
+  }),
+
+  http.get('/api/media/:id/f0-hum.wav', ({ request }) => {
+    const url = new URL(request.url)
+    const freq = url.searchParams.has('fhi') ? 200 : 240
+    return new HttpResponse(makeToneWav({ durationSec: 0.7, freq }), {
+      headers: { 'Content-Type': 'audio/wav', 'Cache-Control': 'no-cache' },
+    })
+  }),
+
   http.get('/api/pitch-calibration', () =>
     envelope({
       text: CALIBRATION_TEXT.text,

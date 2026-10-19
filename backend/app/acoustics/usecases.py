@@ -165,6 +165,81 @@ def get_spectrogram_png(db: Session, row: AudioRow) -> Path:
     return config.DATA_DIR / payload["path"]
 
 
+# ---------------- 音高哼鸣（Sonification，docs/f0展示修改测试版1.md §5.2）----------------
+
+def _hum_wav_path(key: str) -> Path:
+    d = config.DATA_DIR / "hum"
+    d.mkdir(parents=True, exist_ok=True)
+    return d / f"{key}.wav"
+
+
+def get_f0_hum(db: Session, row: AudioRow,
+               remap: tuple[float, float] | None = None) -> Path:
+    """用户录音的音高哼鸣 WAV：绘图帧 → sonify_f0（中性元音 /a/ 级联合成），
+    保留原始时长与缺口；remap 给出音域时按五度值映射（「按我的音域听标准」
+    用于标准示范，此处对用户曲线无意义但保持同接口）。"""
+    kind = "f0_hum" if remap is None else f"f0_hum_remap_{remap[0]:.1f}_{remap[1]:.1f}"
+
+    def compute() -> dict:
+        from app.acoustics import f0_pipeline
+
+        track = f0_pipeline.extract_track(audio_path(row))
+        segs = f0_pipeline.process_syllables(track, [(0.0, track.duration)], 50.0, 500.0)
+        frames = [fr for seg in segs for fr in seg["frames"]]
+        pcm = f0_pipeline.sonify_frames(frames, remap_range=remap)
+        path = _hum_wav_path(f"{row.id}_{kind}")
+        path.write_bytes(pcm)
+        return {"path": str(path.relative_to(config.DATA_DIR))}
+
+    payload = _load_or_compute(db, row, kind, compute)
+    return config.DATA_DIR / payload["path"]
+
+
+def get_media_f0_hum(db: Session, media_id: str,
+                     remap: tuple[float, float] | None = None) -> Path | None:
+    """标准示范媒体的音高哼鸣（公开内容，与 /media/{id} 同访问级别）。
+    remap = 用户音域时输出「按我的音域听标准」。媒体非 AudioRow，
+    借 FeatureCacheRow 以 media_id 作缓存键（算法版本参与命中）。"""
+    from app.content.models import MediaAssetRow
+
+    asset = db.get(MediaAssetRow, media_id)
+    if asset is None or asset.deleted_at is not None:
+        return None
+    path = config.DATA_DIR / asset.storage_path
+    if not path.exists():
+        return None
+    kind = "f0_hum" if remap is None else f"f0_hum_remap_{remap[0]:.1f}_{remap[1]:.1f}"
+    cached = (
+        db.query(FeatureCacheRow)
+        .filter(FeatureCacheRow.audio_id == media_id, FeatureCacheRow.kind == kind,
+                FeatureCacheRow.algorithm_version == analysis.ALGORITHM_VERSION)
+        .one_or_none()
+    )
+    if cached is not None:
+        payload = JSONText.load(cached.payload, {})
+        p = config.DATA_DIR / payload.get("path", "?")
+        if p.exists():
+            return p
+
+    from app.acoustics import f0_pipeline
+
+    track = f0_pipeline.extract_track(path)
+    segs = f0_pipeline.process_syllables(track, [(0.0, track.duration)], 50.0, 500.0)
+    frames = [fr for seg in segs for fr in seg["frames"]]
+    try:
+        pcm = f0_pipeline.sonify_frames(frames, remap_range=remap)
+    except f0_pipeline.F0PipelineError:
+        return None
+    out = _hum_wav_path(f"{media_id}_{kind}")
+    out.write_bytes(pcm)
+    db.add(FeatureCacheRow(audio_id=media_id, kind=kind,
+                           algorithm_version=analysis.ALGORITHM_VERSION,
+                           payload=JSONText.dump({"path": str(out.relative_to(config.DATA_DIR))}),
+                           created_at=now()))
+    db.commit()
+    return out
+
+
 def _matplotlib_png():
     """Agg 后端 + CJK 字体回退链（默认 DejaVu Sans 无中文字形，标题会变方框）。"""
     import matplotlib

@@ -31,3 +31,15 @@ export function audioFormantsPngUrl(audioId: string): string {
 export function audioSpectrogramPngUrl(audioId: string): string {
   return `/api/audio/${encodeURIComponent(audioId)}/spectrogram.png`
 }
+
+/** 本人录音音高哼鸣（Sonification：剥离咬字的音高旋律） */
+export function audioF0HumUrl(audioId: string): string {
+  return `/api/audio/${encodeURIComponent(audioId)}/f0-hum.wav`
+}
+
+/** 标准示范音高哼鸣；remap 给出用户音域时输出「按我的音域听标准」 */
+export function mediaF0HumUrl(mediaId: string, remap?: { fLo: number; fHi: number }): string {
+  const base = `/api/media/${encodeURIComponent(mediaId)}/f0-hum.wav`
+  if (!remap) return base
+  return `${base}?flo=${remap.fLo}&fhi=${remap.fHi}`
+}

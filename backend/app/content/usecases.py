@@ -14,7 +14,7 @@ from app.content.models import (
 )
 from app.db import JSONText, now
 from app.platform.envelope import ApiError
-from app.pinyin_utils import split_pinyin
+from app.pinyin_utils import expected_syllables, split_pinyin
 
 logger = logging.getLogger("svs.content")
 
@@ -452,10 +452,30 @@ def _collect_media_ids(content: dict) -> set[str | None]:
 
 # ---------------- 标准曲线（检测对比参考） ----------------
 
+def _split_voiced_equal(voiced: list[list[float]], n: int) -> list[tuple[float, float]]:
+    """有声段按音节数等分（与标定回退同款切分，见 scoring.usecases.calibrate_path）。"""
+    total = sum(b - a for a, b in voiced)
+    if total <= 0 or n <= 0:
+        return []
+    per = total / n
+    segments: list[tuple[float, float]] = []
+    for a, b in voiced:
+        s, r = a, b - a
+        while r > 1e-3 and len(segments) < n:
+            take = min(r, per)
+            segments.append((s, s + take))
+            s += take
+            r -= take
+    return segments
+
+
 def compute_standard_curve(db: Session, content: dict) -> dict | None:
-    """按参考示范与参考发音人计算标准曲线：F0 → T 值换算。
-    提取失败（如清辅音为主、无法提取有效音高）时返回 None，
-    该关结果页曲线对比降级为不可用，不阻断内容保存。"""
+    """标准示范曲线：与用户录音同一条 F0 管线（filtered AC + 四步清洗 +
+    degree 1-5 五度坐标，docs/f0展示修改测试版1.md §5.1），音域用参考
+    发音人自身固定音域。音节边界为本地推断（有声段按音节数等分），全程
+    不调评分 Provider——seed 30 关与后台保存关卡都不消耗评测配额。
+    提取失败（如清辅音为主）时返回 None，该关结果页曲线对比降级为不可用，
+    不阻断内容保存。"""
     det = content.get("detection") or {}
     media_id = det.get("sampleMediaId")
     speaker_id = det.get("referenceSpeakerId")
@@ -464,45 +484,24 @@ def compute_standard_curve(db: Session, content: dict) -> dict | None:
     if asset is None or speaker is None:
         return None
     from app.acoustics import analysis as acx
-    from app.scoring.usecases import get_provider
+    from app.acoustics import f0_pipeline
 
     path = config.DATA_DIR / asset.storage_path
     if not path.exists():
         return None
     try:
-        provider = get_provider()
-        prov = provider.evaluate(str(path), det.get("evaluationText", ""))
-        f0res = acx.extract_f0(path)
+        track = f0_pipeline.extract_track(path)
+        voiced = acx.extract_f0(path).voiced_ranges
     except Exception:
         logger.warning("标准曲线计算失败：media=%s speaker=%s", media_id, speaker_id,
                        exc_info=True)
         return None
-    if not f0res.reliable:
-        return None
-    frames_t = np.array([fr["t"] for fr in f0res.frames], dtype=float)
-    frames_hz = np.array([fr.get("hz", np.nan) for fr in f0res.frames], dtype=float)
-    segments = []
-    for syl in prov.syllables:
-        mask = (frames_t >= syl.t0) & (frames_t <= syl.t1) & np.isfinite(frames_hz)
-        t_sel, hz_sel = frames_t[mask], frames_hz[mask]
-        if t_sel.size >= 8:
-            # 剔除首尾各 1 帧边缘微扰，并用 3 点中值滤波平滑单帧抖动
-            t_sel, hz_sel = t_sel[1:-1], hz_sel[1:-1]
-            from scipy.signal import medfilt
-
-            hz_sel = medfilt(hz_sel, kernel_size=3)
-        if t_sel.size < 3:
-            continue
-        span = t_sel[-1] - t_sel[0]
-        if span <= 0:
-            continue
-        tv = acx.to_t_values(hz_sel, speaker.f_lo, speaker.f_hi)
-        points = [{"t": round(float((ti - t_sel[0]) / span), 4), "v": round(float(v), 3)}
-                  for ti, v in zip(t_sel, tv) if np.isfinite(v)]
-        if not points:
-            continue
-        segments.append({"syllable": syl.text, "toneValue": syl.tone_value, "points": points})
-    if not segments:
+    n = len(expected_syllables(det.get("evaluationText", "")))
+    bounds = (_split_voiced_equal(voiced, n)
+              or [(0.0, track.duration)])
+    segments = f0_pipeline.process_syllables(track, bounds, speaker.f_lo, speaker.f_hi)
+    if not any((seg.get("quality") or {}).get("validFrames", 0) >= f0_pipeline.MIN_DRAW_RUN
+               for seg in segments):
         return None
     # 参考元音区（单韵母关共振峰参考）
     reference_region = None
@@ -517,9 +516,12 @@ def compute_standard_curve(db: Session, content: dict) -> dict | None:
         ]
         reference_region = {"vowel": target_vowel, "center": center, "radius": 1.5}
     curve = {
-        "scale": "T",
+        "scale": "degree",
         "algorithmVersion": acx.ALGORITHM_VERSION,
         "referenceSpeakerId": speaker.id,
+        "referenceRange": {"fLo": round(float(speaker.f_lo), 1),
+                           "fHi": round(float(speaker.f_hi), 1)},
+        "sampleMediaId": asset.id,
         "segments": segments,
     }
     if reference_region:

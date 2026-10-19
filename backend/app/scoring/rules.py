@@ -1,4 +1,4 @@
-"""规则引擎：现象标签与四步反馈、T 值曲线分析、共振峰对比、朗读检错报告
+"""规则引擎：现象标签与四步反馈、五度曲线分析、共振峰对比、朗读检错报告
 （FR-1004/1005/1006/1007；四步文字来自人工审定模板，同一分析结果输出一致）。
 """
 from __future__ import annotations
@@ -7,8 +7,9 @@ from pathlib import Path
 
 import numpy as np
 
+from app.acoustics import analysis
 from app.acoustics.analysis import (
-    F0Result, detect_onset_span, extract_formants, formant_stats_in_segments, to_t_values,
+    F0Result, detect_onset_span, extract_formants, formant_stats_in_segments,
 )
 from app.scoring.provider import ProviderResult
 
@@ -119,103 +120,138 @@ def reading_report(provider: ProviderResult) -> dict:
     return reading
 
 
-def _t_curve_in_segment(f0: F0Result, seg: tuple[float, float],
-                        f_lo: float, f_hi: float) -> list[dict]:
-    ts = np.array([fr["t"] for fr in f0.frames], dtype=float)
-    hz = np.array([fr.get("hz", np.nan) for fr in f0.frames], dtype=float)
-    mask = (ts >= seg[0]) & (ts <= seg[1]) & np.isfinite(hz)
-    t_sel, hz_sel = ts[mask], hz[mask]
-    if t_sel.size >= 8:
-        t_sel, hz_sel = t_sel[1:-1], hz_sel[1:-1]
-        from scipy.signal import medfilt
-
-        hz_sel = medfilt(hz_sel, kernel_size=3)
-    if t_sel.size < 3:
-        return []
-    span = t_sel[-1] - t_sel[0]
-    if span <= 0:
-        return []
-    tv = to_t_values(hz_sel, f_lo, f_hi)
-    return [
-        {"t": round(float((ti - t_sel[0]) / span), 4), "v": round(float(v), 3)}
-        for ti, v in zip(t_sel, tv) if np.isfinite(v)
-    ]
-
-
-def analyze_user_curve(f0: F0Result, provider: ProviderResult,
-                       snapshot: dict, standard_curve: dict | None) -> dict:
-    """结果主对比曲线：按音节分段，T 值换算按受理时音域快照冻结（FR-1006）。"""
-    f_lo, f_hi = snapshot["fLo"], snapshot["fHi"]
-    if standard_curve is None or not f0.reliable:
-        return {
-            "status": "not_available",
-            "scale": "T",
-            "segments": [],
-            "rangeSnapshotId": snapshot.get("id"),
-            "note": f0.note or "本关暂无标准曲线",
-        }
-    ref_by_index = list(standard_curve.get("segments", []))
-    segments = []
-    for i, syl in enumerate(provider.syllables):
-        user = _t_curve_in_segment(f0, (syl.t0, syl.t1), f_lo, f_hi)
-        ref = ref_by_index[i]["points"] if i < len(ref_by_index) else []
-        segments.append({
-            "syllable": syl.text,
-            "toneValue": syl.tone_value,
-            "user": user,
-            "reference": ref,
-        })
+def _not_available_curve(snapshot: dict, note: str) -> dict:
     return {
-        "status": "ok",
-        "scale": "T",
-        "segments": segments,
+        "status": "not_available",
+        "scale": "degree",
+        "algorithmVersion": analysis.ALGORITHM_VERSION,
+        "segments": [],
         "rangeSnapshotId": snapshot.get("id"),
+        "userRange": {"fLo": snapshot.get("fLo"), "fHi": snapshot.get("fHi")},
+        "note": note,
     }
 
 
+def analyze_user_curve(wav_path: str, provider: ProviderResult,
+                       snapshot: dict, standard_curve: dict | None) -> dict:
+    """结果主对比曲线：与标准示范同一条 F0 管线（filtered AC + 四步清洗 +
+    degree 1-5 五度坐标，docs/f0展示修改测试版1.md），音域按受理时快照冻结
+    （FR-1006）。整段录音有任一可绘制音节即返回 ok。"""
+    from app.acoustics import f0_pipeline
+
+    f_lo, f_hi = snapshot["fLo"], snapshot["fHi"]
+    if standard_curve is None:
+        return _not_available_curve(snapshot, "本关暂无标准曲线")
+    try:
+        track = f0_pipeline.extract_track(wav_path)
+    except f0_pipeline.F0PipelineError as e:
+        return _not_available_curve(snapshot, str(e))
+    bounds = ([(s.t0, s.t1) for s in provider.syllables]
+              or [(0.0, track.duration)])
+    processed = f0_pipeline.process_syllables(track, bounds, f_lo, f_hi)
+    if not any((seg.get("quality") or {}).get("validFrames", 0) >= f0_pipeline.MIN_DRAW_RUN
+               for seg in processed):
+        return _not_available_curve(snapshot, "录音里没有提取到可用的音高曲线")
+
+    ref_segments = list(standard_curve.get("segments", []))
+    _REF_FIELDS = ("frames", "t0", "t1", "analysisStart", "analysisEnd", "duration",
+                   "analysisDuration", "comparisonPoints", "chao", "shape",
+                   "featurePoints", "quality")
+    segments = []
+    for i, seg in enumerate(processed):
+        syll = provider.syllables[i] if i < len(provider.syllables) else None
+        ref_in = ref_segments[i] if i < len(ref_segments) else None
+        ref_side = None
+        if ref_in is not None:
+            if ref_in.get("frames") is not None:
+                ref_side = {k: ref_in[k] for k in _REF_FIELDS if k in ref_in}
+            elif ref_in.get("points"):     # 历史 0-5 T 值曲线（版本转换见前端）
+                ref_side = {"points": ref_in["points"],
+                            "t0": ref_in.get("t0"), "t1": ref_in.get("t1")}
+        segments.append({
+            "syllable": (syll.text if syll else seg.get("syllable")) or "",
+            "toneValue": syll.tone_value if syll else None,
+            "user": seg,
+            "reference": ref_side,
+        })
+    curve = {
+        "status": "ok",
+        "scale": "degree",
+        "algorithmVersion": analysis.ALGORITHM_VERSION,
+        "segments": segments,
+        "rangeSnapshotId": snapshot.get("id"),
+        "userRange": {"fLo": f_lo, "fHi": f_hi},
+    }
+    ref_range = standard_curve.get("referenceRange")
+    if ref_range:
+        curve["referenceRange"] = ref_range
+    if standard_curve.get("sampleMediaId"):
+        curve["sampleMediaId"] = standard_curve["sampleMediaId"]
+    return curve
+
+
+# T 值 0-5 旧阈值 → degree 1-5 迁移（docs §4.3：D = 1 + 0.8*T；差值 ×0.8）
+_D_END_DRIFT = 1.0 * 0.8        # 一声首尾漂移 > 0.8 T 度
+_D_START_HIGH = 1 + 0.8 * 3.2   # 二声起点偏高（T>3.2）
+_D_START_LOW2 = 1 + 0.8 * 1.0   # 二声起点偏低（T<1.0）
+_D_START_LOW4 = 1 + 0.8 * 1.2   # 四声起点偏低（T<1.2）
+_D_RISE_MIN = 1.2 * 0.8         # 二声升幅不足（< 0.96 度）
+_D_FALL_MIN = 1.2 * 0.8         # 四声降幅不足
+_D_SHAPE_FLAT = 0.8 * 0.8       # 曲线整体偏平（起伏 < 0.64 度）
+
+
 def curve_phenomena(curve: dict) -> list[dict]:
-    """从 T 值曲线提取声调形状现象（只陈述本次测得的现象，FR-1004）。"""
+    """从 degree 1-5 五度曲线提取声调形状现象（只陈述本次测得的现象，
+    FR-1301/FR-2004；诊断帧只取 measured/corrected，插值帧不参与）。"""
     out: list[dict] = []
     if curve.get("status") != "ok":
         return out
     for i, seg in enumerate(curve.get("segments", [])):
         tone = seg.get("toneValue")
-        pts = [(p["t"], p["v"]) for p in seg.get("user", [])]
+        syl = seg.get("syllable", "")
+        user = seg.get("user") or {}
+        quality = user.get("quality") or {}
+        if not quality.get("canDiagnose"):
+            continue                      # 条件不足只显示曲线，不生成现象
+        pts = [(p["u"], p["degree"]) for p in (user.get("comparisonPoints") or [])
+               if p.get("degree") is not None
+               and p.get("source") in (None, "measured", "corrected")]
         if len(pts) < 4 or not tone:
             continue
+        us = np.array([u for u, _ in pts])
         vals = np.array([v for _, v in pts])
-        t_arr = np.array([t for t, _ in pts])
-        v20 = float(np.interp(0.2, t_arr, vals))
-        v80 = float(np.interp(0.8, t_arr, vals))
+        if us[-1] <= us[0]:
+            continue
+        v20 = float(np.interp(0.2, us, vals))
+        v80 = float(np.interp(0.8, us, vals))
         vr = float(vals.max() - vals.min())
-        syl = seg.get("syllable", "")
         add = lambda tag, desc: out.append({  # noqa: E731
             "tag": tag, "syllable": syl,
             "position": {"syllableIndex": i, "part": "tone"},
             "description": desc,
         })
         if tone == 1:
-            if abs(v80 - v20) > 1.2:
+            if abs(v80 - v20) > _D_END_DRIFT:
                 add("tone_end_unstable", f"「{syl}」第一声的尾巴有较明显的滑动，整体不够平稳")
         elif tone == 2:
-            if v20 > 3.2:
+            if v20 > _D_START_HIGH:
                 add("tone_start_high", f"「{syl}」第二声起点偏高，升上去的空间就小了")
-            elif v20 < 1.0:
+            elif v20 < _D_START_LOW2:
                 add("tone_start_low", f"「{syl}」第二声起点偏低，上升显得吃力")
-            if (v80 - v20) < 1.2:
+            if (v80 - v20) < _D_RISE_MIN:
                 add("tone_rise_insufficient",
-                    f"「{syl}」第二声只升了约 {max(0.0, v80 - v20):.1f} 度，标准约 2 度")
-            if vr < 0.8:
+                    f"「{syl}」第二声只升了约 {max(0.0, v80 - v20):.1f} 度，标准要升 1.5 度以上")
+            if vr < _D_SHAPE_FLAT:
                 add("tone_shape_flat", f"「{syl}」的音高曲线整体偏平，起伏不够")
         elif tone == 3:
-            if vr < 0.8:
+            if vr < _D_SHAPE_FLAT:
                 add("tone_shape_flat", f"「{syl}」第三声整体偏平，先降后升的形状不明显")
         elif tone == 4:
-            if v20 < 1.2:
+            if v20 < _D_START_LOW4:
                 add("tone_start_low", f"「{syl}」第四声起点偏低，降下来显得不够干脆")
-            if (v20 - v80) < 1.2:
+            if (v20 - v80) < _D_FALL_MIN:
                 add("tone_fall_insufficient",
-                    f"「{syl}」第四声只降了约 {max(0.0, v20 - v80):.1f} 度，标准约 2–3 度")
+                    f"「{syl}」第四声只降了约 {max(0.0, v20 - v80):.1f} 度，标准要降 2 度左右")
     return out
 
 

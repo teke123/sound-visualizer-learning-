@@ -91,3 +91,28 @@ async def media_file(request: Request, media_id: str,
                           cache_control="no-store")
     return serve_file(request, config.DATA_DIR / asset.storage_path, asset.mime,
                       cache_control="no-cache")
+
+
+@router.get("/media/{media_id}/f0-hum.wav")
+async def media_f0_hum(request: Request, media_id: str,
+                       flo: str | None = None, fhi: str | None = None,
+                       db: Session = Depends(db_session)):
+    """标准示范音高哼鸣；带 flo/fhi 时按该音域映射（「按我的音域听标准」，
+    docs/f0展示修改测试版1.md §5.2）。与媒体文件同访问级别（公开内容）。"""
+    from app.acoustics import usecases as acoustics_uc
+    from app.platform.envelope import ApiError
+
+    remap = None
+    if flo is not None and fhi is not None:
+        try:
+            lo, hi = float(flo), float(fhi)
+        except ValueError:
+            raise ApiError(422, "VALIDATION_ERROR", "flo/fhi 必须是数字")
+        if not (30.0 < lo < hi < 1000.0):
+            raise ApiError(422, "VALIDATION_ERROR", "音域参数无效（须 30 < flo < fhi < 1000）")
+        remap = lo, hi
+    path = acoustics_uc.get_media_f0_hum(db, media_id, remap)
+    if path is None:
+        return serve_file(request, config.DATA_DIR / "_missing", "application/octet-stream",
+                          cache_control="no-store")
+    return serve_file(request, path, "audio/wav", cache_control="no-cache")

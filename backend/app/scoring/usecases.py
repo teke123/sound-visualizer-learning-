@@ -23,11 +23,12 @@ ROLLING_WINDOW_N = 20   # 最近 N 条存档合格录音
 
 
 def get_provider():
-    if config.PROVIDER_NAME == "xfyun":
-        from app.scoring.provider_xfyun import XfyunProvider
+    """评分 Provider 工厂：默认讯飞，仅 SVS_PROVIDER=mock 时用本地替身。"""
+    if config.PROVIDER_NAME == "mock":
+        return MockProvider()
+    from app.scoring.provider_xfyun import XfyunProvider
 
-        return XfyunProvider()
-    return MockProvider()
+    return XfyunProvider()
 
 
 # ---------------- 音域 ----------------

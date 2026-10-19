@@ -61,22 +61,76 @@ function buildCurve(levelId: string, audioId: string): AssessmentResult['curve']
   const seed = hashOf(audioId)
   const level = LEVEL_DETAILS[levelId]
   const syllable = level?.representativeChar ?? level?.targetSound ?? 'a'
-  const points = 12
-  const reference: Array<{ t: number; v: number }> = []
-  const user: Array<{ t: number; v: number }> = []
-  for (let i = 0; i < points; i += 1) {
-    const t = (i / (points - 1)) * 0.6
-    const ref = 2.8 + 0.35 * Math.sin((i / points) * Math.PI)
-    const drift = ((seed % 40) - 20) / 40 // -0.5 ~ 0.5 的个体差
-    const userTone = ref + drift * (0.4 + 0.6 * Math.sin(i * 0.7))
-    reference.push({ t: Number(t.toFixed(3)), v: Number(ref.toFixed(3)) })
-    user.push({ t: Number(t.toFixed(3)), v: Number(Math.min(5, Math.max(0, userTone)).toFixed(3)) })
+  const userRange = { fLo: 110, fHi: 320 }
+  const refRange = { fLo: 130, fHi: 350 }
+  const drift = ((seed % 40) - 20) / 80 // -0.25 ~ 0.25 度个体差
+  const hzOf = (degree: number, range: { fLo: number; fHi: number }) =>
+    range.fLo * Math.pow(range.fHi / range.fLo, (degree - 1) / 4)
+  const buildSide = (range: { fLo: number; fHi: number }, offset: number) => {
+    const nFrames = 61
+    const analysisStart = 0.04
+    const analysisEnd = 0.64
+    const frames = Array.from({ length: nFrames }, (_, i) => {
+      const t = analysisStart + (i / (nFrames - 1)) * (analysisEnd - analysisStart)
+      const u = i / (nFrames - 1)
+      const degree = 3 + 0.4 * Math.sin(u * Math.PI * 2) + offset * (0.4 + 0.6 * Math.sin(u * 3))
+      const hz = hzOf(Math.min(5.4, Math.max(0.6, degree)), range)
+      const gap = u > 0.44 && u < 0.52 // 模拟静音缺口：null 占位断开
+      return {
+        t: Number(t.toFixed(3)),
+        hz: gap ? null : Number(hz.toFixed(1)),
+        degree: gap ? null : Number(Math.min(5.4, Math.max(0.6, degree)).toFixed(2)),
+        confidence: u > 0.7 ? 0.36 : 0.92,
+        source: 'measured' as const,
+        intensityDb: 60 + Math.round(8 * Math.sin(u * Math.PI)),
+      }
+    })
+    const comparisonPoints = Array.from({ length: 21 }, (_, i) => {
+      const u = i / 20
+      const cp = frames[Math.round(u * (nFrames - 1))]!
+      return {
+        u: Number(u.toFixed(3)),
+        hz: cp.hz,
+        degree: cp.degree,
+        confidence: cp.hz ? Math.min(cp.confidence, 0.9) : 0,
+        source: cp.hz ? 'measured' : null,
+      }
+    })
+    return {
+      frames,
+      t0: 0,
+      t1: 0.8,
+      analysisStart,
+      analysisEnd,
+      duration: 0.8,
+      analysisDuration: Number((analysisEnd - analysisStart).toFixed(3)),
+      comparisonPoints,
+      chao: '33',
+      shape: 'mid level',
+      featurePoints: {
+        start: { u: 0.05, degree: 3.1 },
+        end: { u: 0.95, degree: 3.0 },
+        turning: null,
+      },
+      quality: { validFrames: 52, coverage: 0.85, jumpDensity: 0.04, canDiagnose: true },
+    }
   }
   return {
     status: 'ok',
-    scale: 'T',
-    segments: [{ syllable, toneValue: 1, user, reference }],
+    scale: 'degree',
+    algorithmVersion: 'algo-mock-2',
+    segments: [
+      {
+        syllable,
+        toneValue: 1,
+        user: buildSide(userRange, drift),
+        reference: buildSide(refRange, 0),
+      },
+    ],
     rangeSnapshotId: 'range-mock-1',
+    userRange,
+    referenceRange: refRange,
+    sampleMediaId: 'md-mock-sample',
   }
 }
 

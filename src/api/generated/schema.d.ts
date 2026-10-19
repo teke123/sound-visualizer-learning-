@@ -157,6 +157,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/media/{media_id}/f0-hum.wav": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Media F0 Hum
+         * @description 标准示范音高哼鸣；带 flo/fhi 时按该音域映射（「按我的音域听标准」，
+         *     docs/f0展示修改测试版1.md §5.2）。与媒体文件同访问级别（公开内容）。
+         */
+        get: operations["media_f0_hum_api_media__media_id__f0_hum_wav_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/register": {
         parameters: {
             query?: never;
@@ -302,6 +323,26 @@ export interface paths {
         };
         /** Audio Spectrogram Png */
         get: operations["audio_spectrogram_png_api_audio__audio_id__spectrogram_png_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/audio/{audio_id}/f0-hum.wav": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Audio F0 Hum
+         * @description 用户实测音高哼鸣（docs §5.2）。
+         */
+        get: operations["audio_f0_hum_api_audio__audio_id__f0_hum_wav_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1182,6 +1223,22 @@ export interface components {
              */
             curve: boolean;
         };
+        /** ComparisonPoint */
+        ComparisonPoint: {
+            /** U */
+            u: number;
+            /** Hz */
+            hz?: number | null;
+            /** Degree */
+            degree?: number | null;
+            /**
+             * Confidence
+             * @default 0
+             */
+            confidence: number;
+            /** Source */
+            source?: string | null;
+        };
         /** CompletionKeys */
         CompletionKeys: {
             /** Quizids */
@@ -1196,12 +1253,54 @@ export interface components {
             /** B */
             b: string;
         };
-        /** CurvePoint */
+        /**
+         * CurveFrame
+         * @description 原生 10ms 网格绘图帧（docs/f0展示修改测试版1.md §7.1）。
+         */
+        CurveFrame: {
+            /** T */
+            t: number;
+            /** Hz */
+            hz?: number | null;
+            /** Degree */
+            degree?: number | null;
+            /**
+             * Confidence
+             * @default 0
+             */
+            confidence: number;
+            /** Source */
+            source?: string | null;
+            /** Intensitydb */
+            intensityDb?: number | null;
+        };
+        /**
+         * CurvePoint
+         * @description 历史 0-5 T 值点（旧曲线数据，前端按版本转换显示）。
+         */
         CurvePoint: {
             /** T */
             t: number;
             /** V */
             v: number;
+        };
+        /** CurveQuality */
+        CurveQuality: {
+            /** Validframes */
+            validFrames: number;
+            /** Coverage */
+            coverage: number;
+            /** Jumpdensity */
+            jumpDensity: number;
+            /** Candiagnose */
+            canDiagnose: boolean;
+        };
+        /** CurveRange */
+        CurveRange: {
+            /** Flo */
+            fLo?: number | null;
+            /** Fhi */
+            fHi?: number | null;
         };
         /** CurveSegment */
         CurveSegment: {
@@ -1210,9 +1309,9 @@ export interface components {
             /** Tonevalue */
             toneValue?: number | null;
             /** User */
-            user?: components["schemas"]["CurvePoint"][] | null;
+            user?: components["schemas"]["CurvePoint"][] | components["schemas"]["SyllableCurveSide"] | null;
             /** Reference */
-            reference?: components["schemas"]["CurvePoint"][] | null;
+            reference?: components["schemas"]["CurvePoint"][] | components["schemas"]["SyllableCurveSide"] | null;
         };
         /** DeleteAccountBody */
         DeleteAccountBody: {
@@ -2338,10 +2437,16 @@ export interface components {
             status: "ok" | "not_available";
             /** Scale */
             scale?: string | null;
+            /** Algorithmversion */
+            algorithmVersion?: string | null;
             /** Segments */
             segments?: components["schemas"]["CurveSegment"][] | null;
             /** Rangesnapshotid */
             rangeSnapshotId?: string | null;
+            userRange?: components["schemas"]["CurveRange"] | null;
+            referenceRange?: components["schemas"]["CurveRange"] | null;
+            /** Samplemediaid */
+            sampleMediaId?: string | null;
             /** Note */
             note?: string | null;
         };
@@ -2460,6 +2565,39 @@ export interface components {
             gender: string;
             /** Mediaid */
             mediaId: string;
+        };
+        /**
+         * SyllableCurveSide
+         * @description 单音节单侧曲线：绘图帧 + 分析区间 + 21 点比较序列 + 调值 + 质量。
+         */
+        SyllableCurveSide: {
+            /** Frames */
+            frames?: components["schemas"]["CurveFrame"][] | null;
+            /** T0 */
+            t0?: number | null;
+            /** T1 */
+            t1?: number | null;
+            /** Analysisstart */
+            analysisStart?: number | null;
+            /** Analysisend */
+            analysisEnd?: number | null;
+            /** Duration */
+            duration?: number | null;
+            /** Analysisduration */
+            analysisDuration?: number | null;
+            /** Comparisonpoints */
+            comparisonPoints?: components["schemas"]["ComparisonPoint"][] | null;
+            /** Chao */
+            chao?: string | null;
+            /** Shape */
+            shape?: string | null;
+            /** Featurepoints */
+            featurePoints?: {
+                [key: string]: unknown;
+            } | null;
+            quality?: components["schemas"]["CurveQuality"] | null;
+            /** Points */
+            points?: components["schemas"]["CurvePoint"][] | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -2751,6 +2889,40 @@ export interface operations {
             };
         };
     };
+    media_f0_hum_api_media__media_id__f0_hum_wav_get: {
+        parameters: {
+            query?: {
+                flo?: string | null;
+                fhi?: string | null;
+            };
+            header?: never;
+            path: {
+                media_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     register_api_auth_register_post: {
         parameters: {
             query?: never;
@@ -2997,6 +3169,40 @@ export interface operations {
     audio_spectrogram_png_api_audio__audio_id__spectrogram_png_get: {
         parameters: {
             query?: never;
+            header?: never;
+            path: {
+                audio_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    audio_f0_hum_api_audio__audio_id__f0_hum_wav_get: {
+        parameters: {
+            query?: {
+                flo?: string | null;
+                fhi?: string | null;
+            };
             header?: never;
             path: {
                 audio_id: string;

@@ -263,7 +263,7 @@ def run_pipeline(recording_id: str) -> None:
                 db.commit()
         snapshot = scoring_uc.snapshot_dict(snapshot_row)
         curve = scoring_rules.analyze_user_curve(
-            f0res, prov, snapshot, content.get("standardCurve"))
+            str(path), prov, snapshot, content.get("standardCurve"))
         curve_tags = scoring_rules.curve_phenomena(curve)
 
         formant_dev = None

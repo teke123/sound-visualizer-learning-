@@ -40,6 +40,11 @@ async def lifespan(app: FastAPI):
     finally:
         db.close()
     tasks = scheduler.start()
+    if (config.PROVIDER_NAME == "xfyun"
+            and not (config.XFYUN_APP_ID and config.XFYUN_API_KEY and config.XFYUN_API_SECRET)):
+        logger.warning(
+            "provider=xfyun 但未配置 XFYUN_APP_ID/API_KEY/API_SECRET，评分将全部失败；"
+            "离线开发可设 SVS_PROVIDER=mock")
     logger.info("backend started (env=%s provider=%s)", config.ENV, config.PROVIDER_NAME)
     yield
     scheduler.stop(tasks)

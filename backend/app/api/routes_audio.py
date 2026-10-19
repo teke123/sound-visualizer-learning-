@@ -111,6 +111,31 @@ async def audio_spectrogram_png(request: Request, audio_id: str,
     return serve_file(request, path, "image/png", cache_control="private, no-store")
 
 
+def _parse_remap(flo: str | None, fhi: str | None) -> tuple[float, float] | None:
+    if flo is None or fhi is None:
+        return None
+    try:
+        lo, hi = float(flo), float(fhi)
+    except ValueError:
+        raise ApiError(422, "VALIDATION_ERROR", "flo/fhi 必须是数字")
+    if not (30.0 < lo < hi < 1000.0):
+        raise ApiError(422, "VALIDATION_ERROR", "音域参数无效（须 30 < flo < fhi < 1000）")
+    return lo, hi
+
+
+@router.get("/audio/{audio_id}/f0-hum.wav")
+async def audio_f0_hum(request: Request, audio_id: str, flo: str | None = None,
+                       fhi: str | None = None, actor: Actor = Depends(get_actor)):
+    """用户实测音高哼鸣（docs §5.2）。"""
+    user = require_user(actor)
+    actor.rate_limit("feature_read")
+    row = acoustics_uc.get_audio_for_read(actor.db, audio_id=audio_id, user_id=user.id)
+    remap = _parse_remap(flo, fhi)
+    path = await asyncio.get_running_loop().run_in_executor(
+        None, lambda: acoustics_uc.get_f0_hum(actor.db, row, remap))
+    return serve_file(request, path, "audio/wav", cache_control="private, no-store")
+
+
 # ---------------- 标定（FR-1006，可跳过） ----------------
 
 @router.get("/pitch-calibration", response_model=Envelope[PitchCalibrationInfo])

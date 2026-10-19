@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import io
+import os
 import sys
 import time
 import wave
@@ -22,6 +23,8 @@ from fastapi.testclient import TestClient
 from pydantic import ConfigDict, ValidationError
 
 sys.path.insert(0, str(Path(__file__).parent))
+# 本测试只做契约形状校验：未显式指定 Provider 时钉在 mock，避免默认讯飞时打到真实 API
+os.environ.setdefault("SVS_PROVIDER", "mock")
 import main as backend_main  # noqa: E402
 from app import config  # noqa: E402
 from app.acoustics import transcode  # noqa: E402

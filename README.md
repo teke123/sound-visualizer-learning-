@@ -40,8 +40,9 @@
 | `SVS_HOST` / `SVS_PORT` | `127.0.0.1` / `8000` | 后端监听地址与端口 |
 | `SVS_DATA_DIR` | `backend/data` | SQLite 数据库、规范化媒体与私有录音存储目录 |
 | `SVS_ADMIN_USERNAME` / `SVS_ADMIN_PASSWORD` | `admin` / `admin12345` | 维护后台 `/admin` 登录口令 |
-| `SVS_PROVIDER` | `mock` | 评分服务：`mock`（进程内确定性替身）或 `xfyun`（科大讯飞评测） |
-| `XFYUN_APP_ID` / `XFYUN_API_KEY` / `XFYUN_API_SECRET` | 空 | `SVS_PROVIDER=xfyun` 时的讯飞流式评测凭据 |
+| `SVS_PROVIDER` | `xfyun` | 评分服务：`xfyun`（科大讯飞评测，默认）或 `mock`（进程内确定性替身，测试/离线时显式指定） |
+| `XFYUN_APP_ID` / `XFYUN_API_KEY` / `XFYUN_API_SECRET` | 空 | 讯飞流式评测凭据（默认 Provider 即需要；缺失时评分将全部失败） |
+| `SVS_F0_RESCUE` / `SVS_F0_CORRECT` / `SVS_F0_INTERP` | `1` | F0 管线纠偏开关（弱周期恢复 / 跳变候选纠偏 / 短毛刺插值，置 0 关闭以便对比评测） |
 
 ## 快速开始
 

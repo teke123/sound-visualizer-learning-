@@ -9,7 +9,7 @@ import { computed, onBeforeUnmount } from 'vue'
 import type { FlowError, FlowState } from '@/features/assessment'
 import { RECORD_MAX_MS, type RecorderStatus } from '@/stores/recorder'
 import { usePlayerStore } from '@/stores/player'
-import type { ToneValue } from '@/utils/realtimeAcoustics'
+import type { PitchRangeHz, ToneValue } from '@/utils/realtimeAcoustics'
 import { errorCopy } from '@/copy/usePageCopy'
 import RealtimeAcousticCanvas from './RealtimeAcousticCanvas.vue'
 import RecordingTips from './RecordingTips.vue'
@@ -29,6 +29,8 @@ const props = defineProps<{
   focus?: 'pitch' | 'onset'
   /** 本关目标调型（可推导时），画引导带 */
   targetTone?: ToneValue | null
+  /** 个人音域（前置标定）：实时纵轴按音域锚定五度（docs §6.1） */
+  rangeHz?: PitchRangeHz | null
 }>()
 
 const emit = defineEmits<{
@@ -96,6 +98,7 @@ const progressPercent = () => Math.min(100, (props.elapsedMs / maxMs) * 100)
         :active="isRecording"
         :focus="focus ?? 'pitch'"
         :target-tone="targetTone ?? null"
+        :range-hz="rangeHz ?? null"
         :playhead-sec="playheadSec"
         :take-duration-sec="takeDurationSec"
       />

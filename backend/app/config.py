@@ -94,8 +94,13 @@ RETRY_AFTER_SECONDS: int = 2           # 202 响应 Retry-After
 EXECUTOR_WORKERS: int = int(os.environ.get("SVS_EXECUTOR_WORKERS", "4"))
 EXECUTOR_QUEUE_LIMIT: int = int(os.environ.get("SVS_EXECUTOR_QUEUE", "32"))
 
-# 声学算法版本：tone_py + parselmouth + 自研共振峰/质量分析
-ALGORITHM_VERSION: str = "acx-1.1.0+tp0.1.0+pm0.4.7"
+# 声学算法版本：filtered AC F0 管线（五度 degree 1-5 坐标，docs/f0展示修改测试版1.md）
+ALGORITHM_VERSION: str = "acx-2.0.0+tp0.1.0+pm0.5.0d16"
+
+# F0 管线纠偏开关（可在同一批录音上分别评测定参）
+F0_RESCUE_ENABLED: bool = os.environ.get("SVS_F0_RESCUE", "1") not in ("0", "false", "no")
+F0_CORRECT_ENABLED: bool = os.environ.get("SVS_F0_CORRECT", "1") not in ("0", "false", "no")
+F0_INTERP_ENABLED: bool = os.environ.get("SVS_F0_INTERP", "1") not in ("0", "false", "no")
 
 # 未标定用户的默认成人参考音域（Hz，D-20：跳过标定时正常检测）
 DEFAULT_ADULT_F0_RANGE: tuple[float, float] = (95.0, 260.0)
@@ -105,7 +110,10 @@ MAX_UPLOAD_BYTES: int = 20 * 1024 * 1024   # 20 MB
 MAX_AUDIO_DURATION_SECONDS: float = 60.0   # 单条上传时长上限（质量维度再判过短/过长）
 
 # --- Provider（外部评分服务）---
-PROVIDER_NAME: str = os.environ.get("SVS_PROVIDER", "mock")   # mock | xfyun
+# 默认走讯飞真实评测；仅 SVS_PROVIDER=mock 时用本地测试替身
+PROVIDER_NAME: str = os.environ.get("SVS_PROVIDER", "xfyun")   # mock | xfyun
+if PROVIDER_NAME not in ("mock", "xfyun"):
+    raise RuntimeError(f"SVS_PROVIDER 仅支持 mock | xfyun，当前为 {PROVIDER_NAME!r}")
 PROVIDER_VERSION: str = {"mock": "mock-1.0.0", "xfyun": "xfyun-ise-1.0"}.get(PROVIDER_NAME, "unknown")
 XFYUN_APP_ID: str = os.environ.get("XFYUN_APP_ID", "")
 XFYUN_API_KEY: str = os.environ.get("XFYUN_API_KEY", "")

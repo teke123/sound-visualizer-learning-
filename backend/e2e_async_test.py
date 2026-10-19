@@ -2,18 +2,20 @@
 处理超时（TIMEOUT 504）、同键重试复活。三种模式各自要求服务按对应
 环境变量启动（backend 目录下）：
 
-- E2E_MODE=202（默认）：SVS_SYNC_WINDOW=0 py -3 main.py。
+- E2E_MODE=202（默认）：SVS_PROVIDER=mock SVS_SYNC_WINDOW=0 py -3 main.py。
   首提应立即回落 202、轮询最终 200。评分缓存键含用户，新注册用户
   必为冷缓存，无需清库。（wait_sync_window 曾有超时取消执行器 future
   的竞态：窗口 0 时管线永不开跑、录音滞留 processing 到硬截止 TIMEOUT，
   已改为不取消参与者的 asyncio.wait——本组合即其回归验证。）
-- E2E_MODE=down：SVS_MOCK_PROVIDER=fail py -3 main.py
+- E2E_MODE=down：SVS_PROVIDER=mock SVS_MOCK_PROVIDER=fail py -3 main.py
   （mock 模拟不可达；标定不依赖 provider 结果，不受影响）。
-- E2E_MODE=timeout：SVS_MOCK_PROVIDER=slow SVS_MOCK_SLOW_SEC=40
-  py -3 main.py（slow 须大于 SVS_HARD_DEADLINE 默认 30，触发 504 TIMEOUT；
-  标定路由等待上限已解耦为 SVS_CALIBRATION_TIMEOUT 默认 45，slow 40 时
-  标定可在窗口内完成）。全程约 100 秒；另断言迟到的管线收尾不会
-  把已判 TIMEOUT 的录音复活成 completed。
+- E2E_MODE=timeout：SVS_PROVIDER=mock SVS_MOCK_PROVIDER=slow
+  SVS_MOCK_SLOW_SEC=40 py -3 main.py（slow 须大于 SVS_HARD_DEADLINE 默认 30，
+  触发 504 TIMEOUT；标定路由等待上限已解耦为 SVS_CALIBRATION_TIMEOUT
+  默认 45，slow 40 时标定可在窗口内完成）。全程约 100 秒；另断言迟到的
+  管线收尾不会把已判 TIMEOUT 的录音复活成 completed。
+  注：Provider 默认已是讯飞，跑本测试必须显式 SVS_PROVIDER=mock，
+  否则故障注入变量无效且会消耗真实 API 配额。
 """
 from __future__ import annotations
 

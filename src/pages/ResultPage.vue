@@ -108,8 +108,8 @@ const spectrogramError = ref(false)
       <!-- 曲线对比（FR-1005） -->
       <section class="result-section" aria-label="音高曲线对比">
         <h2>音高曲线对比</h2>
-        <p class="curve-note">实线是这次录音，虚线是标准参考；已按你的音域换算到统一标度。</p>
-        <ToneCurveChart v-if="assessment.curve" :curve="assessment.curve" />
+        <p class="curve-note">实线是这次录音，虚线是标准参考；已按你的音域换算到统一标度；点线段表示该片段置信度较低。</p>
+        <ToneCurveChart v-if="assessment.curve" :curve="assessment.curve" :audio-id="recording.audioId" />
       </section>
 
       <!-- 共振峰（仅单韵母关，FR-1005） -->

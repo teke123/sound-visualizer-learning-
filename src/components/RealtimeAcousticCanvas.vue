@@ -12,12 +12,15 @@ import { useRecorderStore } from '@/stores/recorder'
 import {
   AdaptivePitchWindow,
   ANALYSIS_FFT_SIZE,
+  ANALYSIS_STEP_MS,
   degreeToSemitone,
   hzToSemitone,
   QUIET_RMS_HINT,
+  rangeDegreeToSemitone,
   RealtimePitchTracker,
   semitoneToHz,
   toneTargetContour,
+  type PitchRangeHz,
   type ToneValue,
 } from '@/utils/realtimeAcoustics'
 
@@ -29,11 +32,13 @@ const props = withDefaults(
     focus?: 'pitch' | 'onset'
     /** 本关目标调型（可从关卡 pinyin 声调符号推导）；无则不画引导带 */
     targetTone?: ToneValue | null
+    /** 个人音域（前置标定）：1 度线=ST(fLo)、5 度线=ST(fHi)，画布 ±2 ST（docs §6.1） */
+    rangeHz?: PitchRangeHz | null
     /** 试听播放游标（秒）；仅定格回看时生效 */
     playheadSec?: number | null
     takeDurationSec?: number | null
   }>(),
-  { focus: 'pitch', targetTone: null, playheadSec: null, takeDurationSec: null },
+  { focus: 'pitch', targetTone: null, rangeHz: null, playheadSec: null, takeDurationSec: null },
 )
 
 const recorder = useRecorderStore()
@@ -62,8 +67,8 @@ const toneHint = computed(() => {
 /* ------------------------------ 分析与绘制状态（非响应式） ------------------------------ */
 
 const LIVE_WINDOW_SEC = 4
-/** 分析帧最小间隔：高刷屏（120Hz）下也按 ~60fps 分析 */
-const ANALYSIS_INTERVAL_MS = 15
+/** 分析步长 10ms（与后端 Praat 轨一致）：rAF 帧间隔 ≠ 步长，用累加器补步 */
+const ANALYSIS_INTERVAL_MS = ANALYSIS_STEP_MS
 
 let tracker: RealtimePitchTracker | null = null
 let pitchWindow = new AdaptivePitchWindow()
@@ -106,15 +111,18 @@ function loop(): void {
   }
   const t = ensureTracker(analyser.context.sampleRate)
   const now = performance.now()
-  if (now - lastAnalysisAt >= ANALYSIS_INTERVAL_MS) {
-    lastAnalysisAt = now
+  // 固定 10ms 步长：一次 rAF 补最多 4 步（高刷屏多步、低刷屏逐步追）
+  let steps = 0
+  while (now - lastAnalysisAt >= ANALYSIS_INTERVAL_MS && steps < 4) {
+    lastAnalysisAt += ANALYSIS_INTERVAL_MS
+    steps += 1
     if (timeBuf.length !== analyser.fftSize) timeBuf = new Float32Array(analyser.fftSize)
     if (!freqBuf || freqBuf.length !== analyser.frequencyBinCount) {
       freqBuf = new Uint8Array(new ArrayBuffer(analyser.frequencyBinCount))
     }
     analyser.getFloatTimeDomainData(timeBuf)
     analyser.getByteFrequencyData(freqBuf)
-    const tSec = (now - startedAt) / 1000
+    const tSec = (lastAnalysisAt - startedAt) / 1000
     const frame = t.push(timeBuf, tSec, freqBuf)
     if (frame.kind === 'voiced' && frame.f0Hz !== null) {
       pitchWindow.update(hzToSemitone(frame.f0Hz), Math.max(0, tSec - lastFrameT))
@@ -132,6 +140,7 @@ function loop(): void {
             : null
     }
   }
+  if (steps === 0 && lastAnalysisAt === 0) lastAnalysisAt = now
   draw()
   rafHandle = requestAnimationFrame(loop)
 }
@@ -204,7 +213,7 @@ function draw(): void {
 
 function drawPitchLane(
   ctx: CanvasRenderingContext2D,
-  frames: Array<{ t: number; f0Hz: number | null }>,
+  frames: Array<{ t: number; f0Hz: number | null; weak: boolean }>,
   tMin: number,
   tMax: number,
   padX: number,
@@ -213,16 +222,19 @@ function drawPitchLane(
   height: number,
   xOf: (t: number) => number,
 ): void {
-  const stMin = pitchWindow.minSt
-  const stMax = pitchWindow.maxSt
+  const fixed = props.rangeHz
+  const stMin = fixed ? hzToSemitone(fixed.fLo) - 2 : pitchWindow.minSt
+  const stMax = fixed ? hzToSemitone(fixed.fHi) + 2 : pitchWindow.maxSt
   const yOf = (st: number) => top + height - 4 - ((st - stMin) / (stMax - stMin)) * (height - 8)
+  const degreeSt = (d: number) =>
+    fixed ? rangeDegreeToSemitone(fixed, d) : degreeToSemitone(pitchWindow.centerSt, d)
 
   // 度数网格（有引导带时画五度刻度）
   if (props.targetTone) {
     ctx.font = '10px system-ui, sans-serif'
     ctx.textAlign = 'left'
     for (let d = 1; d <= 5; d += 1) {
-      const st = degreeToSemitone(pitchWindow.centerSt, d)
+      const st = degreeSt(d)
       if (st < stMin || st > stMax) continue
       const y = yOf(st)
       ctx.strokeStyle = COLOR.grid
@@ -234,12 +246,13 @@ function drawPitchLane(
       ctx.fillStyle = COLOR.text
       ctx.fillText(String(d), 2, y + 3)
     }
-    // 目标引导带（半透明轨道 + 虚线中心线）
+    // 目标引导带（半透明轨道 + 虚线中心线）；带宽 ±0.45 度（按当前度映射）
     const contour = toneTargetContour(props.targetTone)
-    const bandHalf = 0.45 * 3 // ±0.45 度（1 度 = 3 半音）
+    const stPerDegree = (degreeSt(5) - degreeSt(1)) / 4
+    const bandHalf = 0.45 * stPerDegree
     ctx.beginPath()
     contour.forEach(([tn, degree], i) => {
-      const st = degreeToSemitone(pitchWindow.centerSt, degree)
+      const st = degreeSt(degree)
       const x = padX + tn * plotW
       const y = yOf(st + bandHalf)
       if (i === 0) ctx.moveTo(x, y)
@@ -247,7 +260,7 @@ function drawPitchLane(
     })
     for (let i = contour.length - 1; i >= 0; i -= 1) {
       const [tn, degree] = contour[i]!
-      ctx.lineTo(padX + tn * plotW, yOf(degreeToSemitone(pitchWindow.centerSt, degree) - bandHalf))
+      ctx.lineTo(padX + tn * plotW, yOf(degreeSt(degree) - bandHalf))
     }
     ctx.closePath()
     ctx.fillStyle = COLOR.band
@@ -258,7 +271,7 @@ function drawPitchLane(
     ctx.beginPath()
     contour.forEach(([tn, degree], i) => {
       const x = padX + tn * plotW
-      const y = yOf(degreeToSemitone(pitchWindow.centerSt, degree))
+      const y = yOf(degreeSt(degree))
       if (i === 0) ctx.moveTo(x, y)
       else ctx.lineTo(x, y)
     })
@@ -273,33 +286,47 @@ function drawPitchLane(
     ctx.fillText(`${Math.round(semitoneToHz(stMin))}Hz`, padX + 2, top + height - 4)
   }
 
-  // 用户实时轨迹：有声段连线，无声/清音段断开留白
-  ctx.strokeStyle = COLOR.voiced
+  // 用户实时轨迹：有声段连线，无声/清音段断开留白；
+  // 弱周期延续帧（weak）用同色半透明段区分（docs §6.1）
   ctx.lineWidth = 2.2
   ctx.lineJoin = 'round'
   ctx.lineCap = 'round'
-  let penDown = false
+  type Seg = { pts: Array<[number, number]>; weak: boolean }
+  const segs: Seg[] = []
+  let cur: Seg | null = null
   let headX = 0
   let headY = 0
-  ctx.beginPath()
   for (const frame of frames) {
     if (frame.t < tMin - 0.05) continue
     if (frame.f0Hz === null) {
-      penDown = false
+      cur = null
       continue
     }
     const x = xOf(frame.t)
     const y = yOf(hzToSemitone(frame.f0Hz))
-    if (!penDown) {
-      ctx.moveTo(x, y)
-      penDown = true
-    } else {
-      ctx.lineTo(x, y)
+    if (cur === null || cur.weak !== frame.weak) {
+      // 分段边界共享端点：段首复用上一段末点，视觉连续
+      const shared = cur?.pts.at(-1)
+      cur = { pts: [], weak: frame.weak }
+      if (shared) cur.pts.push(shared)
+      segs.push(cur)
     }
+    cur.pts.push([x, y])
     headX = x
     headY = y
   }
-  ctx.stroke()
+  for (const seg of segs) {
+    if (seg.pts.length < 2) continue
+    ctx.strokeStyle = COLOR.voiced
+    ctx.globalAlpha = seg.weak ? 0.45 : 1
+    ctx.beginPath()
+    seg.pts.forEach(([x, y], i) => {
+      if (i === 0) ctx.moveTo(x, y)
+      else ctx.lineTo(x, y)
+    })
+    ctx.stroke()
+  }
+  ctx.globalAlpha = 1
 
   // 当前发声点（发光圆头）
   if (props.active && headX > 0) {

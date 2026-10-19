@@ -6,7 +6,7 @@
 """
 from __future__ import annotations
 
-from typing import Generic, List, Literal, Optional, TypeVar
+from typing import Generic, List, Literal, Optional, TypeVar, Union
 
 from pydantic import BaseModel, Field
 
@@ -436,22 +436,80 @@ class FourStep(BaseModel):
 
 
 class CurvePoint(BaseModel):
+    """历史 0-5 T 值点（旧曲线数据，前端按版本转换显示）。"""
     t: float
     v: float
+
+
+class CurveFrame(BaseModel):
+    """原生 10ms 网格绘图帧（docs/f0展示修改测试版1.md §7.1）。"""
+    t: float
+    hz: Optional[float] = None
+    degree: Optional[float] = None
+    confidence: float = 0.0
+    source: Optional[str] = None
+    intensityDb: Optional[float] = None
+
+
+class ComparisonPoint(BaseModel):
+    u: float
+    hz: Optional[float] = None
+    degree: Optional[float] = None
+    confidence: float = 0.0
+    source: Optional[str] = None
+
+
+class CurveFeaturePoint(BaseModel):
+    u: Optional[float] = None
+    degree: Optional[float] = None
+    kind: Optional[str] = None
+
+
+class CurveQuality(BaseModel):
+    validFrames: int
+    coverage: float
+    jumpDensity: float
+    canDiagnose: bool
+
+
+class SyllableCurveSide(BaseModel):
+    """单音节单侧曲线：绘图帧 + 分析区间 + 21 点比较序列 + 调值 + 质量。"""
+    frames: Optional[List[CurveFrame]] = None
+    t0: Optional[float] = None
+    t1: Optional[float] = None
+    analysisStart: Optional[float] = None
+    analysisEnd: Optional[float] = None
+    duration: Optional[float] = None
+    analysisDuration: Optional[float] = None
+    comparisonPoints: Optional[List[ComparisonPoint]] = None
+    chao: Optional[str] = None
+    shape: Optional[str] = None
+    featurePoints: Optional[dict] = None
+    quality: Optional[CurveQuality] = None
+    points: Optional[List[CurvePoint]] = None      # 历史数据
+
+
+class CurveRange(BaseModel):
+    fLo: Optional[float] = None
+    fHi: Optional[float] = None
 
 
 class CurveSegment(BaseModel):
     syllable: Optional[str] = None
     toneValue: Optional[float] = None
-    user: Optional[List[CurvePoint]] = None
-    reference: Optional[List[CurvePoint]] = None
+    user: Optional[Union[List[CurvePoint], SyllableCurveSide]] = None
+    reference: Optional[Union[List[CurvePoint], SyllableCurveSide]] = None
 
 
 class ResultCurve(BaseModel):
     status: Literal["ok", "not_available"]
     scale: Optional[str] = None
+    algorithmVersion: Optional[str] = None
     segments: Optional[List[CurveSegment]] = None
     rangeSnapshotId: Optional[str] = None
+    userRange: Optional[CurveRange] = None
+    referenceRange: Optional[CurveRange] = None
+    sampleMediaId: Optional[str] = None
     note: Optional[str] = None
 
 
