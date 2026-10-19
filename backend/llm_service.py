@@ -10,14 +10,30 @@
 说明：
 - 使用标准库 urllib，避免引入额外 HTTP 依赖
 - 同步调用，由 FastAPI 的同步 def 接口自动放入线程池，不阻塞事件循环
-- 模型名可用环境变量 LLM_MODEL 覆盖，默认 qwen2.5:7b
+- 模型名可用环境变量 LLM_MODEL 覆盖，默认 qwen2.5:7b-instruct-q4_K_M（第 6 周量化模型）
 """
 import json
 import os
 import urllib.request
 
 OLLAMA_BASE = os.environ.get("OLLAMA_BASE", "http://localhost:11434")
-OLLAMA_MODEL = os.environ.get("LLM_MODEL", "qwen2.5:7b")
+# 第 6 周：LLM 本地量化部署（Qwen2.5-7B-Instruct，GGUF Q4_K_M 4bit 量化）
+# 量化预处理在模型下载阶段完成（ollama pull qwen2.5:7b-instruct-q4_K_M），
+# 后端 Python 代码不实现量化算法，仅调用 Ollama 推理服务。
+OLLAMA_MODEL = os.environ.get("LLM_MODEL", "qwen2.5:7b-instruct-q4_K_M")
+
+# 量化模型元信息（第 6 周交付口径，与 week6 部署说明一致）
+QUANT_INFO = {
+    "name": "Qwen2.5-7B-Instruct",
+    "ollama_model": "qwen2.5:7b-instruct-q4_K_M",
+    "quant_method": "GGUF Q4_K_M",
+    "bits": 4,
+    "file_size_gb": 4.7,
+    "original_fp16_size_gb": 14.0,
+    "compression_ratio": 0.66,  # 相比 FP16 原版体积压缩约 66%
+    "note": "4bit 量化属于权重有损压缩，将 32bit 浮点权重压缩为 4bit 整型，降低显存占用，"
+            "实现普通 PC 离线本地推理；量化预处理在模型下载阶段完成，后端仅调用 Ollama 推理服务。",
+}
 
 
 def _build_payload(messages: list[dict], temperature: float, stream: bool) -> dict:
@@ -73,3 +89,10 @@ def is_available() -> bool:
             return resp.status == 200
     except Exception:
         return False
+
+
+def get_model_info() -> dict:
+    """返回量化模型部署信息（第 6 周）"""
+    info = dict(QUANT_INFO)
+    info["available"] = is_available()
+    return info

@@ -520,6 +520,12 @@ def llm_chat_stream(req: ChatRequest):
     return StreamingResponse(gen(), media_type="text/event-stream")
 
 
+@app.get("/api/llm/model-info")
+def llm_model_info():
+    """第 6 周：量化模型部署信息（Qwen2.5-7B GGUF Q4_K_M 4bit 量化）"""
+    return {"code": 200, "data": llm_service.get_model_info()}
+
+
 class UserProgress(BaseModel):
     userId: str
     totalUnits: int = 12
