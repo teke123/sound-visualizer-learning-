@@ -58,7 +58,6 @@ class LevelSummary(BaseModel):
     pinyin: str
     representativeChar: Optional[str] = None
     title: str
-    oneLiner: str
     demoMediaId: Optional[str] = None
     availability: Literal["open", "closed"]
     completionKeys: CompletionKeys
@@ -192,9 +191,6 @@ class LevelDetail(BaseModel):
     pinyin: str
     representativeChar: Optional[str] = None
     title: str
-    oneLiner: str
-    goal: str
-    applicableIssues: Optional[str] = None
     tags: Optional[List[str]] = None
     nav: Optional[LevelNav] = None
     articulation: Optional[Articulation] = None

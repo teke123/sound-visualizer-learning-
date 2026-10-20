@@ -1,4 +1,4 @@
-"""种子脚本：30 关内容 + 文章 + 标定文本 + 真人语料库示范媒体（FV1~3、MV1~3）+ 参考发音人。
+"""种子脚本：30 关内容 + 标定文本 + 真人语料库示范媒体（FV1~3、MV1~3）+ 参考发音人。
 
 用法（backend/ 目录下，须先在 .env 或环境变量配置 CORPUS_DIR）：
     python seed.py            # 幂等补种（已存在的不重做）
@@ -18,7 +18,7 @@ from app import config
 from app.acoustics import analysis, f0_pipeline, transcode
 from app.content import usecases as content_uc
 from app.content.models import (
-    ArticleRow, CalibrationTextRow, CategoryRow, LevelRow, MediaAssetRow,
+    CalibrationTextRow, LevelRow, MediaAssetRow,
     ReferenceSpeakerRow, SagittalPresetRow,
 )
 from app.db import JSONText, create_all, get_session, now
@@ -302,32 +302,6 @@ def seed_levels(db, corpus: Path, speakers: dict[str, str], open_count: int) -> 
         print(f"[seed] {level_id} 已开放（{item['targetSound']}，6 发音人示范，标准曲线 {curve_segments} 段）")
 
 
-def seed_articles(db, corpus: Path) -> None:
-    from app.content_seed_data import ARTICLES, ARTICLE_CATEGORIES
-
-    for i, name in enumerate(ARTICLE_CATEGORIES):
-        if db.query(CategoryRow).filter(CategoryRow.name == name).count() == 0:
-            db.add(CategoryRow(name=name, sort=i, created_at=now()))
-    db.commit()
-
-    for idx, a in enumerate(ARTICLES):
-        slug = a["slug"]
-        if db.get(ArticleRow, slug) is not None:
-            continue
-        content = dict(a)
-        demo_text = a.get("demoText") or "啊"
-        spk = "FV1" if idx % 2 == 0 else "MV1"
-        content["demoMediaId"] = _import_corpus_media(
-            db, corpus, text=demo_text, speaker_code=spk,
-            purpose="article", license_note=a.get("license", "真人标准音节语料库授权"),
-        )
-        db.add(ArticleRow(slug=slug, published=True,
-                          content=JSONText.dump(content),
-                          created_at=now(), updated_at=now()))
-        db.commit()
-        print(f"[seed] 文章就绪：{slug}（示范：{demo_text} · {spk}）")
-
-
 def main() -> None:
     args = sys.argv[1:]
     if "--reset" in args:
@@ -347,7 +321,6 @@ def main() -> None:
             print("[seed][ERROR] 参考发音人登记失败，标准曲线无法生成，终止")
             return
         seed_levels(db, corpus, speakers, open_count)
-        seed_articles(db, corpus)
         print("[seed] 完成。默认管理员：admin / admin12345（可用环境变量覆盖）")
     finally:
         db.close()

@@ -202,7 +202,7 @@ _D_SHAPE_FLAT = 0.8 * 0.8       # 曲线整体偏平（起伏 < 0.64 度）
 
 def curve_phenomena(curve: dict) -> list[dict]:
     """从 degree 1-5 五度曲线提取声调形状现象（只陈述本次测得的现象，
-    FR-1301/FR-2004；诊断帧只取 measured/corrected，插值帧不参与）。"""
+    FR-1301；诊断帧只取 measured/corrected，插值帧不参与）。"""
     out: list[dict] = []
     if curve.get("status") != "ok":
         return out

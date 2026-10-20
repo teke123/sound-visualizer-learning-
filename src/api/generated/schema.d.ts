@@ -2025,12 +2025,6 @@ export interface components {
             representativeChar?: string | null;
             /** Title */
             title: string;
-            /** Oneliner */
-            oneLiner: string;
-            /** Goal */
-            goal: string;
-            /** Applicableissues */
-            applicableIssues?: string | null;
             /** Tags */
             tags?: string[] | null;
             nav?: components["schemas"]["LevelNav"] | null;
@@ -2095,8 +2089,6 @@ export interface components {
             representativeChar?: string | null;
             /** Title */
             title: string;
-            /** Oneliner */
-            oneLiner: string;
             /** Demomediaid */
             demoMediaId?: string | null;
             /**

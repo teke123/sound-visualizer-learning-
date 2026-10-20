@@ -29,8 +29,7 @@ import main as backend_main  # noqa: E402
 from app import config  # noqa: E402
 from app.acoustics import transcode  # noqa: E402
 from app.api.schemas import (  # noqa: E402
-    ArchiveCompareResponse, ArticleCategoriesResponse, ArticleDetail, ArticlesResponse,
-    AssessmentResult, AudioUploadResponse, AuthLoginResponse, ArchiveListResponse,
+    ArchiveCompareResponse, AssessmentResult, AudioUploadResponse, AuthLoginResponse, ArchiveListResponse,
     CalibrationFailResult, CalibrationOkResult, DeletedResponse, FeedbackResponse,
     F0Response, FormantsResponse, HealthData, LearningEventsResponse, LevelDetail,
     LevelsResponse, MeContext, MeProgress, PitchCalibrationInfo, ProfileResponse,
@@ -175,14 +174,6 @@ def main() -> int:
         body = expect("search 无命中 → SearchResponse", r, SearchResponse)
         check("  无命中时 near 兜底非空（前端相近关数据源）",
               len(body["data"]["near"]) > 0, str(body["data"]["near"]))
-
-        r = c.get("/api/article-categories")
-        expect("article-categories → ArticleCategoriesResponse", r, ArticleCategoriesResponse)
-        r = c.get("/api/articles")
-        body = expect("articles → ArticlesResponse", r, ArticlesResponse)
-        slug = body["data"]["articles"][0]["slug"]
-        r = c.get(f"/api/articles/{slug}")
-        expect(f"articles/{slug} → ArticleDetail", r, ArticleDetail)
 
         # ---- 未登录保护 ----
         r = c.get("/api/me/recordings")

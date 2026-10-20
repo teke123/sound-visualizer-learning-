@@ -70,8 +70,8 @@ JSON 采用 camelCase，统一响应体：`{code, message, data, requestId, next
 | ---- | ---- |
 | `GET /api/health` | 公开健康状态检查 |
 | `GET /api/me/context` | 返回当前登录状态、用户信息（`accountId`、`username`、`dialectBackground?`）、音域标定状态（`calibration: {status: none / calibrated, pitchRange?, vowelSpaceReady}`）及推荐下一关 `nextLevelId`（按 D-24 计算） |
-| `GET /api/levels` | 已开放关卡摘要列表（`id`、`order`、`layer`、`type`、`targetSound`、`pinyin`、`representativeChar`、`title`、`oneLiner`、`demoMediaId`、`availability`、`completionKeys`）+ 未开放关卡身份（`availability=closed`）+ 易混音对 `confusablePairs` |
-| `GET /api/levels/{id}` | 关卡详情（结论、构形 `articulation`、示范音频、听辨题 `quiz[]`、分步练习 `practice[]`、误区、声学与专业说明、检测任务配置 `detection`、上下关与易混关导航 `nav`） |
+| `GET /api/levels` | 已开放关卡摘要列表（`id`、`order`、`layer`、`type`、`targetSound`、`pinyin`、`representativeChar`、`title`、`demoMediaId`、`availability`、`completionKeys`）+ 未开放关卡身份（`availability=closed`）+ 易混音对 `confusablePairs` |
+| `GET /api/levels/{id}` | 关卡详情（构形 `articulation`、示范音频、听辨题 `quiz[]`、分步练习 `practice[]`、误区、声学与专业说明、检测任务配置 `detection`、上下关与易混关导航 `nav`） |
 | `GET /api/search?q=` | 搜索汉字、拼音、关卡名或标签，返回匹配的已开放关卡 `results` 与无结果时的相近关 `near` |
 | `GET /api/article-categories` | 发音原理文章分类列表（气 / 声 / 口型等） |
 | `GET /api/articles?category=` | 原理文章摘要目录 |

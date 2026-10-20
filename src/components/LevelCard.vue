@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * LevelCard：P01 / P02 / P06 共用卡片（FR-302 / FR-702）：
- * 名称、拼音、代表字、一句话结论、试听、进入。
+ * 名称、拼音、代表字、试听、进入。
  */
 import { computed } from 'vue'
 import type { LevelSummary } from '@/api'
@@ -37,7 +37,6 @@ function playDemo() {
       <span v-if="level.representativeChar" class="card-char">「{{ level.representativeChar }}」</span>
       <span class="card-type">{{ level.type }}</span>
     </p>
-    <p class="card-oneliner">{{ level.oneLiner }}</p>
     <div class="card-actions">
       <button
         v-if="showListen !== false && level.demoMediaId"
@@ -102,12 +101,6 @@ function playDemo() {
   border: 1px solid #cfd8dc
   border-radius: 999px
   padding: 0 8px
-
-.card-oneliner
-  margin: 0
-  color: #37474f
-  font-size: 14px
-  line-height: 1.6
 
 .card-actions
   display: flex

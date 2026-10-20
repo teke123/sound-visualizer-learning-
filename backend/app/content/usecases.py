@@ -57,7 +57,6 @@ def level_summary(db: Session, level: LevelRow) -> dict:
         "pinyin": content.get("pinyin") or "",
         "representativeChar": content.get("representativeChar") or "",
         "title": content.get("title") or "",
-        "oneLiner": content.get("oneLiner") or "",
         "demoMediaId": demo_media,
         "availability": availability_of(level),
         "completionKeys": {
@@ -164,9 +163,6 @@ def level_detail(db: Session, level_id: str) -> dict:
         "pinyin": content.get("pinyin"),
         "representativeChar": content.get("representativeChar"),
         "title": content.get("title"),
-        "oneLiner": content.get("oneLiner"),
-        "goal": content.get("goal"),
-        "applicableIssues": content.get("applicableIssues"),
         "tags": content.get("tags") or [],
         "nav": _nav(db, level, content),
         "misconceptions": content.get("misconceptions") or [],
@@ -189,7 +185,6 @@ def search_levels(db: Session, query: str) -> dict:
         return " ".join(filter(None, [
             c.get("targetSound"), c.get("pinyin"), c.get("title"),
             c.get("representativeChar"), " ".join(c.get("tags") or []),
-            c.get("oneLiner"),
         ]))
 
     low = query.lower()
@@ -357,8 +352,6 @@ def precheck_level(db: Session, content: dict) -> list[str]:
     missing: list[str] = []
     if not content.get("targetSound"):
         missing.append("缺少目标音")
-    if not content.get("oneLiner"):
-        missing.append("缺少一句话结论")
     quizzes = content.get("quizzes") or []
     if not quizzes:
         missing.append("缺少听辨题")
@@ -423,11 +416,11 @@ def precheck_article(db: Session, content: dict) -> list[str]:
     if not content.get("markdown") or len(content["markdown"]) < 30:
         missing.append("正文过短")
     if not content.get("demoMediaId"):
-        missing.append("缺少可播放示范（FR-505）")
+        missing.append("缺少可播放示范")
     if not (content.get("references") or []):
         missing.append("缺少参考资料（FR-506）")
     if not (content.get("practice") or []):
-        missing.append("缺少短练习（FR-502）")
+        missing.append("缺少短练习")
     if content.get("demoMediaId") and db.get(MediaAssetRow, content["demoMediaId"]) is None:
         missing.append("示范媒体不存在")
     return missing

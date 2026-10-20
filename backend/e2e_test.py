@@ -99,9 +99,6 @@ def main() -> int:
         ids = [x["id"] for x in r.json()["data"]["results"]]
         check("search 翘舌 → zh/ch/sh", any(i in ids for i in ("L21", "L22", "L23")), str(ids))
 
-        r = c.get("/api/articles")
-        check("articles >=6", len(r.json()["data"]["articles"]) >= 6)
-
         # 媒体：公开示范可读 + ETag/304
         demo_media = l30["demoMediaId"]
         r = c.get(f"/api/media/{demo_media}")
@@ -331,18 +328,19 @@ def main() -> int:
         r = a.get("/api/levels/L30")
         check("L30 detail back", r.status_code == 200)
 
-        # 内容保存即生效：改一句话结论
+        # 内容保存即生效：改专业与声学说明
         d30 = a.get("/api/admin/levels/L30").json()["data"]
         content = d30["content"]
-        old_liner = content.get("oneLiner")
-        content["oneLiner"] = "e2e 修改过的一句话结论"
+        old_desc = (content.get("professional") or {}).get("description")
+        content.setdefault("professional", {})["description"] = "e2e 修改过的专业说明"
         r = a.put("/api/admin/levels/L30", json={"content": content})
         check("save level content", r.status_code == 200, r.text[:150])
         r = a.get("/api/levels/L30")
         check("content change live immediately",
-              r.status_code == 200 and r.json()["data"]["oneLiner"] == "e2e 修改过的一句话结论")
+              r.status_code == 200
+              and r.json()["data"]["professional"]["description"] == "e2e 修改过的专业说明")
         # 恢复
-        content["oneLiner"] = old_liner
+        content["professional"]["description"] = old_desc
         a.put("/api/admin/levels/L30", json={"content": content})
 
         # 完整性检查返回缺失项列表

@@ -23,8 +23,6 @@ interface LevelSeed {
   pinyin: string
   representativeChar?: string
   title: string
-  oneLiner: string
-  goal: string
   promptText: string
   description: string
 }
@@ -39,8 +37,6 @@ const SEEDS: LevelSeed[] = [
     pinyin: 'ā',
     representativeChar: '啊',
     title: '单韵母 a：把嘴张大',
-    oneLiner: '这一关把嘴张大，发出响亮的 a。',
-    goal: '嘴巴自然张大、舌头放平，发出稳定的 a。',
     promptText: '请朗读：「啊」',
     description: '发 a 时口腔打开，舌头居中放低，声带振动，气流从口腔出。',
   },
@@ -53,8 +49,6 @@ const SEEDS: LevelSeed[] = [
     pinyin: 'b',
     representativeChar: '波',
     title: '声母 b：双唇一抿就放开',
-    oneLiner: '双唇先闭住再突然放开，不送气，就是 b。',
-    goal: '体会双唇成阻→除阻的过程，b 不送气。',
     promptText: '请朗读：「波」',
     description: 'b 是双唇塞音：双唇闭合挡住气流，然后放开成阻，声带同时振动。',
   },
@@ -67,8 +61,6 @@ const SEEDS: LevelSeed[] = [
     pinyin: 'p',
     representativeChar: '坡',
     title: '声母 p：和 b 差在一口气',
-    oneLiner: '动作和 b 一样，只是放开时送一口气，就是 p。',
-    goal: '分辨 b / p 的送气差别。',
     promptText: '请朗读：「坡」',
     description: 'p 与 b 发音部位相同，区别在于除阻时有明显送气。',
   },
@@ -81,8 +73,6 @@ const SEEDS: LevelSeed[] = [
     pinyin: 'n',
     representativeChar: '呢',
     title: '声母 n：舌尖顶住上齿龈',
-    oneLiner: '舌尖顶住上齿龈，气从鼻子出来，就是 n。',
-    goal: '舌尖抵住上齿龈成阻，软腭下降走鼻腔。',
     promptText: '请朗读：「呢」',
     description: 'n 是舌尖中鼻音：舌尖抵上齿龈，气流从鼻腔通过。',
   },
@@ -95,8 +85,6 @@ const SEEDS: LevelSeed[] = [
     pinyin: 'l',
     representativeChar: '勒',
     title: '声母 l：舌尖轻抵、气从两边走',
-    oneLiner: '舌尖轻抵上齿龈，气流从舌两侧走，就是 l。',
-    goal: '与 n 区分：l 不走鼻腔，气流从舌两侧通过。',
     promptText: '请朗读：「勒」',
     description: 'l 是舌尖中边音：舌尖抵上齿龈，气流从舌体两侧流出。',
   },
@@ -109,8 +97,6 @@ const SEEDS: LevelSeed[] = [
     pinyin: 'mā',
     representativeChar: '妈',
     title: '拼读「妈」：m 和 a 连起来',
-    oneLiner: '闭上嘴唇发 m，马上张开接 a，连起来就是「妈」。',
-    goal: '把声母 m 与单韵母 a 连拼，体会 m→a 的口型过渡。',
     promptText: '请朗读：「妈」',
     description: 'm 是双唇鼻音，先双唇闭合走鼻腔，随后张开过渡到 a，声带保持振动。',
   },
@@ -247,7 +233,6 @@ export const LEVEL_SUMMARIES: LevelSummary[] = SEEDS.map((seed) => ({
   pinyin: seed.pinyin,
   representativeChar: seed.representativeChar,
   title: seed.title,
-  oneLiner: seed.oneLiner,
   demoMediaId: `aud-${seed.id}-demo`,
   availability: 'open' as const,
   completionKeys: {
@@ -272,9 +257,6 @@ export const LEVEL_DETAILS: Record<string, LevelDetail> = Object.fromEntries(
         pinyin: seed.pinyin,
         representativeChar: seed.representativeChar,
         title: seed.title,
-        oneLiner: seed.oneLiner,
-        goal: seed.goal,
-        applicableIssues: '适合与易混音分不清的学习者',
         nav: {
           prev: prev?.id ?? null,
           next: next?.id ?? null,
@@ -291,6 +273,7 @@ export const LEVEL_DETAILS: Record<string, LevelDetail> = Object.fromEntries(
           ],
           description: seed.description,
           sagittal: sagittalFor(seed),
+          model3dMediaId: `model3d-${seed.id}-mouth`,
         },
         demos: (['FV1', 'FV2', 'FV3', 'MV1', 'MV2', 'MV3'] as const).map((spk) => ({
           mediaId: `aud-${seed.id}-demo-${spk}`,

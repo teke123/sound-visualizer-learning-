@@ -8,11 +8,11 @@
 
 | 页面 | 路由 | 职责 | 数据来源 |
 | ---- | ---- | ---- | ---- |
-| P01 首页 | `/` | 四个主按钮、搜索框、已开放关卡列表、下一关推荐 | `levels`、`me/context`、`me/progress` |
+| P01 首页 | `/` | 搜索框、已开放关卡列表、下一关推荐 | `levels`、`me/context`、`me/progress` |
 | P02 搜索 | `/search?q=` | 搜索汉字/拼音/关卡名、无结果时展示相近关与「希望增加」 | `GET /api/search?q=`、`POST /api/wishes` |
 | P03 发音地图 | `/map` | 三层闯关定位图（单韵母/声母/拼读）、开放状态、个人进度、易混关并排比较入口 | `levels`、`me/progress` |
 | P04 原理子站 | `/principles`、`/principles/:slug` | 气/声/口型分类目录与原理文章正文、示范播放、短练习与关联关卡入口 | `article-categories`、`articles`、`articles/{slug}` |
-| P05 关卡页 | `/learn/:id` | 一句话结论、多视图构形、示范音频、听辨题、3–5 步练习、误区、声学说明、**内嵌本关录音检测区（含前端实时声学反馈）** | `levels/{id}`、`learning-events`、`audio/uploads`、`pitch-calibration`、`recordings` |
+| P05 关卡页 | `/learn/:id` | 多视图构形、示范音频、听辨题、3–5 步练习、误区、声学说明、**内嵌本关录音检测区（含前端实时声学反馈）** | `levels/{id}`、`learning-events`、`audio/uploads`、`pitch-calibration`、`recordings` |
 | P06 发音库 | `/library` | 按层索引已开放关卡卡片、示范试听、任选两关并排比较 | `levels` |
 | P09 结果 | `/result/:id` | 多维声学可视化对比（基频 F0、共振峰 F1/F2、送气波形/VOT、语谱图）、分数、现象、四步反馈、录音环境质量提示、回放与重录 | `recordings/{id}`、`audio/{audioId}/*`、`levels/{id}` |
 | P10 声音档案 | `/archive`、`/archive/compare?a=&b=` | 按关卡展示本人历史录音记录、删除单条或清空、同一关至少两次记录并排回放与曲线对比 | `me/recordings`、`me/recordings/compare` |
@@ -20,17 +20,8 @@
 
 | 辅助路由与锚点 | 说明 |
 | ---- | ---- |
-| `/learn/:id#quiz`、`#practice`、`#record`、`#step-{stepId}` | 关卡页内区块锚点；首页「跟着练」「录音比较」及 P09 四步练习回跳使用 |
+| `/learn/:id#quiz`、`#practice`、`#record`、`#step-{stepId}` | 关卡页内区块锚点；P09 四步练习回跳使用 |
 | `?compare=L13,L14` | 在 P03 / P05 / P06 上打开关卡并排比较视图 |
-
-### 首页四个主按钮与导航（FR-202）
-
-| 入口 | 去向 |
-| ---- | ---- |
-| 搜一个音 | `/search`（P02） |
-| 看懂发音 | `/principles`（P04），页内提供进入发音地图 `/map`（P03）的入口 |
-| 跟着练 | `/learn/{nextLevelId}#practice`（下一关 P05 的练习区） |
-| 录音比较 | `/learn/{nextLevelId}#record`（下一关 P05 的录音区，提交后进入 P09 查看对比结果） |
 
 桌面端顶部导航列出核心页面并常驻搜索框；手机端底部标签栏方便单手切换首页、地图、发音库、档案与账号。
 
@@ -49,7 +40,7 @@
 | ---- | ---- | ---- |
 | 外壳 | `AppShell`、`PageState` | 响应式导航框架；加载、空状态、错误提示统一展示 |
 | 关卡展示 | `LevelCard`、`LayerMap`、`ConfusablePairList`、`LevelNav`、`ComparePanel` | 关卡卡片、P03 三层闯关地图、易混音并排比较面板（P03/P05/P06 共用）、上下关导航 |
-| 关卡学习 | `LevelView`、`ArticulationFigure`、`SagittalView`、`DemoPlayer`、`QuizPanel`、`PracticeStepper`、`MisconceptionList` | P05 结论、多视图构形（媒体 / 2D 声道剖面关键帧动画 / 3D 视图）、示范播放、听辨单选、3–5 步跟练、误区与声学说明 |
+| 关卡学习 | `LevelView`、`ArticulationFigure`、`SagittalView`、`DemoPlayer`、`QuizPanel`、`PracticeStepper`、`MisconceptionList` | P05 多视图构形（媒体 / 2D 声道剖面关键帧动画 / 3D 视图）、示范播放、听辨单选、3–5 步跟练、误区与声学说明 |
 | 原理文章 | `ArticleView` | Markdown 正文渲染、示范音频播放、短练习与关联关卡链接 |
 | 搜索与反馈 | `SearchBox`、`WishDialog`、`FeedbackWidget` | 搜索框、「希望增加」提交弹窗、纠错反馈组件 |
 | 录音与实时反馈 | `RecorderPanel`、`RealtimeAcousticCanvas`、`CalibrationPanel`、`RecordingTips`、`MicPermissionGuide`、`ProcessingStage` | 录音控制、**录音端实时波形/音量/实时 F0 音高曲线绘制**、可选音域标定面板（支持跳过）、麦克风权限指引、202 处理阶段展示 |

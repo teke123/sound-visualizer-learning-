@@ -12,7 +12,6 @@ function level(id: string, order: number, quizIds: string[], stepIds: string[]):
     targetSound: id,
     pinyin: id,
     title: id,
-    oneLiner: '',
     availability: 'open',
     completionKeys: { quizIds, practiceStepIds: stepIds },
   }

@@ -1,12 +1,13 @@
 <script setup lang="ts">
 /**
- * ArticulationFigure：构形多视图渲染器（FR-603 / FD-14）。
+ * ArticulationFigure：构形多视图渲染器（FR-603 / FD-07）。
  * 内容媒体（图/动画/视频）、声道剖面、3D 三视图切换；缺席视图不显示切换项。
- * 3D 为 1.0 预留切换位：关卡无 model3dMediaId 时按缺席处理。
+ * 3D 视图由 Model3DView 以 three.js 懒加载渲染；关卡无 model3dMediaId 时按缺席处理。
  * 纯展示：媒体地址由 props.mediaResolver 提供（公开 / 预览由页面决定）。
  */
 import { computed, ref, watch } from 'vue'
 import type { Articulation } from '@/api'
+import Model3DView from './Model3DView.vue'
 import SagittalView from './SagittalView.vue'
 
 const props = defineProps<{
@@ -22,6 +23,10 @@ const hasSagittal = computed(
   () => (props.articulation?.sagittal?.keyframes.length ?? 0) > 0,
 )
 const hasModel3d = computed(() => Boolean(props.articulation?.model3dMediaId))
+const model3dSrc = computed(() => {
+  const mediaId = props.articulation?.model3dMediaId
+  return mediaId ? props.mediaResolver(mediaId) : ''
+})
 
 const availableViews = computed<Array<{ key: ViewKind; label: string }>>(() => {
   const views: Array<{ key: ViewKind; label: string }> = []
@@ -79,10 +84,9 @@ watch(
       />
     </div>
 
-    <!-- 3D 视图：1.0 预留位（FD-14；2.0 接入 three.js 加载 model3dMediaId） -->
-    <div v-if="activeView === 'model3d' && hasModel3d" class="model3d-placeholder">
-      <p>三维构形视图即将上线（2.0）。</p>
-      <p class="muted">当前关卡已配置三维模型资源，届时可直接查看。</p>
+    <!-- 3D 视图：three.js 懒加载渲染 model3dMediaId（FD-07） -->
+    <div v-if="activeView === 'model3d' && hasModel3d" class="model3d-wrap">
+      <Model3DView :src="model3dSrc" />
     </div>
   </section>
 </template>
@@ -138,11 +142,7 @@ watch(
   display: flex
   justify-content: center
 
-.model3d-placeholder
-  text-align: center
-  color: #546e7a
-  padding: 32px 0
-  .muted
-    color: #90a4ae
-    font-size: 13px
+.model3d-wrap
+  display: flex
+  justify-content: center
 </style>

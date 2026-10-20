@@ -87,7 +87,7 @@ const demoMediaIds = computed(() => (props.article.demo?.mediaId ? [props.articl
       <p v-if="article.summary" class="article-excerpt">{{ article.summary }}</p>
     </header>
 
-    <!-- 文章示范（FR-505：每篇至少一个可播放示范） -->
+    <!-- 文章示范 -->
     <div v-if="demoMediaIds.length > 0" class="article-demo">
       <button type="button" class="article-demo-btn" @click="emit('play-media', demoMediaIds[0]!)">
         ▶ 播放示范

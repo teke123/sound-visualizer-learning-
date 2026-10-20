@@ -25,7 +25,7 @@ import {
   SKELETONS,
 } from './fixtures'
 import { buildResult, deriveProgress, resetSession, state } from './state'
-import { TINY_PNG, freqForMediaId, makeMouthSvg, makeToneWav } from './media'
+import { TINY_PNG, freqForMediaId, makeMouthGlb, makeMouthSvg, makeToneWav } from './media'
 
 const requestId = () => `mock-${Math.random().toString(36).slice(2, 10)}`
 
@@ -121,6 +121,11 @@ export const handlers = [
 
   http.get('/api/media/:id', ({ params }) => {
     const id = String(params.id)
+    if (id.startsWith('model3d-')) {
+      return new HttpResponse(makeMouthGlb(), {
+        headers: { 'Content-Type': 'model/gltf-binary', 'Cache-Control': 'no-cache' },
+      })
+    }
     if (id.startsWith('img-')) {
       const label = decodeURIComponent(id)
       return new HttpResponse(makeMouthSvg(label, '#26a69a'), {

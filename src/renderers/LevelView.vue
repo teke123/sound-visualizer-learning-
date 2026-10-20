@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * LevelView：关卡页纯展示组件（FR-601 统一结构）。
- * 认知顺序：一句话结论 → 构形 → 示范 → 听辨 → 跟着练 → 误区 → 专业与声学说明（直接展示）。
+ * 认知顺序：构形 → 示范 → 听辨 → 跟着练 → 误区 → 专业与声学说明（直接展示）。
  * 本关录音区与反馈由页面通过 slot 挂载。
  */
 import type { LevelDetail } from '@/api'
@@ -28,7 +28,7 @@ const emit = defineEmits<{
 
 <template>
   <article class="level-view">
-    <!-- 一句话结论（FR-602） -->
+    <!-- 关卡头部：关卡 ID + 标题 + 拼音 + 代表字 -->
     <header class="level-header">
       <div class="level-identity">
         <span class="level-id">{{ level.id }}</span>
@@ -36,8 +36,6 @@ const emit = defineEmits<{
         <span class="level-pinyin">{{ level.pinyin }}</span>
         <span v-if="level.representativeChar" class="level-char">「{{ level.representativeChar }}」</span>
       </div>
-      <p class="level-oneliner">{{ level.oneLiner }}</p>
-      <p class="level-goal">这一关要学会：{{ level.goal }}</p>
     </header>
 
     <!-- 看得见的构形（FR-603） -->
@@ -125,16 +123,6 @@ const emit = defineEmits<{
 .level-pinyin, .level-char
   color: #607d8b
   font-size: 16px
-
-.level-oneliner
-  font-size: 18px
-  color: #00695c
-  font-weight: 600
-  margin: 12px 0 4px
-
-.level-goal
-  color: #546e7a
-  margin: 0
 
 .level-section
   margin-top: 28px

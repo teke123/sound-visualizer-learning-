@@ -1,8 +1,6 @@
 <script setup lang="ts">
 /**
- * P01 首页（FR-201–206）：四个主按钮、搜索框、已开放关入口、下一关推荐；
- * 无已开放关时后三个按钮显示「暂无已开放内容」。
- * 「跟着练」「录音比较」都进入下一关 P05 的练习区 / 录音区（D-03：检测在 P05 完成）。
+ * P01 首页：搜索框、已开放关入口、下一关推荐。
  */
 import { computed, onMounted } from 'vue'
 import { useLevelsStore } from '@/stores/levels'
@@ -39,26 +37,6 @@ function onSearch(q: string) {
       <SearchBox class="hero-search" @search="onSearch" />
     </section>
 
-    <nav class="main-buttons" aria-label="四个主入口">
-      <RouterLink to="/search" class="main-btn">搜一个音</RouterLink>
-      <RouterLink to="/principles" class="main-btn">看懂发音</RouterLink>
-      <RouterLink
-        v-if="hasPublished"
-        :to="nextLevelId ? `/learn/${nextLevelId}#practice` : '/library'"
-        class="main-btn"
-      >
-        跟着练
-      </RouterLink>
-      <span v-else class="main-btn disabled">跟着练<span class="btn-note">暂无已开放内容</span></span>
-      <RouterLink
-        v-if="hasPublished"
-        :to="nextLevelId ? `/learn/${nextLevelId}#record` : '/library'"
-        class="main-btn"
-      >
-        录音比较
-      </RouterLink>
-      <span v-else class="main-btn disabled">录音比较<span class="btn-note">暂无已开放内容</span></span>
-    </nav>
 
     <section v-if="nextLevel" class="next-level" aria-label="下一关推荐">
       <h2>从这一关继续</h2>
@@ -103,39 +81,6 @@ function onSearch(q: string) {
 
 .hero-search
   margin: 0 auto
-
-.main-buttons
-  display: grid
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr))
-  gap: 12px
-
-.main-btn
-  min-height: 96px
-  border-radius: 14px
-  background: #fff
-  border: 2px solid #b2dfdb
-  display: flex
-  flex-direction: column
-  align-items: center
-  justify-content: center
-  gap: 6px
-  font-size: 17px
-  font-weight: 700
-  color: #00695c
-  text-decoration: none
-  padding: 12px
-  text-align: center
-  &:hover
-    background: #e0f2f1
-  &.disabled
-    border-color: #eceff1
-    color: #b0bec5
-    cursor: default
-
-.btn-note
-  font-size: 12px
-  font-weight: 400
-  color: #b0bec5
 
 .next-level h2, .levels-entry h2
   font-size: 18px

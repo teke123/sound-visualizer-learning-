@@ -23,7 +23,6 @@ function playDemo() {
 <template>
   <div class="compare-side">
     <h3>{{ level.title }}（{{ level.pinyin }}）</h3>
-    <p class="compare-oneliner">{{ level.oneLiner }}</p>
     <figure v-if="mainMedia" class="compare-figure">
       <img :src="mediaUrl(mainMedia.mediaId)" :alt="mainMedia.altText" loading="lazy" />
       <figcaption>{{ mainMedia.altText }}</figcaption>
@@ -47,11 +46,6 @@ function playDemo() {
   h3
     margin: 0
     font-size: 16px
-
-.compare-oneliner
-  color: #00695c
-  font-size: 14px
-  margin: 0
 
 .compare-figure
   margin: 0
