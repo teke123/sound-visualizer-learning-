@@ -4,8 +4,7 @@
  * iOS：AudioContext 在首次手势时 resume（docs/architecture/04 §8）。
  *
  * 职责边界（FR-907）：本 store 只管录音状态机与产出音频 Blob；
- * 实时声学分析与绘制由 RealtimeAcousticCanvas 通过 getAnalyser() /
- * sampleRate 自取 AnalyserNode 完成，挂载即连、卸载即断，互不共享生命周期。
+ * 实时分析通过 AudioWorklet 输出带采样位置的 PCM，由 Worker 分析、画布渲染。
  */
 import { computed, ref, shallowRef } from 'vue'
 import { defineStore } from 'pinia'
@@ -55,6 +54,8 @@ export const useRecorderStore = defineStore('recorder', () => {
   let recorder: MediaRecorder | null = null
   let audioContext: AudioContext | null = null
   let analyser: AnalyserNode | null = null
+  let capture: AudioWorkletNode | null = null
+  let recordingStartSample = 0
   let timerHandle: number | null = null
   let autoStopAt = 0
   let onAutoStop: (() => void) | null = null
@@ -68,6 +69,8 @@ export const useRecorderStore = defineStore('recorder', () => {
   }
 
   function releaseMic() {
+    capture?.disconnect()
+    capture = null
     stream?.getTracks().forEach((track) => track.stop())
     stream = null
     if (audioContext && audioContext.state !== 'closed') void audioContext.close()
@@ -106,9 +109,14 @@ export const useRecorderStore = defineStore('recorder', () => {
       if (audioContext.state === 'suspended') await audioContext.resume()
       const source = audioContext.createMediaStreamSource(stream)
       analyser = audioContext.createAnalyser()
-      // 2048 点窗口（约 43ms）：65Hz 男低声也含 2 个以上基音周期，1024 不够
+      // 频谱预览；F0 分析窗口在 Worker 中从 PCM 环形缓冲生成。
       analyser.fftSize = ANALYSIS_FFT_SIZE
       source.connect(analyser)
+      await audioContext.audioWorklet.addModule(new URL('../audio/pcmCapture.worklet.js', import.meta.url))
+      capture = new AudioWorkletNode(audioContext, 'pcm-capture')
+      analyser.connect(capture)
+      // Processor 的输出保持静音；连接 destination 维持音频处理图运行。
+      capture.connect(audioContext.destination)
       status.value = 'ready'
       return true
     } catch (err) {
@@ -128,6 +136,23 @@ export const useRecorderStore = defineStore('recorder', () => {
   /** 实时分析入口：录音就绪后非空；释放麦克风后置空（画布组件据此停画） */
   function getAnalyser(): AnalyserNode | null {
     return analyser
+  }
+
+  function getRecordingStartSample(): number {
+    return recordingStartSample
+  }
+
+  function subscribePcm(onChunk: (samples: Float32Array, startSample: number) => void): () => void {
+    const node = capture
+    if (!node) return () => {}
+    node.port.onmessage = (event: MessageEvent<{ samples: Float32Array; startSample: number }>) => {
+      onChunk(event.data.samples, event.data.startSample)
+    }
+    node.port.postMessage({ enabled: true })
+    return () => {
+      node.port.onmessage = null
+      node.port.postMessage({ enabled: false })
+    }
   }
 
   /** 开始录音；maxMs 到上限自动停止（§6.2：关卡 15 秒、标定 40 秒） */
@@ -152,6 +177,7 @@ export const useRecorderStore = defineStore('recorder', () => {
       blobUrl.value = URL.createObjectURL(blob.value)
       status.value = 'recorded'
     }
+    recordingStartSample = Math.round((audioContext?.currentTime ?? 0) * (audioContext?.sampleRate ?? 48000))
     recorder.start(250)
     status.value = 'recording'
     elapsedMs.value = 0
@@ -209,5 +235,7 @@ export const useRecorderStore = defineStore('recorder', () => {
     release,
     discardTake,
     getAnalyser,
+    getRecordingStartSample,
+    subscribePcm,
   }
 })

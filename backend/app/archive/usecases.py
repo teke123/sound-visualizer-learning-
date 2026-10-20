@@ -19,7 +19,7 @@ from app.platform.deletion_log import deletion_log
 from app.platform.envelope import ApiError
 from app.identity.models import UserRow
 from app.scoring.models import ScoreCacheRow
-from app.scoring.usecases import recompute_personal_range, snapshot_dict
+from app.scoring.usecases import snapshot_dict
 
 
 # ---------------- 档案 ----------------
@@ -145,7 +145,7 @@ def _snapshot_of(db: Session, payload: dict) -> dict | None:
 # ---------------- 删除 ----------------
 
 def delete_recording(db: Session, rec: RecordingRow) -> None:
-    """单删：立即逻辑失效；独占 audio 同时失效；音域引用该录音则重算；
+    """单删：立即逻辑失效；独占 audio 同时失效；
     反馈去引用。重复删除幂等。"""
     if rec.deleted_at is not None:
         return
@@ -163,7 +163,6 @@ def delete_recording(db: Session, rec: RecordingRow) -> None:
         deletion_log.append(kind="score_cache",
                             key=f"{sc.user_id}:{sc.pcm_sha256}:{sc.level_id}")
         db.delete(sc)
-    recompute_personal_range(db, user_id=rec.user_id)
     db.flush()
 
 

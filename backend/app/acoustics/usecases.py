@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from pathlib import Path
+import hashlib
+import json
 
 from sqlalchemy.orm import Session
 
@@ -104,10 +106,13 @@ def _load_or_compute(db: Session, row: AudioRow, kind: str, compute) -> dict:
     if cached is not None:
         payload = JSONText.load(cached.payload, {})
         # 图片缓存存的是文件路径；文件被清理则重算
-        if kind not in ("formants_png", "spectrogram_png") \
+        if "path" not in payload \
                 or (config.DATA_DIR / payload.get("path", "?")).exists():
             return payload
     payload = compute()
+    if cached is not None:
+        db.delete(cached)
+        db.flush()
     db.add(FeatureCacheRow(audio_id=row.id, kind=kind,
                            algorithm_version=analysis.ALGORITHM_VERSION,
                            payload=JSONText.dump(payload), created_at=now()))
@@ -173,20 +178,32 @@ def _hum_wav_path(key: str) -> Path:
     return d / f"{key}.wav"
 
 
-def get_f0_hum(db: Session, row: AudioRow,
-               remap: tuple[float, float] | None = None) -> Path:
-    """用户录音的音高哼鸣 WAV：绘图帧 → sonify_f0（中性元音 /a/ 级联合成），
-    保留原始时长与缺口；remap 给出音域时按五度值映射（「按我的音域听标准」
-    用于标准示范，此处对用户曲线无意义但保持同接口）。"""
-    kind = "f0_hum" if remap is None else f"f0_hum_remap_{remap[0]:.1f}_{remap[1]:.1f}"
+def _curve_frames(curve: dict, side: str | None = None) -> list[dict]:
+    """按原始时间拼接绘图帧；相邻音节共享的网格端点只保留一次。"""
+    by_time: dict[float, dict] = {}
+    for segment in curve.get("segments") or []:
+        data = segment.get(side) if side else segment
+        if not isinstance(data, dict):
+            continue
+        for frame in data.get("frames") or []:
+            t = float(frame["t"])
+            previous = by_time.get(t)
+            if previous is None or frame.get("hz") is not None:
+                by_time[t] = frame
+    return [by_time[t] for t in sorted(by_time)]
+
+
+def _synthesize_hum(db: Session, row, frames: list[dict], duration: float,
+                    remap: tuple[float, float] | None) -> Path:
+    from app.acoustics import f0_pipeline
+
+    if not any(frame.get("hz") is not None for frame in frames):
+        raise ApiError(422, "VALIDATION_ERROR", "本次曲线没有可试听的音高段")
+    fingerprint = json.dumps([frames, duration, remap], sort_keys=True, separators=(",", ":"))
+    kind = "hum_" + hashlib.sha256(fingerprint.encode()).hexdigest()[:12]
 
     def compute() -> dict:
-        from app.acoustics import f0_pipeline
-
-        track = f0_pipeline.extract_track(audio_path(row))
-        segs = f0_pipeline.process_syllables(track, [(0.0, track.duration)], 50.0, 500.0)
-        frames = [fr for seg in segs for fr in seg["frames"]]
-        pcm = f0_pipeline.sonify_frames(frames, remap_range=remap)
+        pcm = f0_pipeline.sonify_frames(frames, remap_range=remap, duration=duration)
         path = _hum_wav_path(f"{row.id}_{kind}")
         path.write_bytes(pcm)
         return {"path": str(path.relative_to(config.DATA_DIR))}
@@ -195,49 +212,56 @@ def get_f0_hum(db: Session, row: AudioRow,
     return config.DATA_DIR / payload["path"]
 
 
+def get_f0_hum(db: Session, row: AudioRow,
+               remap: tuple[float, float] | None = None, *,
+               recording_id: str | None = None, side: str = "user") -> Path:
+    """复用本次评测快照中的绘图帧和五度值，按原始时间合成。"""
+    from app.content.models import MediaAssetRow
+    from app.detection.models import AssessmentResultRow, RecordingRow
+
+    query = (db.query(RecordingRow, AssessmentResultRow)
+             .join(AssessmentResultRow, AssessmentResultRow.recording_id == RecordingRow.id)
+             .filter(RecordingRow.audio_id == row.id, RecordingRow.user_id == row.user_id,
+                     RecordingRow.deleted_at.is_(None)))
+    if recording_id:
+        query = query.filter(RecordingRow.id == recording_id)
+    found = query.order_by(RecordingRow.created_at.desc()).first()
+    if found is None:
+        raise ApiError(404, "NOT_FOUND", "评测曲线不存在")
+    curve = JSONText.load(found[1].payload, {}).get("curve") or {}
+    duration = row.duration_sec
+    if side == "reference":
+        asset = db.get(MediaAssetRow, curve.get("sampleMediaId")) if curve.get("sampleMediaId") else None
+        frames = _curve_frames(curve, side)
+        duration = asset.duration_sec if asset and asset.duration_sec else max(
+            (segment.get("reference", {}).get("t1", 0) for segment in curve.get("segments", [])
+             if isinstance(segment.get("reference"), dict)), default=0)
+    else:
+        frames = _curve_frames(curve, side)
+    return _synthesize_hum(db, row, frames, duration, remap)
+
+
 def get_media_f0_hum(db: Session, media_id: str,
                      remap: tuple[float, float] | None = None) -> Path | None:
-    """标准示范媒体的音高哼鸣（公开内容，与 /media/{id} 同访问级别）。
-    remap = 用户音域时输出「按我的音域听标准」。媒体非 AudioRow，
-    借 FeatureCacheRow 以 media_id 作缓存键（算法版本参与命中）。"""
-    from app.content.models import MediaAssetRow
+    """标准示范试听复用内容中按参考发音人固定音域计算的标准曲线。"""
+    from app.content.models import LevelRow, MediaAssetRow
+    from app.content.usecases import compute_standard_curve
 
     asset = db.get(MediaAssetRow, media_id)
     if asset is None or asset.deleted_at is not None:
         return None
-    path = config.DATA_DIR / asset.storage_path
-    if not path.exists():
-        return None
-    kind = "f0_hum" if remap is None else f"f0_hum_remap_{remap[0]:.1f}_{remap[1]:.1f}"
-    cached = (
-        db.query(FeatureCacheRow)
-        .filter(FeatureCacheRow.audio_id == media_id, FeatureCacheRow.kind == kind,
-                FeatureCacheRow.algorithm_version == analysis.ALGORITHM_VERSION)
-        .one_or_none()
-    )
-    if cached is not None:
-        payload = JSONText.load(cached.payload, {})
-        p = config.DATA_DIR / payload.get("path", "?")
-        if p.exists():
-            return p
-
-    from app.acoustics import f0_pipeline
-
-    track = f0_pipeline.extract_track(path)
-    segs = f0_pipeline.process_syllables(track, [(0.0, track.duration)], 50.0, 500.0)
-    frames = [fr for seg in segs for fr in seg["frames"]]
-    try:
-        pcm = f0_pipeline.sonify_frames(frames, remap_range=remap)
-    except f0_pipeline.F0PipelineError:
-        return None
-    out = _hum_wav_path(f"{media_id}_{kind}")
-    out.write_bytes(pcm)
-    db.add(FeatureCacheRow(audio_id=media_id, kind=kind,
-                           algorithm_version=analysis.ALGORITHM_VERSION,
-                           payload=JSONText.dump({"path": str(out.relative_to(config.DATA_DIR))}),
-                           created_at=now()))
-    db.commit()
-    return out
+    for level in db.query(LevelRow).order_by(LevelRow.id).all():
+        content = JSONText.load(level.content, {})
+        if (content.get("detection") or {}).get("sampleMediaId") != media_id:
+            continue
+        curve = content.get("standardCurve") or {}
+        if curve.get("sampleMediaId") != media_id or not _curve_frames(curve):
+            curve = compute_standard_curve(db, content) or {}
+        frames = _curve_frames(curve)
+        if frames:
+            duration = asset.duration_sec or max((s.get("t1", 0) for s in curve.get("segments", [])), default=0)
+            return _synthesize_hum(db, asset, frames, duration, remap)
+    return None
 
 
 def _matplotlib_png():

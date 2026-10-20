@@ -17,13 +17,11 @@ import VChart from 'vue-echarts'
 import type { ResultCurve, SyllableCurveSide, CurvePoint } from '@/api'
 import { usePlayerStore } from '@/stores/player'
 import { audioF0HumUrl, mediaF0HumUrl } from '@/api'
+import { splitByConfidence, type CurvePlotPoint as Pt } from '@/utils/curveSegments'
 
 echartsUse([LineChart, GridComponent, TooltipComponent, MarkLineComponent, CanvasRenderer])
 
 type ViewMode = 'degree' | 'st' | 'hz'
-type Pt = { x: number; y: number | null; conf: number; src: string | null }
-
-const SOLID_CONF = 0.5
 
 const props = defineProps<{
   curve: ResultCurve
@@ -31,6 +29,7 @@ const props = defineProps<{
   height?: number
   /** 用户录音 id（提供时显示「听我的音高」哼鸣） */
   audioId?: string
+  recordingId?: string
 }>()
 
 provide('echartsTheme', undefined)
@@ -118,36 +117,6 @@ const segments = computed(() => {
   }
   return out
 })
-
-/** 按置信度拆分实线/点线数据（相邻两端较小值 < 0.5 → 点线；分段边界共享端点） */
-function splitByConfidence(pts: Pt[]): { solid: Array<[number, number] | null>; dotted: Array<[number, number] | null> } {
-  const solid: Array<[number, number] | null> = []
-  const dotted: Array<[number, number] | null> = []
-  let prev: Pt | null = null
-  let prevSide: 'solid' | 'dotted' | null = null
-  for (const p of pts) {
-    if (p.y == null) {
-      solid.push(null)
-      dotted.push(null)
-      prev = null
-      prevSide = null
-      continue
-    }
-    if (prev && prevSide && prev.y != null) {
-      const weak = Math.min(prev.conf, p.conf) < SOLID_CONF
-      const target = weak ? dotted : solid
-      const name = weak ? 'dotted' : 'solid'
-      if (prevSide !== name) target.push([prev.x, prev.y!])
-      target.push([p.x, p.y])
-      prevSide = name
-    } else {
-      solid.push([p.x, p.y])
-      prevSide = 'solid'
-    }
-    prev = p
-  }
-  return { solid, dotted }
-}
 
 const showUser = ref(true)
 const showRef = ref(true)
@@ -289,15 +258,22 @@ const humReady = computed(
   () => !!(sampleMediaId.value || props.audioId),
 )
 
+function referenceHumUrl(remap?: { fLo: number; fHi: number }): string {
+  if (props.audioId && props.recordingId) {
+    return audioF0HumUrl(props.audioId, { recordingId: props.recordingId, side: 'reference', remap })
+  }
+  return mediaF0HumUrl(sampleMediaId.value!, remap)
+}
+
 function playHum(kind: 'ref' | 'user' | 'ref-remap') {
   if (kind === 'user' && props.audioId) {
-    void player.play({ key: 'hum:user', url: audioF0HumUrl(props.audioId), label: '我的音高哼鸣' })
+    void player.play({ key: 'hum:user', url: audioF0HumUrl(props.audioId, { recordingId: props.recordingId }), label: '我的音高哼鸣' })
   } else if (kind === 'ref' && sampleMediaId.value) {
-    void player.play({ key: 'hum:ref', url: mediaF0HumUrl(sampleMediaId.value), label: '标准音高哼鸣' })
+    void player.play({ key: 'hum:ref', url: referenceHumUrl(), label: '标准音高哼鸣' })
   } else if (kind === 'ref-remap' && sampleMediaId.value && userRange.value) {
     void player.play({
       key: 'hum:ref-remap',
-      url: mediaF0HumUrl(sampleMediaId.value, userRange.value),
+      url: referenceHumUrl(userRange.value),
       label: '按我的音域听标准',
     })
   }

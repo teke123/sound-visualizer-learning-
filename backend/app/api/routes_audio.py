@@ -1,7 +1,7 @@
 """音频、标定与检测路由（要求登录；D-05/D-19/D-20）。"""
 from __future__ import annotations
 
-from typing import Union
+from typing import Literal, Union
 
 import asyncio
 import json
@@ -125,14 +125,17 @@ def _parse_remap(flo: str | None, fhi: str | None) -> tuple[float, float] | None
 
 @router.get("/audio/{audio_id}/f0-hum.wav")
 async def audio_f0_hum(request: Request, audio_id: str, flo: str | None = None,
-                       fhi: str | None = None, actor: Actor = Depends(get_actor)):
+                       fhi: str | None = None, recording_id: str | None = None,
+                       side: Literal["user", "reference"] = "user",
+                       actor: Actor = Depends(get_actor)):
     """用户实测音高哼鸣（docs §5.2）。"""
     user = require_user(actor)
     actor.rate_limit("feature_read")
     row = acoustics_uc.get_audio_for_read(actor.db, audio_id=audio_id, user_id=user.id)
     remap = _parse_remap(flo, fhi)
     path = await asyncio.get_running_loop().run_in_executor(
-        None, lambda: acoustics_uc.get_f0_hum(actor.db, row, remap))
+        None, lambda: acoustics_uc.get_f0_hum(
+            actor.db, row, remap, recording_id=recording_id, side=side))
     return serve_file(request, path, "audio/wav", cache_control="private, no-store")
 
 

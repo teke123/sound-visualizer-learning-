@@ -193,11 +193,11 @@ export class RealtimePitchTracker {
     const dt = this.lastTSec === null ? ANALYSIS_STEP_MS / 1000 : Math.max(tSec - this.lastTSec, 1e-4)
     this.lastTSec = tSec
 
-    if (rms >= SILENCE_RMS_GATE) {
+    if (rms >= WEAK_RMS_GATE) {
       const [pitch, clar] = this.detector.findPitch(input, this.sampleRate)
       clarity = clar
       const inRange = pitch >= F0_MIN_HZ && pitch <= F0_MAX_HZ
-      const confident = inRange && clar >= CLARITY_GATE
+      const confident = inRange && clar >= CLARITY_GATE && rms >= SILENCE_RMS_GATE
       const rawSt = inRange ? hzToSemitone(pitch) : null
       const nearAccepted =
         rawSt !== null && this.acceptedSt !== null
@@ -255,7 +255,7 @@ export class RealtimePitchTracker {
         } else {
           // 正常接纳：半音域中值滤波（剃单帧微抖）→ EMA 平滑
           this.acceptedSt = st
-          this.stableVoiced += 1
+          if (!weakContinued) this.stableVoiced += 1
           this.medianWindow.push(st)
           if (this.medianWindow.length > 3) this.medianWindow.shift()
           const medianSt = medianOf(this.medianWindow)
@@ -279,13 +279,11 @@ export class RealtimePitchTracker {
     return frame
   }
 
-  /** 无声/清音持续超过 3 帧：清空平滑状态，避免跨音节连线平滑 */
+  /** 出现缺口即清空平滑状态，下一有效段独立起线。 */
   private breakStreak(): void {
     this.unvoicedStreak += 1
-    if (this.unvoicedStreak > 3) {
-      this.medianWindow = []
-      this.emaSt = null
-    }
+    this.medianWindow = []
+    this.emaSt = null
   }
 }
 

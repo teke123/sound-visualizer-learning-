@@ -5,22 +5,21 @@
  * - 声调/韵母关（focus='pitch'）主视图为 F0 音高轨迹（半音纵轴）+ 调型目标引导带，
  *   声母关（focus='onset'')主视图为时域能量包络，清音送气/摩擦段按谱重心配色；
  * - 录音中滚动显示最近 4 秒；停止后整段轨迹定格，供本地试听时画播放游标回看；
- * - 分析与绘制都在组件内完成（rAF + AnalyserNode 直读），不经过响应式与网络。
+ * - PCM 经 AudioWorklet 采集、Worker 按固定采样步长分析；rAF 只负责绘制。
  */
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRecorderStore } from '@/stores/recorder'
 import {
   AdaptivePitchWindow,
-  ANALYSIS_FFT_SIZE,
-  ANALYSIS_STEP_MS,
   degreeToSemitone,
   hzToSemitone,
   QUIET_RMS_HINT,
   rangeDegreeToSemitone,
-  RealtimePitchTracker,
+  spectralCentroidHz,
   semitoneToHz,
   toneTargetContour,
   type PitchRangeHz,
+  type AcousticFrame,
   type ToneValue,
 } from '@/utils/realtimeAcoustics'
 
@@ -67,34 +66,22 @@ const toneHint = computed(() => {
 /* ------------------------------ 分析与绘制状态（非响应式） ------------------------------ */
 
 const LIVE_WINDOW_SEC = 4
-/** 分析步长 10ms（与后端 Praat 轨一致）：rAF 帧间隔 ≠ 步长，用累加器补步 */
-const ANALYSIS_INTERVAL_MS = ANALYSIS_STEP_MS
-
-let tracker: RealtimePitchTracker | null = null
+let frames: AcousticFrame[] = []
+let analysisWorker: Worker | null = null
+let unsubscribePcm: (() => void) | null = null
 let pitchWindow = new AdaptivePitchWindow()
 let rafHandle: number | null = null
-let startedAt = 0
 let lastFrameT = 0
-let lastAnalysisAt = 0
-let timeBuf = new Float32Array(ANALYSIS_FFT_SIZE)
 let freqBuf: Uint8Array<ArrayBuffer> | null = null
 let cssW = 0
 let cssH = 0
 let dpr = 1
 
-function ensureTracker(sampleRate: number): RealtimePitchTracker {
-  if (tracker === null) {
-    tracker = new RealtimePitchTracker(sampleRate, { fftSize: ANALYSIS_FFT_SIZE })
-  }
-  return tracker
-}
-
 function resetSession(): void {
-  tracker = null
+  frames = []
   pitchWindow = new AdaptivePitchWindow()
-  startedAt = performance.now()
   lastFrameT = 0
-  lastAnalysisAt = 0
+  headerUpdatedAt = 0
   currentHz.value = null
   centroidLabel.value = null
   volumeLevel.value = 'ok'
@@ -102,32 +89,37 @@ function resetSession(): void {
 
 /* ------------------------------ 帧循环 ------------------------------ */
 
-function loop(): void {
-  if (!props.active) return
+function startAnalysis(): void {
   const analyser = recorder.getAnalyser()
-  if (!analyser) {
-    rafHandle = null
-    return
-  }
-  const t = ensureTracker(analyser.context.sampleRate)
-  const now = performance.now()
-  // 固定 10ms 步长：一次 rAF 补最多 4 步（高刷屏多步、低刷屏逐步追）
-  let steps = 0
-  while (now - lastAnalysisAt >= ANALYSIS_INTERVAL_MS && steps < 4) {
-    lastAnalysisAt += ANALYSIS_INTERVAL_MS
-    steps += 1
-    if (timeBuf.length !== analyser.fftSize) timeBuf = new Float32Array(analyser.fftSize)
-    if (!freqBuf || freqBuf.length !== analyser.frequencyBinCount) {
-      freqBuf = new Uint8Array(new ArrayBuffer(analyser.frequencyBinCount))
+  if (!analyser) return
+  const sampleRate = analyser.context.sampleRate
+  const windowSize = 2 ** Math.ceil(Math.log2(Math.max(2048, sampleRate * 3 / 50)))
+  const worker = new Worker(new URL('../workers/realtimeAcoustics.worker.ts', import.meta.url), { type: 'module' })
+  analysisWorker = worker
+  worker.postMessage({ type: 'init', sampleRate, windowSize, startSample: recorder.getRecordingStartSample() })
+  worker.onmessage = ({ data }: MessageEvent<AcousticFrame[] | { type: 'flushed' }>) => {
+    if (analysisWorker !== worker) return
+    if (!Array.isArray(data)) {
+      worker.terminate()
+      analysisWorker = null
+      draw()
+      return
     }
-    analyser.getFloatTimeDomainData(timeBuf)
-    analyser.getByteFrequencyData(freqBuf)
-    const tSec = (lastAnalysisAt - startedAt) / 1000
-    const frame = t.push(timeBuf, tSec, freqBuf)
-    if (frame.kind === 'voiced' && frame.f0Hz !== null) {
-      pitchWindow.update(hzToSemitone(frame.f0Hz), Math.max(0, tSec - lastFrameT))
+    for (const frame of data) {
+      if (frame.kind === 'unvoicedNoise') {
+        freqBuf ??= new Uint8Array(new ArrayBuffer(analyser.frequencyBinCount))
+        analyser.getByteFrequencyData(freqBuf)
+        frame.centroidHz = spectralCentroidHz(freqBuf, sampleRate)
+      }
+      frames.push(frame)
+      if (frame.f0Hz !== null) {
+        pitchWindow.update(hzToSemitone(frame.f0Hz), Math.max(0, frame.t - lastFrameT))
+      }
+      lastFrameT = frame.t
     }
-    lastFrameT = tSec
+    const frame = data.at(-1)
+    if (!frame) return
+    const now = performance.now()
     if (now - headerUpdatedAt > 120) {
       headerUpdatedAt = now
       volumeLevel.value = frame.clipping ? 'loud' : frame.rms < QUIET_RMS_HINT ? 'quiet' : 'ok'
@@ -140,14 +132,29 @@ function loop(): void {
             : null
     }
   }
-  if (steps === 0 && lastAnalysisAt === 0) lastAnalysisAt = now
+  unsubscribePcm = recorder.subscribePcm((samples, startSample) => {
+    worker.postMessage({ type: 'pcm', samples, startSample }, [samples.buffer])
+  })
+}
+
+function loop(): void {
+  if (!props.active) return
   draw()
   rafHandle = requestAnimationFrame(loop)
 }
 
-function stopLoop(): void {
+function stopLoop(drain = false): void {
   if (rafHandle !== null) cancelAnimationFrame(rafHandle)
   rafHandle = null
+  unsubscribePcm?.()
+  unsubscribePcm = null
+  if (drain && analysisWorker) {
+    // 消费已发送的 PCM 后再定格，保留 Worker 队列中的录音尾段。
+    analysisWorker.postMessage({ type: 'flush' })
+  } else {
+    analysisWorker?.terminate()
+    analysisWorker = null
+  }
 }
 
 /* ------------------------------ 绘制 ------------------------------ */
@@ -172,7 +179,6 @@ function draw(): void {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
   ctx.clearRect(0, 0, cssW, cssH)
 
-  const frames = tracker?.frames ?? []
   if (frames.length === 0) {
     ctx.fillStyle = COLOR.text
     ctx.font = '12px system-ui, sans-serif'
@@ -390,9 +396,10 @@ function resize(): void {
 watch(
   () => props.active,
   (active) => {
-    stopLoop()
+    stopLoop(!active)
     if (active) {
       resetSession()
+      startAnalysis()
       resize()
       rafHandle = requestAnimationFrame(loop)
     } else {

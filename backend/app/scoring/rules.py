@@ -213,17 +213,33 @@ def curve_phenomena(curve: dict) -> list[dict]:
         quality = user.get("quality") or {}
         if not quality.get("canDiagnose"):
             continue                      # 条件不足只显示曲线，不生成现象
-        pts = [(p["u"], p["degree"]) for p in (user.get("comparisonPoints") or [])
-               if p.get("degree") is not None
-               and p.get("source") in (None, "measured", "corrected")]
+        start, end = user.get("analysisStart"), user.get("analysisEnd")
+        if start is None or end is None or end <= start:
+            continue
+        frames = user.get("frames") or []
+        pts = [((p["t"] - start) / (end - start), p["degree"])
+               for p in frames if p.get("degree") is not None
+               and p.get("source") in ("measured", "corrected")]
         if len(pts) < 4 or not tone:
             continue
         us = np.array([u for u, _ in pts])
         vals = np.array([v for _, v in pts])
         if us[-1] <= us[0]:
             continue
-        v20 = float(np.interp(0.2, us, vals))
-        v80 = float(np.interp(0.8, us, vals))
+        def value_at(u: float) -> float | None:
+            """Read a feature inside a continuous measured/corrected run."""
+            target = start + u * (end - start)
+            for left, right in zip(frames, frames[1:]):
+                if not left["t"] <= target <= right["t"]:
+                    continue
+                if all(p.get("degree") is not None and p.get("source") in
+                       ("measured", "corrected") for p in (left, right)):
+                    return float(np.interp(target, [left["t"], right["t"]],
+                                           [left["degree"], right["degree"]]))
+                return None
+            return None
+
+        v20, v80 = value_at(0.2), value_at(0.8)
         vr = float(vals.max() - vals.min())
         add = lambda tag, desc: out.append({  # noqa: E731
             "tag": tag, "syllable": syl,
@@ -231,14 +247,14 @@ def curve_phenomena(curve: dict) -> list[dict]:
             "description": desc,
         })
         if tone == 1:
-            if abs(v80 - v20) > _D_END_DRIFT:
+            if v20 is not None and v80 is not None and abs(v80 - v20) > _D_END_DRIFT:
                 add("tone_end_unstable", f"「{syl}」第一声的尾巴有较明显的滑动，整体不够平稳")
         elif tone == 2:
-            if v20 > _D_START_HIGH:
+            if v20 is not None and v20 > _D_START_HIGH:
                 add("tone_start_high", f"「{syl}」第二声起点偏高，升上去的空间就小了")
-            elif v20 < _D_START_LOW2:
+            elif v20 is not None and v20 < _D_START_LOW2:
                 add("tone_start_low", f"「{syl}」第二声起点偏低，上升显得吃力")
-            if (v80 - v20) < _D_RISE_MIN:
+            if v20 is not None and v80 is not None and (v80 - v20) < _D_RISE_MIN:
                 add("tone_rise_insufficient",
                     f"「{syl}」第二声只升了约 {max(0.0, v80 - v20):.1f} 度，标准要升 1.5 度以上")
             if vr < _D_SHAPE_FLAT:
@@ -247,9 +263,9 @@ def curve_phenomena(curve: dict) -> list[dict]:
             if vr < _D_SHAPE_FLAT:
                 add("tone_shape_flat", f"「{syl}」第三声整体偏平，先降后升的形状不明显")
         elif tone == 4:
-            if v20 < _D_START_LOW4:
+            if v20 is not None and v20 < _D_START_LOW4:
                 add("tone_start_low", f"「{syl}」第四声起点偏低，降下来显得不够干脆")
-            if (v20 - v80) < _D_FALL_MIN:
+            if v20 is not None and v80 is not None and (v20 - v80) < _D_FALL_MIN:
                 add("tone_fall_insufficient",
                     f"「{syl}」第四声只降了约 {max(0.0, v20 - v80):.1f} 度，标准要降 2 度左右")
     return out

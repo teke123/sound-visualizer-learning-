@@ -95,7 +95,7 @@ EXECUTOR_WORKERS: int = int(os.environ.get("SVS_EXECUTOR_WORKERS", "4"))
 EXECUTOR_QUEUE_LIMIT: int = int(os.environ.get("SVS_EXECUTOR_QUEUE", "32"))
 
 # 声学算法版本：filtered AC F0 管线（五度 degree 1-5 坐标，docs/f0展示修改测试版1.md）
-ALGORITHM_VERSION: str = "acx-2.0.0+tp0.1.0+pm0.5.0d16"
+ALGORITHM_VERSION: str = "acx-2.0.2+tp0.1.0+pm0.5.0d16"
 
 # F0 管线纠偏开关（可在同一批录音上分别评测定参）
 F0_RESCUE_ENABLED: bool = os.environ.get("SVS_F0_RESCUE", "1") not in ("0", "false", "no")

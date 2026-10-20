@@ -4,7 +4,7 @@
 
 F0 与归一化方法论结合 tone_py（Rose 1987; Zhu 1999; Xu & Zhang 2024）：
 - 提取：Praat To Pitch (ac)，70–420 Hz / 10 ms，抑制送气/摩擦段高频伪有声；
-- 标定音域：对数半音域稳健分位数（P3–P97 外扩 6%），兼顾四声全调域与抗喉化离群点；
+- 标定音域：新 F0 管线可靠 Hz 的 P3–P97 分位数外扩 6%，用作固定五度音域；
 - T 值换算：对数域 FOR，(log f - log lo)/(log hi - log lo) * 5，截断到 [0, 5]；
 - 共振峰：按嗓音基频中位数自动选择声道 ceiling（男声 <165Hz 用 5000Hz，女声用 5500Hz），
   统计时取元音稳态中段（20%–80%）中位数，避开声母协同发音过渡段；
@@ -243,8 +243,9 @@ def extract_f0(wav_path: Path) -> F0Result:
 
 
 def robust_pitch_range(f0_hz: np.ndarray) -> tuple[float, float] | None:
-    """标定音域：对数分位数 P3–P97 外扩 6%（覆盖五度 [0,5] 全调域，同时过滤
-    四声末尾喉化/气泡音离群帧）；帧数下限 20。"""
+    """可靠 Hz 的 P3–P97 分位数分别向外扩 6%，得到 1 度和 5 度锚点。
+    输入由新 F0 管线清洗并排除插值、低置信度帧；帧数下限 20。
+    """
     f = f0_hz[np.isfinite(f0_hz) & (f0_hz > 0)]
     if f.size < 20:
         return None

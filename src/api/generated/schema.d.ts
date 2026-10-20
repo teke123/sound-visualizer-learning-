@@ -3202,6 +3202,8 @@ export interface operations {
             query?: {
                 flo?: string | null;
                 fhi?: string | null;
+                recording_id?: string | null;
+                side?: "user" | "reference";
             };
             header?: never;
             path: {

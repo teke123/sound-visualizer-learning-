@@ -73,11 +73,12 @@ const realtimeTargetTone = computed(() => toneOfPinyin(props.level.pinyin))
 
 /** 个人音域（已标定时读一次并冻结，练习期间不重建；docs §1/§6.1） */
 const realtimeRangeHz = ref<PitchRangeHz | null>(null)
-if (contextStore.isAuthenticated) {
-  void detectionApi
+function loadRealtimeRange() {
+  if (!contextStore.isAuthenticated) return Promise.resolve()
+  return detectionApi
     .getCalibration()
     .then((info) => {
-      const r = info.pitchRange
+      const r = info.data.pitchRange
       if (r && typeof r.fLo === 'number' && typeof r.fHi === 'number' && r.fLo < r.fHi) {
         realtimeRangeHz.value = { fLo: r.fLo, fHi: r.fHi }
       }
@@ -85,6 +86,17 @@ if (contextStore.isAuthenticated) {
     .catch(() => {
       /* 未标定/读取失败：回落自适应窗口 */
     })
+}
+const rangeReady = loadRealtimeRange()
+
+async function startRecording() {
+  await rangeReady
+  await flow.startRecording()
+}
+
+async function onCalibrationDone() {
+  await loadRealtimeRange()
+  await flow.onCalibrationDone()
 }
 
 onBeforeUnmount(() => recorder.release())
@@ -128,7 +140,7 @@ onBeforeUnmount(() => recorder.release())
           :range-hz="realtimeRangeHz"
           @begin="flow.begin"
           @retry-mic="flow.requestMic"
-          @start="flow.startRecording"
+          @start="startRecording"
           @stop="flow.stopRecording"
           @re-record="flow.reRecord"
           @submit="flow.submit"
@@ -154,7 +166,7 @@ onBeforeUnmount(() => recorder.release())
 
     <CalibrationPanel
       :open="calibrating"
-      @done="flow.onCalibrationDone"
+      @done="onCalibrationDone"
       @cancel="flow.onCalibrationCancel"
     />
     <ComparePanel

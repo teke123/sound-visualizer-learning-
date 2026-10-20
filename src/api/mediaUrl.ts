@@ -33,8 +33,20 @@ export function audioSpectrogramPngUrl(audioId: string): string {
 }
 
 /** 本人录音音高哼鸣（Sonification：剥离咬字的音高旋律） */
-export function audioF0HumUrl(audioId: string): string {
-  return `/api/audio/${encodeURIComponent(audioId)}/f0-hum.wav`
+export function audioF0HumUrl(audioId: string, options?: {
+  recordingId?: string
+  side?: 'user' | 'reference'
+  remap?: { fLo: number; fHi: number }
+}): string {
+  const base = `/api/audio/${encodeURIComponent(audioId)}/f0-hum.wav`
+  const query = new URLSearchParams()
+  if (options?.recordingId) query.set('recording_id', options.recordingId)
+  if (options?.side) query.set('side', options.side)
+  if (options?.remap) {
+    query.set('flo', String(options.remap.fLo))
+    query.set('fhi', String(options.remap.fHi))
+  }
+  return query.size ? `${base}?${query}` : base
 }
 
 /** 标准示范音高哼鸣；remap 给出用户音域时输出「按我的音域听标准」 */

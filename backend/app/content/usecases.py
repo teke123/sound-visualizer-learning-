@@ -453,26 +453,30 @@ def _collect_media_ids(content: dict) -> set[str | None]:
 # ---------------- 标准曲线（检测对比参考） ----------------
 
 def _split_voiced_equal(voiced: list[list[float]], n: int) -> list[tuple[float, float]]:
-    """有声段按音节数等分（与标定回退同款切分，见 scoring.usecases.calibrate_path）。"""
+    """按累计有声时长等分，音节内保留缺口并消费全部有声段。"""
     total = sum(b - a for a, b in voiced)
     if total <= 0 or n <= 0:
         return []
     per = total / n
     segments: list[tuple[float, float]] = []
+    start = float(voiced[0][0])
+    consumed = 0.0
+    cut = 1
     for a, b in voiced:
-        s, r = a, b - a
-        while r > 1e-3 and len(segments) < n:
-            take = min(r, per)
-            segments.append((s, s + take))
-            s += take
-            r -= take
+        while cut < n and cut * per <= consumed + b - a + 1e-9:
+            end = min(float(b), float(a + cut * per - consumed))
+            segments.append((start, end))
+            start = end
+            cut += 1
+        consumed += b - a
+    segments.append((start, float(voiced[-1][1])))
     return segments
 
 
 def compute_standard_curve(db: Session, content: dict) -> dict | None:
     """标准示范曲线：与用户录音同一条 F0 管线（filtered AC + 四步清洗 +
     degree 1-5 五度坐标，docs/f0展示修改测试版1.md §5.1），音域用参考
-    发音人自身固定音域。音节边界为本地推断（有声段按音节数等分），全程
+    发音人自身固定音域。音节边界优先复用同一媒体的登记时间戳，缺省按累计有声时长等分，全程
     不调评分 Provider——seed 30 关与后台保存关卡都不消耗评测配额。
     提取失败（如清辅音为主）时返回 None，该关结果页曲线对比降级为不可用，
     不阻断内容保存。"""
@@ -491,14 +495,21 @@ def compute_standard_curve(db: Session, content: dict) -> dict | None:
         return None
     try:
         track = f0_pipeline.extract_track(path)
-        voiced = acx.extract_f0(path).voiced_ranges
+        voiced = [[float(track.times[a]), float(track.times[b])]
+                  for a, b in f0_pipeline._runs(np.isfinite(track.f0)) if b > a]
     except Exception:
         logger.warning("标准曲线计算失败：media=%s speaker=%s", media_id, speaker_id,
                        exc_info=True)
         return None
     n = len(expected_syllables(det.get("evaluationText", "")))
-    bounds = (_split_voiced_equal(voiced, n)
-              or [(0.0, track.duration)])
+    # 保留已登记/历史示范的音节时间戳；无时间戳时使用本地累计时长回退。
+    previous_curve = content.get("standardCurve") or {}
+    previous = previous_curve.get("segments", []) if previous_curve.get("sampleMediaId") == media_id else []
+    bounds = [(seg["t0"], seg["t1"]) for seg in previous
+              if seg.get("t0") is not None and seg.get("t1") is not None
+              and 0 <= seg["t0"] < seg["t1"] <= track.duration]
+    if len(bounds) != n:
+        bounds = _split_voiced_equal(voiced, n) or [(0.0, track.duration)]
     segments = f0_pipeline.process_syllables(track, bounds, speaker.f_lo, speaker.f_hi)
     if not any((seg.get("quality") or {}).get("validFrames", 0) >= f0_pipeline.MIN_DRAW_RUN
                for seg in segments):

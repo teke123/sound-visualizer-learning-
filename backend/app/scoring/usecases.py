@@ -1,13 +1,11 @@
-"""scoring 用例：个人音域（标定写入/滚动更新/删除重算）、评分结论缓存。"""
+"""scoring 用例：固定个人音域的标定与快照、评分结论缓存。"""
 from __future__ import annotations
-
-import logging
 
 import numpy as np
 from sqlalchemy.orm import Session
 
 from app import config
-from app.acoustics import analysis
+from app.acoustics import analysis, f0_pipeline
 from app.acoustics.models import AudioRow
 from app.acoustics.usecases import audio_path, mark_deleted as mark_audio_deleted
 from app.db import JSONText, get_session, now
@@ -16,10 +14,6 @@ from app.pinyin_utils import expected_syllables, main_vowel
 from app.scoring.models import PitchRangeRow, PitchRangeSnapshotRow, ScoreCacheRow
 from app.scoring.provider import ProviderError
 from app.scoring.provider_mock import MockProvider
-
-logger = logging.getLogger("svs.scoring")
-
-ROLLING_WINDOW_N = 20   # 最近 N 条存档合格录音
 
 
 def get_provider():
@@ -40,7 +34,6 @@ def _range_row_dict(row: PitchRangeRow) -> dict:
         "vowelSpace": JSONText.load(row.vowel_space),
         "algorithmVersion": row.algorithm_version,
         "basisCalibrationId": row.basis_calibration_id,
-        "sourceRecordingIds": JSONText.load(row.source_recording_ids, []),
         "updatedAt": row.updated_at.isoformat() if row.updated_at else None,
     }
 
@@ -89,14 +82,12 @@ def calibrate_path(path, syllables: list[str]) -> dict:
     if signal.verdict != "pass":
         return {"ok": False, "reason": _signal_advice(signal), "signal": signal.to_dict()}
 
-    f0res = analysis.extract_f0(path)
-    rng = analysis.robust_pitch_range(
-        np.array([fr.get("hz", np.nan) for fr in f0res.frames], dtype=float))
-    if rng is None:
+    try:
+        track = f0_pipeline.extract_track(path)
+    except f0_pipeline.F0PipelineError:
         return {"ok": False,
                 "reason": "这段标定录音没有足够的稳定嗓音，请用正常说话的音量再读一遍",
                 "signal": signal.to_dict()}
-    f_lo, f_hi = rng
 
     text = "".join(syllables)
     try:
@@ -106,20 +97,21 @@ def calibrate_path(path, syllables: list[str]) -> dict:
         # Provider 拿不到音节时间戳（不可达/返回异常）：退回有声段等分切分
         segments = []
     if not segments:
-        voiced = f0res.voiced_ranges
-        total = sum(b - a for a, b in voiced)
-        if total <= 0:
+        from app.content.usecases import _split_voiced_equal
+
+        voiced = [[float(track.times[a]), float(track.times[b])]
+                  for a, b in f0_pipeline._runs(np.isfinite(track.f0)) if b > a]
+        segments = _split_voiced_equal(voiced, max(1, len(syllables)))
+        if not segments:
             return {"ok": False, "reason": "录音里没有检测到声音，请重录",
                     "signal": signal.to_dict()}
-        per = total / max(1, len(syllables))
-        segments = []
-        for a, b in voiced:
-            s, r = a, b - a
-            while r > 1e-3 and len(segments) < len(syllables):
-                take = min(r, per)
-                segments.append((s, s + take))
-                s += take
-                r -= take
+
+    rng = analysis.robust_pitch_range(f0_pipeline.calibration_frequencies(track, segments))
+    if rng is None:
+        return {"ok": False,
+                "reason": "这段标定录音没有足够的稳定嗓音，请用正常说话的音量再读一遍",
+                "signal": signal.to_dict()}
+    f_lo, f_hi = rng
 
     formants = analysis.extract_formants(path)
     vowel_space: dict = {}
@@ -205,60 +197,6 @@ def _signal_advice(signal) -> str:  # noqa: ANN001
         if dim and dim.get("advice"):
             return dim["advice"]
     return "录音质量不达标，请换个安静环境重录"
-
-
-def recompute_personal_range(db: Session, *, user_id: str) -> None:
-    """滚动更新/删除重算：标定基线 + 最近 N 条存档合格录音的 F0 统计；
-    无剩余录音时回到标定基线。元音空间只随重新标定更新。"""
-    from app.detection.models import RecordingRow
-
-    personal = (
-        db.query(PitchRangeRow)
-        .filter(PitchRangeRow.user_id == user_id)
-        .one_or_none()
-    )
-    if personal is None or personal.deleted_at is not None:
-        return
-    recs = (
-        db.query(RecordingRow)
-        .filter(RecordingRow.user_id == user_id,
-                RecordingRow.outcome == "scored",
-                RecordingRow.deleted_at.is_(None))
-        .order_by(RecordingRow.created_at.desc())
-        .limit(ROLLING_WINDOW_N)
-        .all()
-    )
-    f_lo, f_hi = personal.f_lo, personal.f_hi
-    src_ids: list[str] = []
-    hzs = []
-    from app.acoustics.models import AudioRow
-
-    for rec in recs:
-        audio = db.get(AudioRow, rec.audio_id)
-        if audio is None or audio.deleted_at is not None:
-            continue
-        try:
-            f0res = analysis.extract_f0(audio_path(audio))
-        except Exception:
-            # 跳过是对的（单条坏音频不阻断重算），但必须可观测，否则音域
-            # 来源会无痕缩水
-            logger.warning("音域滚动重算：录音 %s 的音频 %s 提取 F0 失败，已跳过",
-                           rec.id, rec.audio_id, exc_info=True)
-            continue
-        arr = np.array([fr.get("hz", np.nan) for fr in f0res.frames], dtype=float)
-        arr = arr[np.isfinite(arr)]
-        if arr.size >= 10:
-            hzs.append(arr)
-        src_ids.append(rec.id)
-    if hzs:
-        all_f = np.concatenate(hzs)
-        rng = analysis.robust_pitch_range(all_f)
-        if rng:
-            f_lo, f_hi = rng
-    personal.f_lo, personal.f_hi = f_lo, f_hi
-    personal.source_recording_ids = JSONText.dump(src_ids)
-    personal.updated_at = now()
-    db.flush()
 
 
 def delete_owner_ranges(db: Session, *, user_id: str) -> None:

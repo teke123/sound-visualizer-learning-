@@ -301,23 +301,26 @@ def _correct_interval(times: np.ndarray, hz: np.ndarray, strength: np.ndarray,
     t0, t1 = float(times[i0]), float(times[i1])
     if anchor_lo and anchor_hi:
         (ta, sa), (tb, sb) = anchor_lo, anchor_hi
-        span = max(tb - ta, 1e-6)
+        anchor_time = float(times[ta])
+        span = max(float(times[tb]) - anchor_time, 1e-6)
 
         def ref_st(i: int) -> float:
-            w = min(max((float(times[i]) - ta) / span, -2.0), 3.0)
+            w = min(max((float(times[i]) - anchor_time) / span, -2.0), 3.0)
             return sa + (sb - sa) * w
     elif anchor_lo:
         (ta, sa) = anchor_lo
         slope = _slope_st(times, hz, ta)
+        anchor_time = float(times[ta])
 
         def ref_st(i: int) -> float:  # noqa: F811
-            return sa + slope * (float(times[i]) - ta)
+            return sa + slope * (float(times[i]) - anchor_time)
     else:
         (ta, sa) = anchor_hi
         slope = _slope_st_after(times, hz, ta)
+        anchor_time = float(times[ta])
 
         def ref_st(i: int) -> float:  # noqa: F811
-            return sa + slope * (float(times[i]) - ta)
+            return sa + slope * (float(times[i]) - anchor_time)
 
     def obs_cost(i: int, f: float, s: float) -> float:
         band = max(0.0, abs(_st(f) - ref_st(i)) - DP_REF_BAND_ST)
@@ -347,8 +350,9 @@ def _correct_interval(times: np.ndarray, hz: np.ndarray, strength: np.ndarray,
 
     # Viterbi
     neg_inf = float("inf")
-    dp = np.full((m, MAX_CANDIDATES * 3), neg_inf)
-    back = np.full((m, MAX_CANDIDATES * 3), -1, dtype=int)
+    width = max(1, max(len(row) for row in cands))
+    dp = np.full((m, width), neg_inf)
+    back = np.full((m, width), -1, dtype=int)
     for k, cands_k in enumerate(cands):
         for ci, (f, s) in enumerate(cands_k):
             c = obs_cost(i0 + k, f, s)
@@ -376,7 +380,7 @@ def _correct_interval(times: np.ndarray, hz: np.ndarray, strength: np.ndarray,
         return
     if anchor_hi:
         hi_hz = 2.0 ** (anchor_hi[1] / 12.0) * ST_REF_HZ
-        dp[last] += [trans_cost(f, hi_hz) for f, _s in cands[last]]
+        dp[last, :len(cands[last])] += [trans_cost(f, hi_hz) for f, _s in cands[last]]
         best_ci = int(np.argmin(dp[last]))
     new_cost = float(dp[last][best_ci])
 
@@ -600,6 +604,30 @@ def process_syllables(track: PitchTrack, syll_bounds: list[tuple[float, float]],
     return [_process_one(track, t0, t1, f_lo, f_hi) for t0, t1 in syll_bounds]
 
 
+def calibration_frequencies(track: PitchTrack,
+                            syll_bounds: list[tuple[float, float]]) -> np.ndarray:
+    """标定统计复用四步清洗后的可靠 Hz，不纳入插值及低置信度帧。
+
+    清洗不依赖待求音域；传入搜索上下界只生成未使用的 degree 字段。
+    长区间分块处理，覆盖整段标定录音；共享音节端点按原始时间去重。
+    """
+    max_duration = (MAX_SYLL_FRAMES - 1) * HOP_SEC
+    bounds = []
+    for start, end in syll_bounds:
+        while end - start > max_duration:
+            bounds.append((start, start + max_duration))
+            start += max_duration
+        bounds.append((start, end))
+    frames_by_time = {}
+    for side in process_syllables(track, bounds, PITCH_FLOOR_HZ, PITCH_TOP_HZ):
+        for frame in side["frames"]:
+            if (frame.get("hz") is not None
+                    and frame.get("source") in ("measured", "corrected")
+                    and frame.get("confidence", 0) >= ANCHOR_MIN_STRENGTH):
+                frames_by_time[frame["t"]] = frame["hz"]
+    return np.asarray(list(frames_by_time.values()), dtype=float)
+
+
 # ---------------- 21 点比较序列（tone_py near/far 规则）----------------
 
 def _comparison_points(times: np.ndarray, hz: np.ndarray, strength: np.ndarray,
@@ -699,7 +727,7 @@ def _chao_from_comparison(comp: list[dict]):
 # ---------------- 哼鸣合成（docs §5.2，接入 tone_py.sonify）----------------
 
 def sonify_frames(frames: list[dict], *, remap_range: tuple[float, float] | None = None,
-                  fs: int = 16000) -> bytes:
+                  duration: float | None = None, fs: int = 16000) -> bytes:
     """绘图帧 → WAV 音高哼鸣。
 
     连续有效段分别用 sonify_f0（三共振峰级联合成器，中性元音 /a/）合成，
@@ -707,31 +735,37 @@ def sonify_frames(frames: list[dict], *, remap_range: tuple[float, float] | None
     实现。remap_range 给定时忽略原 Hz，按五度值映射到该音域
     （「按我的音域听标准」）。
     """
-    valid = [(fr["t"], fr["hz"], fr["degree"], fr.get("intensityDb"))
-             for fr in frames
-             if (fr.get("hz") is not None or (remap_range and fr.get("degree") is not None))]
-    if len(valid) < 2:
+    if not any(fr.get("hz") is not None for fr in frames):
         raise F0PipelineError("没有可合成的有效音高段")
     f_lo, f_hi = remap_range or (0.0, 0.0)
-    total = int((valid[-1][0] + 0.05) * fs)
+    end_time = duration if duration is not None else frames[-1]["t"] + HOP_SEC
+    total = int(round(end_time * fs))
     buf = np.zeros(total, dtype=np.float64)
+    valid = np.array([fr.get("hz") is not None and
+                      (remap_range is None or fr.get("degree") is not None)
+                      for fr in frames])
     i = 0
-    while i < len(valid):
+    while i < len(frames):
+        if not valid[i]:
+            i += 1
+            continue
         j = i
-        while j + 1 < len(valid) \
-                and abs(valid[j + 1][0] - valid[j][0] - HOP_SEC) < HOP_SEC * 1.5:
+        while j + 1 < len(frames) and valid[j + 1] \
+                and abs(frames[j + 1]["t"] - frames[j]["t"] - HOP_SEC) < 0.001:
             j += 1
-        seg = valid[i:j + 1]
+        seg = frames[i:j + 1]
         if remap_range:
-            hz_seg = np.array([degree_to_hz(d, f_lo, f_hi) for _t, _h, d, _i in seg])
+            hz_seg = np.array([degree_to_hz(fr["degree"], f_lo, f_hi) for fr in seg])
         else:
-            hz_seg = np.array([h for _t, h, _d, _i in seg], dtype=float)
-        dur = max(seg[-1][0] - seg[0][0] + HOP_SEC, HOP_SEC * 2)
-        inten = np.array([iv if iv is not None else 60.0
-                          for _t, _h, _d, iv in seg], dtype=float)
+            hz_seg = np.array([fr["hz"] for fr in seg], dtype=float)
+        dur = seg[-1]["t"] - seg[0]["t"] + HOP_SEC
+        inten = np.array([fr.get("intensityDb") if fr.get("intensityDb") is not None
+                          else 60.0 for fr in seg], dtype=float)
+        if len(seg) == 1:
+            hz_seg, inten = np.repeat(hz_seg, 2), np.repeat(inten, 2)
         audio = sonify_f0(hz_seg, fs=fs, dur=dur, source="vowel", vowel="a",
                           intensity=inten)
-        start = int(round(seg[0][0] * fs))
+        start = int(round(seg[0]["t"] * fs))
         end = min(start + len(audio), total)
         if end > start:
             buf[start:end] += audio[:end - start]

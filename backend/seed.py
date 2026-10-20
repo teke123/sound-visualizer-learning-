@@ -15,7 +15,7 @@ from pathlib import Path
 import numpy as np
 
 from app import config
-from app.acoustics import analysis, transcode
+from app.acoustics import analysis, f0_pipeline, transcode
 from app.content import usecases as content_uc
 from app.content.models import (
     ArticleRow, CalibrationTextRow, CategoryRow, LevelRow, MediaAssetRow,
@@ -159,8 +159,8 @@ def _compute_speaker_baseline(corpus: Path, speaker_code: str) -> tuple[float, f
     hz_all: list[float] = []
     for stem in _PITCH_POOL_STEMS:
         wav_path, _, _ = _ensure_normalized_media_file(corpus, speaker_code, stem)
-        f0res = analysis.extract_f0(wav_path)
-        hz_all.extend(fr["hz"] for fr in f0res.frames if "hz" in fr)
+        track = f0_pipeline.extract_track(wav_path)
+        hz_all.extend(f0_pipeline.calibration_frequencies(track, [(0.0, track.duration)]))
     rng = analysis.robust_pitch_range(np.array(hz_all, dtype=float))
     if rng is None:
         raise RuntimeError(f"发音人 {speaker_code} 音域统计失败")

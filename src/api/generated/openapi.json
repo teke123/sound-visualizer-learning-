@@ -776,6 +776,36 @@
               ],
               "title": "Fhi"
             }
+          },
+          {
+            "name": "recording_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Recording Id"
+            }
+          },
+          {
+            "name": "side",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "user",
+                "reference"
+              ],
+              "type": "string",
+              "default": "user",
+              "title": "Side"
+            }
           }
         ],
         "responses": {
