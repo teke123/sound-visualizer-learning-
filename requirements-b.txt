@@ -1,0 +1,13 @@
+# 环境: Python 3.10 (D:\Anaconda\asr_env)
+# 无 NVIDIA GPU,统一 CPU 推理(torch 用 cpu 版)
+torch>=2.0            # 已装 2.13.0+cpu
+transformers>=4.40    # 已装 5.17.0
+numpy>=1.26           # 已装 2.2.6
+scipy>=1.11           # 已装 1.15.3
+soundfile>=0.12       # 已装 0.14.0
+pypinyin>=0.50        # 已装 0.55.0
+fastapi>=0.110        # 已装 0.141.1
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9
+imageio-ffmpeg>=0.4   # 已装(音频转码用)
+edge-tts>=7.0         # 已装 7.2.8(标准普通话 TTS 样本合成,微软官方免费接口)
