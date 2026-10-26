@@ -85,6 +85,53 @@ def generate_feedback(diagnosis: dict) -> dict:
     return {"overview": "基于规则引擎共生成 %d 条四步反馈" % len(steps), "steps": steps}
 
 
+def _parse_llm_json(text: str) -> dict:
+    """从 LLM 回复中提取 JSON 对象（容忍代码块包裹、前后杂文字）"""
+    start = text.find("{")
+    end = text.rfind("}")
+    if start == -1 or end == -1 or end <= start:
+        return {"overview": "LLM 未返回有效 JSON", "steps": []}
+    try:
+        return json.loads(text[start:end + 1])
+    except json.JSONDecodeError:
+        return {"overview": "LLM 返回 JSON 解析失败", "steps": []}
+
+
+def generate_feedback_llm(diagnosis: dict) -> dict:
+    """反馈生成器（LLM 版）：调用本地大模型（qwen2.5）生成四步反馈。
+
+    与规则引擎版 generate_feedback() 输入输出结构一致，可无缝切换。
+    """
+    import llm_service
+
+    prompt = f"""你是普通话发音教练。请根据下面的发音诊断结果，生成面向学习者的「四步反馈」。
+
+诊断结果（JSON）：
+{json.dumps(diagnosis, ensure_ascii=False)}
+
+要求：
+1. 严格只输出一个 JSON 对象，不要输出任何其他文字、解释或代码块标记。
+2. JSON 结构必须为：
+{{"overview":"一句话总评","steps":[{{"category":"tone|pronunciation|fluency|quality","type":"error|warning|suggestion","severity":"error|warning|suggestion","phenomenon":"①检测到的现象","link":"②可能相关的发声环节","hint":"③可感知的改进提示","practice":"④一个安全短练习"}}]}}
+3. phenomenon 必须引用诊断结果里的具体事实（声调/声母/韵母/基频/流利度/录音质量等），不能空泛。
+4. 语气温和、鼓励式，面向零基础学习者，避免医学术语。"""
+
+    reply = llm_service.chat([{"role": "user", "content": prompt}], temperature=0.3)
+    parsed = _parse_llm_json(reply)
+    steps = []
+    for s in parsed.get("steps", []):
+        steps.append({
+            "category": s.get("category", ""),
+            "type": s.get("type", ""),
+            "severity": s.get("severity", ""),
+            "phenomenon": s.get("phenomenon", ""),
+            "link": s.get("link", ""),
+            "hint": s.get("hint", ""),
+            "practice": s.get("practice", ""),
+        })
+    return {"overview": parsed.get("overview", ""), "steps": steps}
+
+
 def flatten_text(feedback: dict) -> str:
     """把反馈内容拼成一段文本，供关键词/禁用词检查"""
     parts = [str(feedback.get("overview", ""))]
@@ -93,9 +140,11 @@ def flatten_text(feedback: dict) -> str:
     return " ".join(parts)
 
 
-def check_sample(sample: dict) -> dict:
+def check_sample(sample: dict, generator=None) -> dict:
     """对单条样本执行评测，返回检查明细"""
-    feedback = generate_feedback(sample["input"])
+    if generator is None:
+        generator = generate_feedback
+    feedback = generator(sample["input"])
     expected = sample["expected"]
     steps = feedback.get("steps", [])
     text = flatten_text(feedback)
@@ -136,15 +185,18 @@ def check_sample(sample: dict) -> dict:
 
 
 def main() -> int:
+    use_llm = "--llm" in sys.argv
     with open(SAMPLES_PATH, encoding="utf-8") as f:
         data = json.load(f)
 
     samples = data.get("samples", [])
-    results = [check_sample(s) for s in samples]
+    generator = generate_feedback_llm if use_llm else generate_feedback
+    results = [check_sample(s, generator) for s in samples]
     passed = sum(1 for r in results if r["ok"])
 
+    mode = "LLM（qwen2.5:7b）" if use_llm else "规则引擎（baseline）"
     print("=" * 64)
-    print("看得见的声音 · 四步反馈评测报告")
+    print("看得见的声音 · 四步反馈评测报告 [%s]" % mode)
     print("样本总数: %d   通过: %d   通过率: %.1f%%" % (len(results), passed, 100.0 * passed / len(results)))
     print("=" * 64)
 
