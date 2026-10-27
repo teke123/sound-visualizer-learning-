@@ -48,7 +48,6 @@ function switchCategory(name: string) {
   <div class="principles-page">
     <header class="pr-head">
       <h1>看懂发音</h1>
-      <p>先懂原理，再进关卡：气从哪里来 → 声音怎么响 → 嘴和舌头怎么摆。</p>
     </header>
 
     <PageState v-if="loading" state="loading" />
@@ -91,10 +90,6 @@ function switchCategory(name: string) {
         </li>
       </ul>
     </template>
-
-    <footer class="pr-foot">
-      <RouterLink to="/map" class="to-map">已经在地图上亮起的关卡，可以直接去学 →</RouterLink>
-    </footer>
   </div>
 </template>
 
@@ -105,12 +100,8 @@ function switchCategory(name: string) {
 
 .pr-head
   h1
-    margin: 0 0 4px
-    font-size: 24px
-  p
     margin: 0 0 16px
-    color: #78909c
-    font-size: 14px
+    font-size: 24px
 
 .category-tabs
   display: flex
@@ -141,13 +132,4 @@ function switchCategory(name: string) {
 .article-excerpt
   font-size: 13px
   color: #90a4ae
-
-.pr-foot
-  margin-top: 28px
-  text-align: center
-
-.to-map
-  color: #00897b
-  text-decoration: none
-  font-size: 14px
 </style>
