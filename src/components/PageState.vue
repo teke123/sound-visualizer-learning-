@@ -4,6 +4,7 @@
  * 错误显示 requestId（NFR-19）与「下一步能做什么」（usePageCopy）。
  */
 import { computed } from 'vue'
+import { QBtn, QSpinner } from 'quasar'
 import { errorCopy, requestIdOf, PAGE_STATE_COPY } from '@/copy/usePageCopy'
 
 export type PageStateKind = 'loading' | 'empty' | 'error' | 'forbidden' | 'not-visible'
@@ -41,11 +42,20 @@ const requestId = computed(() => (props.state === 'error' ? requestIdOf(props.er
 
 <template>
   <div class="page-state" :class="`state-${state}`" role="status">
-    <span v-if="state === 'loading'" class="spinner" aria-hidden="true"></span>
+    <QSpinner v-if="state === 'loading'" size="28px" color="primary" aria-hidden="true" />
     <p class="state-title">{{ title }}</p>
     <p v-if="hint" class="state-hint">{{ hint }}</p>
     <p v-if="requestId" class="state-request-id">requestId：{{ requestId }}</p>
-    <button v-if="state === 'error'" type="button" class="retry-btn" @click="emit('retry')">重试</button>
+    <QBtn
+      v-if="state === 'error'"
+      outline
+      no-caps
+      color="primary"
+      text-color="teal-9"
+      label="重试"
+      class="retry-btn"
+      @click="emit('retry')"
+    />
   </div>
 </template>
 
@@ -73,25 +83,11 @@ const requestId = computed(() => (props.state === 'error' ? requestIdOf(props.er
   font-size: 12px
   color: #b0bec5
 
-.spinner
-  width: 28px
-  height: 28px
-  border: 3px solid #cfd8dc
-  border-top-color: #00897b
-  border-radius: 50%
-  animation: spin 0.8s linear infinite
-
-@keyframes spin
-  to
-    transform: rotate(360deg)
-
+/* 原 .retry-btn：浅青底 + 青描边 + 深青字，44px / 8px 圆角（非胶囊）；
+   Quasar outline 底色为 transparent !important，浅青底需 important 补回 */
 .retry-btn
-  min-height: 44px
   margin-top: 8px
-  padding: 6px 24px
+  min-height: 44px
   border-radius: 8px
-  border: 1px solid #00897b
-  background: #e0f2f1
-  color: #00695c
-  cursor: pointer
+  background: #e0f2f1 !important
 </style>

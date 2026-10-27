@@ -135,7 +135,7 @@ def _not_available_curve(snapshot: dict, note: str) -> dict:
 def analyze_user_curve(wav_path: str, provider: ProviderResult,
                        snapshot: dict, standard_curve: dict | None) -> dict:
     """结果主对比曲线：与标准示范同一条 F0 管线（filtered AC + 四步清洗 +
-    degree 1-5 五度坐标，docs/f0展示修改测试版1.md），音域按受理时快照冻结
+    degree 1-5 五度坐标），音域按受理时快照冻结
     （FR-1006）。整段录音有任一可绘制音节即返回 ok。"""
     from app.acoustics import f0_pipeline
 
@@ -339,6 +339,23 @@ def analyze_vot(user_wav: str, user_f0: F0Result, reference_wav: str,
     }
 
 
+def _score_breakdown(provider: ProviderResult) -> dict:
+    """分数拆分：整体分来自供应商整卷总分；声母/韵母/声调为音节级
+    三项判定（initial_ok/final_ok/tone_ok）的通过率（百分比，1 位小数），
+    无音节时三个分项为 None。分项是主要展示维度，整体分为次要。"""
+    syllables = provider.syllables
+    if not syllables:
+        return {"overall": provider.overall_score,
+                "initial": None, "final": None, "tone": None}
+    n = len(syllables)
+    return {
+        "overall": provider.overall_score,
+        "initial": round(100.0 * sum(1 for s in syllables if s.initial_ok) / n, 1),
+        "final": round(100.0 * sum(1 for s in syllables if s.final_ok) / n, 1),
+        "tone": round(100.0 * sum(1 for s in syllables if s.tone_ok) / n, 1),
+    }
+
+
 def build_phenomena_and_four_steps(
     *,
     provider: ProviderResult,
@@ -347,12 +364,12 @@ def build_phenomena_and_four_steps(
     level_content: dict,
     fallback_templates: list[dict],
     dialect_background: str | None = None,
-) -> tuple[list[dict], list[dict], float | None]:
+) -> tuple[list[dict], list[dict], dict | None]:
     """现象（本关允许标签）→ 四步（本关模板优先，全局兜底）→ 分数。
 
-    分数只在 "score" 属于本关 allowedMetrics 时输出。
-    dialect_background（FR-1007）：登记过的背景在对应环节现象的 cue 后追加
-    一句常见偏误提示，不改现象与分数；未登记背景不追加。
+    分数（整体 + 声母/韵母/声调分项）只在 "score" 属于本关 allowedMetrics
+    时输出。dialect_background（FR-1007）：登记过的背景在对应环节现象的 cue
+    后追加一句常见偏误提示，不改现象与分数；未登记背景不追加。
     """
     allowed = set(level_content.get("detection", {}).get("allowedMetrics", ["score"]))
     templates: dict[str, dict] = {}
@@ -373,10 +390,6 @@ def build_phenomena_and_four_steps(
         used_tags.add(tag)
         phenomena.append(phenomenon_obj)
         tpl = templates[tag]
-        step_ref = tpl.get("practiceStepId")
-        if not step_ref:
-            practice = level_content.get("practice") or []
-            step_ref = practice[0]["id"] if practice else None
         cue = tpl["cue"]
         dialect_hint = dialect_cues.get(_TAG_FAMILY.get(tag, ""))
         if dialect_hint:
@@ -385,7 +398,7 @@ def build_phenomena_and_four_steps(
             "phenomenon": tpl["phenomenon"],
             "possibleCause": tpl["possibleCause"],
             "cue": cue,
-            "practice": {"levelId": level_content.get("id"), "stepRef": step_ref},
+            "practice": tpl.get("practice") or "",
             "wordingSource": "rule_template",
         })
 
@@ -429,8 +442,8 @@ def build_phenomena_and_four_steps(
             "position": {"syllableIndex": None, "part": "final"},
             "description": "元音的位置离标准参考区较远（舌位/开口度差别）",
         })
-    score = provider.overall_score if "score" in allowed else None
-    if score is not None and score < 60:
+    score = _score_breakdown(provider) if "score" in allowed else None
+    if score is not None and score["overall"] < 60:
         emit("low_overall_score", {
             "tag": "low_overall_score", "syllable": None,
             "position": {"syllableIndex": None, "part": "overall"},

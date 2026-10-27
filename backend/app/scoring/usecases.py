@@ -10,7 +10,7 @@ from app.acoustics.models import AudioRow
 from app.acoustics.usecases import audio_path, mark_deleted as mark_audio_deleted
 from app.db import JSONText, get_session, now
 from app.ids import new_id
-from app.pinyin_utils import expected_syllables, main_vowel
+from app.pinyin_utils import annotated_syllables, main_vowel
 from app.scoring.models import PitchRangeRow, PitchRangeSnapshotRow, ScoreCacheRow
 from app.scoring.provider import ProviderError
 from app.scoring.provider_mock import MockProvider
@@ -75,9 +75,9 @@ def snapshot_dict(row: PitchRangeSnapshotRow) -> dict:
     }
 
 
-def calibrate_path(path, syllables: list[str]) -> dict:
-    """纯计算：WAV + 标定文本 → 音高音域 + 元音空间（不写库）。
-    供用户标定与参考发音人登记共用。"""
+def calibrate_path(path, syllables: list[dict]) -> dict:
+    """纯计算：WAV + 标定文本（[{text, pinyin}]，读音以标注为准）→ 音高音域
+    + 元音空间（不写库）。供用户标定与参考发音人登记共用。"""
     signal = analysis.check_signal(path, purpose="calibration")
     if signal.verdict != "pass":
         return {"ok": False, "reason": _signal_advice(signal), "signal": signal.to_dict()}
@@ -89,9 +89,14 @@ def calibrate_path(path, syllables: list[str]) -> dict:
                 "reason": "这段标定录音没有足够的稳定嗓音，请用正常说话的音量再读一遍",
                 "signal": signal.to_dict()}
 
-    text = "".join(syllables)
+    text = "".join(s["text"] for s in syllables)
+    pinyin = "|".join(s["pinyin"] for s in syllables)
     try:
-        prov = get_provider().evaluate(str(path), text)
+        expected = annotated_syllables(text, pinyin)
+    except ValueError as e:
+        return {"ok": False, "reason": f"标定文本配置无效：{e}", "signal": None}
+    try:
+        prov = get_provider().evaluate(str(path), text, pinyin=pinyin)
         segments = [(s.t0, s.t1) for s in prov.syllables]
     except ProviderError:
         # Provider 拿不到音节时间戳（不可达/返回异常）：退回有声段等分切分
@@ -116,7 +121,6 @@ def calibrate_path(path, syllables: list[str]) -> dict:
     formants = analysis.extract_formants(path)
     vowel_space: dict = {}
     f1_all, f2_all = [], []
-    expected = expected_syllables(text)
     for i, seg in enumerate(segments):
         stats = analysis.formant_stats_in_segments(formants, [seg])
         if not stats:
@@ -176,7 +180,6 @@ def compute_calibration(*, audio_id: str, syllables: list[str], user_id: str) ->
                                vowel_space=vowel_space,
                                created_from={"kind": "calibration", "audioId": audio.id})
         row.basis_calibration_id = snap.id
-        row.source_recording_ids = JSONText.dump([])
         # 标定音频算完即删（FR-1006）
         mark_audio_deleted(db, audio)
         db.commit()

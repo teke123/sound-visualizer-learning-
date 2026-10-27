@@ -4,9 +4,7 @@
 
 - E2E_MODE=202（默认）：SVS_PROVIDER=mock SVS_SYNC_WINDOW=0 py -3 main.py。
   首提应立即回落 202、轮询最终 200。评分缓存键含用户，新注册用户
-  必为冷缓存，无需清库。（wait_sync_window 曾有超时取消执行器 future
-  的竞态：窗口 0 时管线永不开跑、录音滞留 processing 到硬截止 TIMEOUT，
-  已改为不取消参与者的 asyncio.wait——本组合即其回归验证。）
+  必为冷缓存，无需清库。
 - E2E_MODE=down：SVS_PROVIDER=mock SVS_MOCK_PROVIDER=fail py -3 main.py
   （mock 模拟不可达；标定不依赖 provider 结果，不受影响）。
 - E2E_MODE=timeout：SVS_PROVIDER=mock SVS_MOCK_PROVIDER=slow
@@ -31,7 +29,6 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).parent))
 from app import config  # noqa: E402
 from app.acoustics import transcode  # noqa: E402
-from app.pinyin_utils import expected_syllables  # noqa: E402
 
 BASE = "http://127.0.0.1:8000"
 HEADERS = {"Origin": "http://localhost:5173"}
@@ -65,7 +62,7 @@ def upload_rec(c, name="mama"):
     corpus = config.CORPUS_DIR
     if corpus is None or not corpus.is_dir():
         raise RuntimeError("请先在 .env 或环境变量配置 CORPUS_DIR")
-    stem = expected_syllables("妈")[0]["stem"]
+    stem = "ma1"
     src = corpus / "MV1" / f"{stem}_MV1.wav"
     tmp = config.DATA_DIR / "tmp_async.wav"
     transcode.normalize_to_wav(src, tmp)

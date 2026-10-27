@@ -1,7 +1,8 @@
 """ScoringProvider 协议与结果类型（ADR-2：外部评分 + Provider 隔离）。
 
 Provider 只做「对指定评测文本的评分与检错」；质量两维判定、规则四步、
-曲线与换算都在本模块内。发给 Provider 的只有规范化音频与评测文本。
+曲线与换算都在本模块内。发给 Provider 的只有规范化音频、评测文本及其
+带调拼音标注（评分参照以标注为准）。
 """
 from __future__ import annotations
 
@@ -25,11 +26,9 @@ class SyllableEval:
 class ProviderResult:
     provider_version: str
     overall_score: float = 100.0
-    initial_score: float | None = None
-    final_score: float | None = None
-    tone_score: float | None = None
     # 全维度分（诊断用）：讯飞 accuracy/fluency/integrity/phone/emotion 等
-    # 原样保留，命名与 Provider 上报一致；mock 不填
+    # 原样保留，命名与 Provider 上报一致；mock 不填。
+    # 声母/韵母/声调分项由规则层按音节三项判定通过率推导，不在 Provider 层。
     scores: dict = field(default_factory=dict)
     # 朗读维检错（FR-1301 维度二）：漏读/增读/回读/替换/乱读
     reading: dict = field(default_factory=lambda: {
@@ -52,10 +51,16 @@ class ProviderError(Exception):
 
 
 class ScoringProvider:
-    """实现须线程安全；调用不在数据库事务内。"""
+    """实现须线程安全；调用不在数据库事务内。
+
+    evaluation_text 为评测文本（汉字），pinyin 为其带调拼音标注（如
+    "lai4|lan2"），是评分参照（讯飞 interphonic 试题）与期望声调的唯一来源，
+    由关卡内容/标定配置携带。
+    """
 
     name: str = "base"
     version: str = "base-0"
 
-    def evaluate(self, wav_path: str, evaluation_text: str) -> ProviderResult:
+    def evaluate(self, wav_path: str, evaluation_text: str,
+                 pinyin: str | None = None) -> ProviderResult:
         raise NotImplementedError

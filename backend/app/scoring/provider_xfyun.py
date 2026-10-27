@@ -439,8 +439,7 @@ def _result_from_parsed(parsed: dict) -> ProviderResult:
     result.scores = dict(paper["scores"])
     total = paper["scores"].get("total_score")
     result.overall_score = round(float(total), 1) if total is not None else 0.0
-    result.tone_score = paper["scores"].get("tone_score")
-    # 讯飞只有合并的声韵分（phone_score），无单独声母/韵母总分 → initial/final 留空
+    # 声母/韵母分项由规则层按音节三项判定通过率推导（讯飞只有合并的声韵分）
 
     result.reading = {k: parsed["reading"].get(k, v) for k, v in result.reading.items()}
     result.reading["disordered"] = bool(parsed["reading"]["disordered"])
@@ -488,17 +487,14 @@ def _result_from_parsed(parsed: dict) -> ProviderResult:
 
 def _apply_expected_tones(result: ProviderResult, evaluation_text: str,
                           pinyin: str | None) -> None:
-    """期望声调回填：word/syll 的 symbol 调号是引擎识别的调型（良好朗读也
-    可能实际读成轻声，如 qi9），声调形状分析需要的是期望声调——标注拼音
-    优先，其次 pypinyin；symbol 调号留 detail.recognizedTone 供诊断。
-    音节数与文本字数一致时才覆盖，错位（漏读等）保持原值。"""
-    from app.pinyin_utils import expected_syllables
-
-    if pinyin:
-        pys = [p for p in re.split(r"[|，,\s]+", pinyin.strip()) if p]
-        tones = [_tone_from_symbol(p) for p in pys]
-    else:
-        tones = [e.get("tone") for e in expected_syllables(evaluation_text)]
+    """期望声调回填：引擎 symbol 调号是识别调型（良好朗读也可能实际读成
+    轻声，如 qi9），声调形状分析需要的是期望声调——以拼音标注为唯一来源
+    （无标注不做回填，保留识别值）。音节数与标注数一致时才覆盖，错位
+    （增读等）保持原值；识别调型与期望不同时另存 detail.recognizedTone。"""
+    if not pinyin:
+        return
+    pys = [p for p in re.split(r"[|，,\s]+", pinyin.strip()) if p]
+    tones = [_tone_from_symbol(p) for p in pys]
     if len(tones) != len(result.syllables):
         return
     for syl, tone in zip(result.syllables, tones):
@@ -512,5 +508,6 @@ class XfyunProvider(ScoringProvider):
     name = "xfyun"
     version = "xfyun-ise-1.0"
 
-    def evaluate(self, wav_path: str, evaluation_text: str) -> ProviderResult:
-        return evaluate_raw(wav_path, evaluation_text)["result"]
+    def evaluate(self, wav_path: str, evaluation_text: str,
+                 pinyin: str | None = None) -> ProviderResult:
+        return evaluate_raw(wav_path, evaluation_text, pinyin=pinyin)["result"]

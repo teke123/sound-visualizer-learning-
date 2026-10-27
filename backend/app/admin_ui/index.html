@@ -136,8 +136,71 @@ async function editLevel(id){
   $('#ed-body').innerHTML = `
     <div class="row"><button class="btn" onclick="saveLevel('${id}')">保存</button>
       <button class="btn" onclick="precheck('${id}')">完整性检查</button></div>
+    ${phonologyFormHtml()}
     <textarea class="code" id="level-json">${esc(JSON.stringify(d.content,null,2))}</textarea>
     <div id="ed-result"></div>`;
+  fillPhonologyForm(d.content&&d.content.phonology);
+  document.querySelectorAll('#ed-body .ph-ctl').forEach(el=>{
+    el.addEventListener('input',syncPhonologyToJson);
+    el.addEventListener('change',syncPhonologyToJson);
+  });
+}
+function phonologyFormHtml(){
+  const L=t=>`<span class="muted">${t}</span>`;
+  const sel=(id,w,opts)=>`<select id="${id}" class="ph-ctl" style="max-width:${w}px">${opts.map(o=>`<option value="${o[0]}">${o[1]}</option>`).join('')}</select>`;
+  const txt=(id,ph,w)=>`<input id="${id}" class="ph-ctl" placeholder="${ph}" style="max-width:${w}px">`;
+  const tones=[1,2,3,4].map(t=>`<label style="display:inline-flex;align-items:center;gap:2px">
+    <input type="checkbox" class="ph-ctl" value="${t}" style="width:auto;margin:0">${t}</label>`).join('');
+  return `<div style="border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:10px">
+    <b>语音学定位（可选）</b>
+    <p class="muted" style="margin:4px 0 8px">留空时前端按目标音与拼音自动匹配，无需填写；零声母请在 JSON 中写 "initial": ""（表单会保留该值）。</p>
+    <div class="row">${L('类型')}${sel('ph-kind',140,[['','留空'],['initial','initial 声母'],['final','final 韵母'],['syllable','syllable 音节'],['tone','tone 声调']])}
+      ${L('声母')}${txt('ph-initial','如 zh、b',90)}
+      ${L('韵母')}${txt('ph-final','如 a、ang、-i',110)}
+      ${L('IPA')}${txt('ph-ipa','如 ʈʂ、ᴀ',90)}
+      ${L('声调')}<span id="ph-tones" class="row" style="gap:6px;margin:0">${tones}</span></div>
+    <div class="row">${L('部位')}${txt('ph-place','如 舌尖后',120)}
+      ${L('方式')}${txt('ph-manner','如 塞擦音',120)}
+      ${L('送气')}${sel('ph-asp',180,[['','留空'],['aspirated','aspirated 送气'],['unaspirated','unaspirated 不送气'],['none','none 无']])}
+      ${L('清浊')}${sel('ph-voi',170,[['','留空'],['voiceless','voiceless 清音'],['voiced','voiced 浊音']])}</div>
+    <div class="row">${L('四呼')}${sel('ph-hu',170,[['','留空'],['kaikou','kaikou 开口'],['qichi','qichi 齐齿'],['hekou','hekou 合口'],['cuokou','cuokou 撮口']])}
+      ${L('韵母结构')}${sel('ph-fs',200,[['','留空'],['simple','simple 单韵母'],['compound','compound 复韵母'],['front_nasal','front_nasal 前鼻韵'],['back_nasal','back_nasal 后鼻韵'],['special','special 特殊']])}</div>
+  </div>`;
+}
+function fillPhonologyForm(ph){
+  ph=ph||{};
+  $('#ph-kind').value=ph.kind||'';
+  $('#ph-initial').value=typeof ph.initial==='string'?ph.initial:'';
+  $('#ph-final').value=ph.final||'';
+  $('#ph-ipa').value=ph.ipa||'';
+  document.querySelectorAll('#ph-tones input').forEach(c=>c.checked=(ph.tones||[]).includes(+c.value));
+  $('#ph-place').value=ph.place||'';
+  $('#ph-manner').value=ph.manner||'';
+  $('#ph-asp').value=ph.aspiration||'';
+  $('#ph-voi').value=ph.voicing||'';
+  $('#ph-hu').value=ph.hu||'';
+  $('#ph-fs').value=ph.finalStructure||'';
+}
+function syncPhonologyToJson(){
+  const ta=$('#level-json'); if(!ta) return;
+  let c; try{ c=JSON.parse(ta.value); }catch(e){ return; }
+  if(!c||typeof c!=='object') return;
+  const prev=c.phonology||{}; const ph={};
+  if($('#ph-kind').value) ph.kind=$('#ph-kind').value;
+  const ini=$('#ph-initial').value.trim(); if(ini) ph.initial=ini;
+  const fin=$('#ph-final').value.trim(); if(fin) ph.final=fin;
+  const ipa=$('#ph-ipa').value.trim(); if(ipa) ph.ipa=ipa;
+  const tones=[...document.querySelectorAll('#ph-tones input:checked')].map(x=>+x.value).sort((a,b)=>a-b);
+  if(tones.length) ph.tones=tones;
+  const place=$('#ph-place').value.trim(); if(place) ph.place=place;
+  const manner=$('#ph-manner').value.trim(); if(manner) ph.manner=manner;
+  if($('#ph-asp').value) ph.aspiration=$('#ph-asp').value;
+  if($('#ph-voi').value) ph.voicing=$('#ph-voi').value;
+  if($('#ph-hu').value) ph.hu=$('#ph-hu').value;
+  if($('#ph-fs').value) ph.finalStructure=$('#ph-fs').value;
+  if(!ini && prev.initial==='' && Object.keys(ph).length) ph.initial='';
+  if(Object.keys(ph).length) c.phonology=ph; else delete c.phonology;
+  ta.value=JSON.stringify(c,null,2);
 }
 async function saveLevel(id){
   let content; try{ content=JSON.parse($('#level-json').value); }catch(e){ alert('JSON 解析失败：'+e.message); return; }

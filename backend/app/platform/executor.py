@@ -1,5 +1,5 @@
-"""进程内有界执行器：评分、标定、特征提取共用一个全局并发闸门
-（docs/architecture/03 第 6 节）。队列已满返回 SERVER_BUSY 语义由调用方映射。
+"""进程内有界执行器：评分、标定、特征提取共用一个全局并发闸门。
+队列已满返回 SERVER_BUSY 语义由调用方映射。
 """
 from __future__ import annotations
 

@@ -3,6 +3,10 @@
  * FormantChart：共振峰对比散点图（仅单韵母关，FR-1005）。
  * 按本人元音空间归一化；不可用时显示原因，不伪造。
  * 参考区域 = 归一化平面上的圆（center + radius）；我的位置为单点。
+ * 坐标系与元音舌位图一致：横轴 F2（inverse，从右往左增大 = 舌位后→前），
+ * 纵轴 F1（inverse，从上往下增大 = 舌位高→低/开口闭→开）。
+ * referenceRegion.center 语义为 [f1Norm, f2Norm]（backend usecases.compute_standard_curve），
+ * 绘图时 x = center[1]（F2）、y = center[0]（F1）。
  */
 import { computed } from 'vue'
 import { use as echartsUse } from 'echarts/core'
@@ -21,10 +25,10 @@ const props = defineProps<{
 
 const unavailable = computed(() => props.formants.status !== 'ok' || !props.formants.user)
 
-/** 参考区域圆周采样（虚线圆） */
+/** 参考区域圆周采样（虚线圆）。center = [f1Norm, f2Norm]，返回 [x=f2, y=f1] */
 function regionCircle(): Array<[number, number]> {
   const region = props.formants.referenceRegion
-  const [cx, cy] = region?.center ?? []
+  const [cy, cx] = region?.center ?? []
   if (cx == null || cy == null || region?.radius == null) return []
   const radius = region.radius
   return Array.from({ length: 49 }, (_, i) => {
@@ -38,10 +42,10 @@ const option = computed(() => {
   const user = props.formants.user!
   const f1 = user.f1 ?? 0
   const f2 = user.f2 ?? 0
-  const userPoint: Array<[number, number]> = [[f1, f2]]
+  const userPoint: Array<[number, number]> = [[f2, f1]]
   const circle = regionCircle()
-  const xs = [...circle.map((p) => p[0]!), f1]
-  const ys = [...circle.map((p) => p[1]!), f2]
+  const xs = [...circle.map((p) => p[0]!), f2]
+  const ys = [...circle.map((p) => p[1]!), f1]
   const pad = 0.5
   return {
     animationDuration: 200,
@@ -50,17 +54,19 @@ const option = computed(() => {
     tooltip: {
       trigger: 'item',
       formatter: (params: { seriesName: string; data: [number, number] }) =>
-        `${params.seriesName}<br/>轴1: ${params.data[0].toFixed(2)} · 轴2: ${params.data[1].toFixed(2)}`,
+        `${params.seriesName}<br/>F2: ${params.data[0].toFixed(2)} · F1: ${params.data[1].toFixed(2)}`,
     },
     xAxis: {
-      name: '归一化轴 1',
+      name: '舌位前后（← 前 · F2 · 后 →）',
+      inverse: true,
       nameLocation: 'middle',
       nameGap: 28,
       min: Math.min(...xs) - pad,
       max: Math.max(...xs) + pad,
     },
     yAxis: {
-      name: '归一化轴 2',
+      name: '舌位高低（↑ 高/闭 · F1 · 低/开 ↓）',
+      inverse: true,
       min: Math.min(...ys) - pad,
       max: Math.max(...ys) + pad,
     },

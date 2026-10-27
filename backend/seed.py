@@ -1,9 +1,9 @@
-"""种子脚本：30 关内容 + 标定文本 + 真人语料库示范媒体（FV1~3、MV1~3）+ 参考发音人。
+"""种子脚本：全部关卡内容 + 标定文本 + 真人语料库示范媒体（FV1~3、MV1~3）+ 参考发音人。
 
 用法（backend/ 目录下，须先在 .env 或环境变量配置 CORPUS_DIR）：
-    python seed.py            # 幂等补种（已存在的不重做）
+    python seed.py            # 幂等补种（已存在的不重做；默认开放 LEVELS 全部关卡）
     python seed.py --reset    # 清库重建（删除 data/app.db 与媒体目录）
-    python seed.py --open N   # 只开放前 N 关（默认全部 30 关）
+    python seed.py --open N   # 只开放前 N 关（用于分批放关；N 不设上限）
 """
 from __future__ import annotations
 
@@ -19,11 +19,10 @@ from app.acoustics import analysis, f0_pipeline, transcode
 from app.content import usecases as content_uc
 from app.content.models import (
     CalibrationTextRow, LevelRow, MediaAssetRow,
-    ReferenceSpeakerRow, SagittalPresetRow,
+    ReferenceSpeakerRow,
 )
 from app.db import JSONText, create_all, get_session, now
 from app.ids import new_id
-from app.pinyin_utils import expected_syllables
 
 SEED_ACTOR = "seed"
 
@@ -95,13 +94,6 @@ def _corpus_wav(corpus: Path, speaker_code: str, stem: str) -> Path:
     return path
 
 
-def _stem_for_text(text: str) -> str:
-    syls = expected_syllables(text)
-    if not syls:
-        raise ValueError(f"无法从文本解析标准音节：{text!r}")
-    return syls[0]["stem"]
-
-
 # 规范化缓存：(speaker_code, stem) → (dest_wav_path, duration_sec, sha256)
 _norm_cache: dict[tuple[str, str], tuple[Path, float, str]] = {}
 
@@ -120,9 +112,9 @@ def _ensure_normalized_media_file(corpus: Path, speaker_code: str, stem: str) ->
     return res
 
 
-def _import_corpus_media(db, corpus: Path, *, text: str, speaker_code: str,
+def _import_corpus_media(db, corpus: Path, *, stem: str, text: str, speaker_code: str,
                          purpose: str, license_note: str) -> str:
-    stem = _stem_for_text(text)
+    """按词干直接导入真人语料库录音（词干由种子数据显式携带，不从文本推断）。"""
     wav_path, duration, digest = _ensure_normalized_media_file(corpus, speaker_code, stem)
     media_id = new_id("md_")
     db.add(MediaAssetRow(
@@ -152,6 +144,77 @@ def seed_calibration_text(db) -> None:
     ))
     db.commit()
     print(f"[seed] 标定文本：{CALIBRATION_TEXT['text']}")
+
+
+# ---------------- ma 构形媒体（2D 正中矢状动画 / 三维模型） ----------------
+
+# (引用键, backend/assets/ma 下文件名, 资产 kind, mime)
+MA_ARTICULATION_ASSETS: list[tuple[str, str, str, str]] = [
+    ("ma_sagittal_2d", "ma-sagittal.html", "animation", "text/html"),
+    ("ma_articulation_model", "ma-articulation.glb", "model", "model/gltf-binary"),
+]
+
+MA_LEVEL_IDS = ("L30", "L31", "L32", "L33")
+
+
+def seed_ma_articulation_media(db) -> dict[str, str]:
+    """导入 backend/assets/ma 的 ma 发音动作媒体并登记资产（按文件名幂等），
+    返回引用键 → mediaId。随后把解析结果写进 L30–L33 的 articulation 段，
+    已存在的关卡也覆盖（新建与老库同一条路径）。"""
+    from app.content_seed_data import LEVELS
+
+    assets_dir = Path(__file__).parent / "assets" / "ma"
+    refs: dict[str, str] = {}
+    for ref, filename, kind, mime in MA_ARTICULATION_ASSETS:
+        src = assets_dir / filename
+        if not src.is_file():
+            raise SystemExit(f"[seed][ERROR] ma 构形媒体缺失：{src}")
+        dest = config.MEDIA_DIR / f"ma_{filename}"
+        if not dest.exists() or dest.read_bytes() != src.read_bytes():
+            shutil.copyfile(src, dest)
+        digest = hashlib.sha256(dest.read_bytes()).hexdigest()
+        row = (db.query(MediaAssetRow)
+               .filter(MediaAssetRow.filename == f"ma_{filename}",
+                       MediaAssetRow.purpose == "articulation",
+                       MediaAssetRow.deleted_at.is_(None))
+               .first())
+        if row is None:
+            row = MediaAssetRow(
+                id=new_id("md_"), kind=kind, filename=f"ma_{filename}",
+                storage_path=str(dest.relative_to(config.DATA_DIR)), mime=mime,
+                size_bytes=dest.stat().st_size, purpose="articulation",
+                license_note="内部教学示意授权（脚本建模，参考轮廓教学模型，非实测数据）",
+                author="内容组（发音动作示意）", sha256=digest,
+                uploaded_by=SEED_ACTOR, created_at=now(),
+            )
+            db.add(row)
+            db.commit()
+            print(f"[seed] ma 构形媒体登记：ma_{filename} → {row.id}")
+        refs[ref] = row.id
+
+    for item in LEVELS:
+        level_id = item["id"]
+        if level_id not in MA_LEVEL_IDS:
+            continue
+        level = db.get(LevelRow, level_id)
+        if level is None:
+            continue
+        template = item.get("articulation") or {}
+        art = {
+            "media": [{k: v for k, v in m.items() if k != "ref"}
+                      | {"mediaId": refs[m["ref"]]}
+                      for m in template.get("media", [])]
+        }
+        model_ref = template.get("model3dRef")
+        if model_ref:
+            art["model3dMediaId"] = refs[model_ref]
+        content = JSONText.load(level.content, {})
+        content["articulation"] = art
+        level.content = JSONText.dump(content)
+        level.updated_at = now()
+        db.commit()
+        print(f"[seed] {level_id} 构形接入 ma 发音动作（2D 动画 / 三维模型）")
+    return refs
 
 
 def _compute_speaker_baseline(corpus: Path, speaker_code: str) -> tuple[float, float, dict]:
@@ -232,10 +295,11 @@ def seed_reference_speakers(db, corpus: Path) -> dict[str, str]:
     return speakers
 
 
-def seed_levels(db, corpus: Path, speakers: dict[str, str], open_count: int) -> None:
+def seed_levels(db, corpus: Path, speakers: dict[str, str], open_count: int | None) -> None:
     from app.content_seed_data import LEVELS
 
-    for item in LEVELS[:open_count]:
+    items = LEVELS if open_count is None else LEVELS[:open_count]
+    for item in items:
         level_id = item["id"]
         if db.get(LevelRow, level_id) is not None:
             print(f"[seed] {level_id} 已存在，跳过")
@@ -245,12 +309,13 @@ def seed_levels(db, corpus: Path, speakers: dict[str, str], open_count: int) -> 
 
         demo_text = item.get("detection", {}).get("evaluationText") or \
             item.get("representativeChar", item["targetSound"])
+        demo_stem = item.get("detection", {}).get("evaluationStem") or ""
 
         # 示范音频：将 FV1~3、MV1~3 全部放入关卡 demos 供学习者切换试听
         demos = []
         for code, _, _, voice_tag in CORPUS_SPEAKERS:
             media_id = _import_corpus_media(
-                db, corpus, text=demo_text, speaker_code=code,
+                db, corpus, stem=demo_stem, text=demo_text, speaker_code=code,
                 purpose="demo", license_note=license_note,
             )
             demos.append({
@@ -267,7 +332,7 @@ def seed_levels(db, corpus: Path, speakers: dict[str, str], open_count: int) -> 
             q_spk = "FV2" if idx % 2 == 0 else "MV2"
             stim_text = q.get("stimulusText", demo_text)
             media_id = _import_corpus_media(
-                db, corpus, text=stim_text, speaker_code=q_spk,
+                db, corpus, stem=q["stimulusStem"], text=stim_text, speaker_code=q_spk,
                 purpose="quiz", license_note=license_note,
             )
             quizzes.append({**q, "stimulusMediaId": media_id})
@@ -280,7 +345,7 @@ def seed_levels(db, corpus: Path, speakers: dict[str, str], open_count: int) -> 
             else ("MV1" if sample_voice == "male" else "FV1")
         eval_text = det.get("evaluationText", demo_text)
         det["sampleMediaId"] = _import_corpus_media(
-            db, corpus, text=eval_text, speaker_code=sample_spk,
+            db, corpus, stem=demo_stem, text=eval_text, speaker_code=sample_spk,
             purpose="demo", license_note=license_note,
         )
         det["referenceSpeakerId"] = speakers[sample_spk]
@@ -295,9 +360,6 @@ def seed_levels(db, corpus: Path, speakers: dict[str, str], open_count: int) -> 
                         skeleton_public=bool(item.get("skeletonPublic", True)),
                         content=JSONText.dump(content),
                         created_at=now(), updated_at=now()))
-        db.add(SagittalPresetRow(
-            key=level_id, layer=item["layer"], target_sound=item["targetSound"],
-            keyframes=JSONText.dump(content["articulation"]["sagittal"]["keyframes"])))
         db.commit()
         print(f"[seed] {level_id} 已开放（{item['targetSound']}，6 发音人示范，标准曲线 {curve_segments} 段）")
 
@@ -306,7 +368,8 @@ def main() -> None:
     args = sys.argv[1:]
     if "--reset" in args:
         _reset()
-    open_count = 30
+    # 默认开放全部关卡（关卡随内容制作追加，数量不封顶）
+    open_count = None
     if "--open" in args:
         open_count = int(args[args.index("--open") + 1])
 
@@ -321,6 +384,7 @@ def main() -> None:
             print("[seed][ERROR] 参考发音人登记失败，标准曲线无法生成，终止")
             return
         seed_levels(db, corpus, speakers, open_count)
+        seed_ma_articulation_media(db)
         print("[seed] 完成。默认管理员：admin / admin12345（可用环境变量覆盖）")
     finally:
         db.close()

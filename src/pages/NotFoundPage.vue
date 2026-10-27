@@ -1,12 +1,13 @@
 <script setup lang="ts">
-/** NotFound：其余路径统一 404（decision-map-frontend 路由表） */
+/** NotFound：其余路径统一 404 */
+import { QBtn } from 'quasar'
 </script>
 
 <template>
   <div class="not-found">
     <h1>页面不存在</h1>
     <p>这个地址没有对应的内容。</p>
-    <RouterLink to="/" class="nf-link">回首页</RouterLink>
+    <QBtn unelevated no-caps color="teal-1" text-color="teal-9" label="回首页" to="/" class="nf-btn" />
   </div>
 </template>
 
@@ -20,15 +21,6 @@
   p
     color: #78909c
 
-.nf-link
-  display: inline-block
+.nf-btn
   margin-top: 12px
-  min-height: 44px
-  line-height: 44px
-  padding: 0 24px
-  border-radius: 999px
-  background: #e0f2f1
-  color: #00695c
-  font-weight: 600
-  text-decoration: none
 </style>

@@ -3,7 +3,7 @@
  * 在 rAF 循环中调用，不触碰 Vue 响应式与网络。
  *
  * 基频用 pitchy（McLeod Pitch Method，NSDF）提取，输出 pitch + clarity。
- * 双门限判定（docs/f0展示修改测试版1.md §6.1）：主门限 clarity ≥ 0.82 且
+ * 双门限判定：主门限 clarity ≥ 0.82 且
  * rms ≥ 0.012 判有声；前 3 帧稳定有声后，rms ≥ 0.008、clarity ≥ 0.55 且
  * 与邻近轨迹连续的弱周期帧（嘎裂/气泡音尾段）延续显示（weak 标记，
  * 画布用较弱样式）；半音变化率 > 2.0 ST/10ms 的帧进入 3 帧观察缓冲，

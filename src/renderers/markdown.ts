@@ -1,5 +1,5 @@
 /**
- * 受控 Markdown 渲染（FR-501–506 / decision-map-frontend「构形、文章与听辨」）：
+ * 受控 Markdown 渲染（FR-501–506）：
  * - 禁用原始 HTML 与脚本（html: false）
  * - 自定义容器指令白名单：practice / audio / image / levels / pro
  * - 专业内容（pro）直接展示，不折叠

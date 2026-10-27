@@ -166,8 +166,8 @@ export interface paths {
         };
         /**
          * Media F0 Hum
-         * @description 标准示范音高哼鸣；带 flo/fhi 时按该音域映射（「按我的音域听标准」，
-         *     docs/f0展示修改测试版1.md §5.2）。与媒体文件同访问级别（公开内容）。
+         * @description 标准示范音高哼鸣；带 flo/fhi 时按该音域映射（「按我的音域听标准」）。
+         *     与媒体文件同访问级别（公开内容）。
          */
         get: operations["media_f0_hum_api_media__media_id__f0_hum_wav_get"];
         put?: never;
@@ -417,40 +417,6 @@ export interface paths {
         post?: never;
         /** Clear My Recordings */
         delete: operations["clear_my_recordings_api_me_recordings_delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/me/recordings/compare": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Compare Recordings */
-        get: operations["compare_recordings_api_me_recordings_compare_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/learning-events": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Learning Events */
-        post: operations["learning_events_api_learning_events_post"];
-        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -797,7 +763,7 @@ export interface paths {
         get: operations["admin_get_calibration_api_admin_calibration_text_get"];
         /**
          * Admin Set Calibration
-         * @description 标定文本配置：须覆盖六个单韵母（FR-1403）。
+         * @description 标定文本配置：须覆盖六个单韵母（FR-1403）；每字带拼音标注。
          */
         put: operations["admin_set_calibration_api_admin_calibration_text_put"];
         post?: never;
@@ -907,25 +873,6 @@ export interface components {
             /** Password */
             password: string;
         };
-        /** ArchiveCompareResponse */
-        ArchiveCompareResponse: {
-            a: components["schemas"]["ArchiveCompareSide"];
-            b: components["schemas"]["ArchiveCompareSide"];
-            comparable: components["schemas"]["CompareDimensions"];
-            /** Reasons */
-            reasons?: string[] | null;
-            /** Differences */
-            differences?: components["schemas"]["CompareDifference"][] | null;
-        };
-        /** ArchiveCompareSide */
-        ArchiveCompareSide: {
-            recording: components["schemas"]["ArchiveRecordingSummary"];
-            result?: components["schemas"]["AssessmentResult"] | null;
-            /** Rangesnapshot */
-            rangeSnapshot?: {
-                [key: string]: unknown;
-            } | null;
-        };
         /** ArchiveListResponse */
         ArchiveListResponse: {
             /** Recordings */
@@ -947,8 +894,7 @@ export interface components {
             verdict?: string | null;
             /** Qualityadvice */
             qualityAdvice?: string | null;
-            /** Score */
-            score?: number | null;
+            score?: components["schemas"]["ScoreBreakdown"] | null;
         };
         /** ArticleCategoriesResponse */
         ArticleCategoriesResponse: {
@@ -1036,9 +982,6 @@ export interface components {
         Articulation: {
             /** Media */
             media?: components["schemas"]["ArticulationMedia"][] | null;
-            /** Description */
-            description: string;
-            sagittal?: components["schemas"]["ArticulationSagittal"] | null;
             /** Model3Dmediaid */
             model3dMediaId?: string | null;
         };
@@ -1053,11 +996,8 @@ export interface components {
             kind: "image" | "animation" | "video";
             /** Alttext */
             altText: string;
-        };
-        /** ArticulationSagittal */
-        ArticulationSagittal: {
-            /** Keyframes */
-            keyframes: components["schemas"]["SagittalKeyframe"][];
+            /** Component */
+            component?: string | null;
         };
         /** AssessmentResult */
         AssessmentResult: {
@@ -1068,8 +1008,7 @@ export interface components {
             /** Algorithmversion */
             algorithmVersion: string;
             quality: components["schemas"]["Quality"];
-            /** Score */
-            score?: number | null;
+            score?: components["schemas"]["ScoreBreakdown"] | null;
             /** Phenomena */
             phenomena?: components["schemas"]["Phenomenon"][] | null;
             /** Foursteps */
@@ -1170,6 +1109,13 @@ export interface components {
             /** Advice */
             advice?: string | null;
         };
+        /** CalibrationSyllable */
+        CalibrationSyllable: {
+            /** Text */
+            text: string;
+            /** Pinyin */
+            pinyin: string;
+        };
         /** CalibrationTextBody */
         CalibrationTextBody: {
             /** Textversion */
@@ -1177,7 +1123,7 @@ export interface components {
             /** Text */
             text: string;
             /** Syllables */
-            syllables: string[];
+            syllables: components["schemas"]["CalibrationSyllable"][];
         };
         /** CategoryBody */
         CategoryBody: {
@@ -1203,26 +1149,6 @@ export interface components {
             /** Advice */
             advice?: string | null;
         };
-        /** CompareDifference */
-        CompareDifference: {
-            /** Dimension */
-            dimension: string;
-            /** Description */
-            description: string;
-        };
-        /** CompareDimensions */
-        CompareDimensions: {
-            /**
-             * Score
-             * @default false
-             */
-            score: boolean;
-            /**
-             * Curve
-             * @default false
-             */
-            curve: boolean;
-        };
         /** ComparisonPoint */
         ComparisonPoint: {
             /** U */
@@ -1239,13 +1165,6 @@ export interface components {
             /** Source */
             source?: string | null;
         };
-        /** CompletionKeys */
-        CompletionKeys: {
-            /** Quizids */
-            quizIds: string[];
-            /** Practicestepids */
-            practiceStepIds: string[];
-        };
         /** ConfusablePair */
         ConfusablePair: {
             /** A */
@@ -1255,7 +1174,7 @@ export interface components {
         };
         /**
          * CurveFrame
-         * @description 原生 10ms 网格绘图帧（docs/f0展示修改测试版1.md §7.1）。
+         * @description 原生 10ms 网格绘图帧。
          */
         CurveFrame: {
             /** T */
@@ -1273,16 +1192,6 @@ export interface components {
             source?: string | null;
             /** Intensitydb */
             intensityDb?: number | null;
-        };
-        /**
-         * CurvePoint
-         * @description 历史 0-5 T 值点（旧曲线数据，前端按版本转换显示）。
-         */
-        CurvePoint: {
-            /** T */
-            t: number;
-            /** V */
-            v: number;
         };
         /** CurveQuality */
         CurveQuality: {
@@ -1308,10 +1217,8 @@ export interface components {
             syllable?: string | null;
             /** Tonevalue */
             toneValue?: number | null;
-            /** User */
-            user?: components["schemas"]["CurvePoint"][] | components["schemas"]["SyllableCurveSide"] | null;
-            /** Reference */
-            reference?: components["schemas"]["CurvePoint"][] | components["schemas"]["SyllableCurveSide"] | null;
+            user?: components["schemas"]["SyllableCurveSide"] | null;
+            reference?: components["schemas"]["SyllableCurveSide"] | null;
         };
         /** DeleteAccountBody */
         DeleteAccountBody: {
@@ -1343,8 +1250,6 @@ export interface components {
             sampleMediaId?: string | null;
             /** Allowedmetrics */
             allowedMetrics: string[];
-            /** Available */
-            available: boolean;
         };
         /** DurationCheck */
         DurationCheck: {
@@ -1356,24 +1261,6 @@ export interface components {
             pass?: boolean | null;
             /** Advice */
             advice?: string | null;
-        };
-        /** Envelope[ArchiveCompareResponse] */
-        Envelope_ArchiveCompareResponse_: {
-            /**
-             * Code
-             * @default OK
-             */
-            code: string;
-            /**
-             * Message
-             * @default ok
-             */
-            message: string;
-            data: components["schemas"]["ArchiveCompareResponse"];
-            /** Requestid */
-            requestId?: string | null;
-            /** Nextstep */
-            nextStep?: string | null;
         };
         /** Envelope[ArchiveListResponse] */
         Envelope_ArchiveListResponse_: {
@@ -1568,24 +1455,6 @@ export interface components {
              */
             message: string;
             data: components["schemas"]["FormantsResponse"];
-            /** Requestid */
-            requestId?: string | null;
-            /** Nextstep */
-            nextStep?: string | null;
-        };
-        /** Envelope[LearningEventsResponse] */
-        Envelope_LearningEventsResponse_: {
-            /**
-             * Code
-             * @default OK
-             */
-            code: string;
-            /**
-             * Message
-             * @default ok
-             */
-            message: string;
-            data: components["schemas"]["LearningEventsResponse"];
             /** Requestid */
             requestId?: string | null;
             /** Nextstep */
@@ -1844,19 +1713,6 @@ export interface components {
             /** Nextstep */
             nextStep?: string | null;
         };
-        /** EventItem */
-        EventItem: {
-            /** Eventid */
-            eventId: string;
-            /** Levelid */
-            levelId: string;
-            /** Kind */
-            kind: string;
-            /** Detail */
-            detail: {
-                [key: string]: unknown;
-            };
-        };
         /** F0Frame */
         F0Frame: {
             /** T */
@@ -1951,16 +1807,10 @@ export interface components {
             possibleCause: string;
             /** Cue */
             cue: string;
-            practice: components["schemas"]["FourStepPractice"];
+            /** Practice */
+            practice: string;
             /** Wordingsource */
             wordingSource: string;
-        };
-        /** FourStepPractice */
-        FourStepPractice: {
-            /** Levelid */
-            levelId?: string | null;
-            /** Stepref */
-            stepRef: string;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -1980,22 +1830,6 @@ export interface components {
             service: string;
             /** Env */
             env: string;
-        };
-        /** LearningEventsBody */
-        LearningEventsBody: {
-            /** Events */
-            events: components["schemas"]["EventItem"][];
-        };
-        /** LearningEventsResponse */
-        LearningEventsResponse: {
-            /** Accepted */
-            accepted: number;
-            /** Duplicates */
-            duplicates: number;
-            /** Rejected */
-            rejected?: {
-                [key: string]: unknown;
-            }[] | null;
         };
         /** LevelContentBody */
         LevelContentBody: {
@@ -2027,6 +1861,7 @@ export interface components {
             title: string;
             /** Tags */
             tags?: string[] | null;
+            phonology?: components["schemas"]["LevelPhonology"] | null;
             nav?: components["schemas"]["LevelNav"] | null;
             articulation?: components["schemas"]["Articulation"] | null;
             /** Demos */
@@ -2034,9 +1869,7 @@ export interface components {
             /** Quizzes */
             quizzes?: components["schemas"]["QuizQuestion"][] | null;
             /** Practice */
-            practice?: components["schemas"]["PracticeStep"][] | null;
-            /** Misconceptions */
-            misconceptions?: components["schemas"]["Misconception"][] | null;
+            practice?: string[] | null;
             professional?: components["schemas"]["Professional"] | null;
             detection?: components["schemas"]["DetectionTask"] | null;
         };
@@ -2048,6 +1881,34 @@ export interface components {
             next?: string | null;
             /** Confusables */
             confusables?: string[] | null;
+        };
+        /**
+         * LevelPhonology
+         * @description 关卡语音学描述段（可选，内容未填写时不下发）。
+         */
+        LevelPhonology: {
+            /** Ipa */
+            ipa?: string | null;
+            /** Kind */
+            kind?: ("initial" | "final" | "syllable" | "tone") | null;
+            /** Initial */
+            initial?: string | null;
+            /** Final */
+            final?: string | null;
+            /** Tones */
+            tones?: number[] | null;
+            /** Place */
+            place?: string | null;
+            /** Manner */
+            manner?: string | null;
+            /** Aspiration */
+            aspiration?: ("aspirated" | "unaspirated" | "none") | null;
+            /** Voicing */
+            voicing?: ("voiceless" | "voiced") | null;
+            /** Hu */
+            hu?: ("kaikou" | "qichi" | "hekou" | "cuokou") | null;
+            /** Finalstructure */
+            finalStructure?: ("simple" | "compound" | "front_nasal" | "back_nasal" | "special") | null;
         };
         /** LevelSkeleton */
         LevelSkeleton: {
@@ -2089,6 +1950,7 @@ export interface components {
             representativeChar?: string | null;
             /** Title */
             title: string;
+            phonology?: components["schemas"]["LevelPhonology"] | null;
             /** Demomediaid */
             demoMediaId?: string | null;
             /**
@@ -2096,7 +1958,6 @@ export interface components {
              * @enum {string}
              */
             availability: "open" | "closed";
-            completionKeys: components["schemas"]["CompletionKeys"];
         };
         /** LevelsResponse */
         LevelsResponse: {
@@ -2147,6 +2008,8 @@ export interface components {
             username?: string | null;
             /** Dialectbackground */
             dialectBackground?: string | null;
+            /** Gender */
+            gender?: string | null;
             calibration: components["schemas"]["CalibrationInfo"];
             /** Nextlevelid */
             nextLevelId?: string | null;
@@ -2157,13 +2020,6 @@ export interface components {
             levels: components["schemas"]["ProgressLevel"][];
             /** Nextlevelid */
             nextLevelId?: string | null;
-        };
-        /** Misconception */
-        Misconception: {
-            /** Phenomenon */
-            phenomenon: string;
-            /** Fix */
-            fix: string;
         };
         /** NoiseCheck */
         NoiseCheck: {
@@ -2215,23 +2071,6 @@ export interface components {
             /** Fhi */
             fHi: number;
         };
-        /** PracticeStep */
-        PracticeStep: {
-            /** Id */
-            id: string;
-            /** Title */
-            title: string;
-            /** Instruction */
-            instruction: string;
-            /** Repeat */
-            repeat?: number | null;
-            /** Durationsec */
-            durationSec?: number | null;
-            /** Bodycue */
-            bodyCue: string;
-            /** Mediaid */
-            mediaId?: string | null;
-        };
         /** Professional */
         Professional: {
             /** Description */
@@ -2239,15 +2078,17 @@ export interface components {
         };
         /**
          * ProfileBody
-         * @description dialectBackground 传 null 或空串清除（FR-106 / FR-107）
+         * @description dialectBackground / gender 传 null 或空串清除（FR-106 / FR-107）
          */
         ProfileBody: {
             /** Dialectbackground */
             dialectBackground?: string | null;
+            /** Gender */
+            gender?: string | null;
         };
         /**
          * ProfileResponse
-         * @description PATCH /api/me/profile 响应：方言区/母语背景设置结果
+         * @description PATCH /api/me/profile 响应：方言区/母语背景与性别设置结果
          */
         ProfileResponse: {
             /** Accountid */
@@ -2256,6 +2097,8 @@ export interface components {
             username: string;
             /** Dialectbackground */
             dialectBackground?: string | null;
+            /** Gender */
+            gender?: string | null;
         };
         /** ProgressLevel */
         ProgressLevel: {
@@ -2263,22 +2106,6 @@ export interface components {
             levelId: string;
             /** Completed */
             completed: boolean;
-            quiz: components["schemas"]["ProgressQuiz"];
-            practice: components["schemas"]["ProgressPractice"];
-        };
-        /** ProgressPractice */
-        ProgressPractice: {
-            /** Done */
-            done: number;
-            /** Total */
-            total: number;
-        };
-        /** ProgressQuiz */
-        ProgressQuiz: {
-            /** Passed */
-            passed: number;
-            /** Total */
-            total: number;
         };
         /** PublishedBody */
         PublishedBody: {
@@ -2403,6 +2230,8 @@ export interface components {
             password: string;
             /** Dialectbackground */
             dialectBackground?: string | null;
+            /** Gender */
+            gender?: string | null;
         };
         /** RegisterResponse */
         RegisterResponse: {
@@ -2412,6 +2241,8 @@ export interface components {
             username: string;
             /** Dialectbackground */
             dialectBackground?: string | null;
+            /** Gender */
+            gender?: string | null;
         };
         /** RelatedLevel */
         RelatedLevel: {
@@ -2476,66 +2307,20 @@ export interface components {
             /** Note */
             note?: string | null;
         };
-        /** SagittalKeyframe */
-        SagittalKeyframe: {
-            /** Label */
-            label: string;
-            /** Holdms */
-            holdMs: number;
-            /** Jaw */
-            jaw: number;
-            lips: components["schemas"]["SagittalLips"];
-            tongueTip: components["schemas"]["SagittalTongueTip"];
-            tongueBody: components["schemas"]["SagittalTongueBody"];
-            /**
-             * Velum
-             * @enum {string}
-             */
-            velum: "raised" | "lowered";
-            /**
-             * Airflow
-             * @enum {string}
-             */
-            airflow: "none" | "oral" | "nasal" | "burst" | "aspirated_burst" | "friction" | "affricate";
-            /** Voicing */
-            voicing: boolean;
-        };
-        /** SagittalLips */
-        SagittalLips: {
-            /** Aperture */
-            aperture: number;
-            /** Rounding */
-            rounding: number;
-            /**
-             * Contact
-             * @enum {string}
-             */
-            contact: "none" | "bilabial" | "labiodental";
-        };
-        /** SagittalTongueBody */
-        SagittalTongueBody: {
-            /** Height */
-            height: number;
-            /** Backness */
-            backness: number;
-            /**
-             * Stricture
-             * @enum {string}
-             */
-            stricture: "open" | "approximant" | "fricative" | "closure";
-        };
-        /** SagittalTongueTip */
-        SagittalTongueTip: {
-            /**
-             * Place
-             * @enum {string}
-             */
-            place: "rest" | "dental" | "alveolar" | "postalveolar" | "retroflex";
-            /**
-             * Stricture
-             * @enum {string}
-             */
-            stricture: "open" | "approximant" | "fricative" | "closure";
+        /**
+         * ScoreBreakdown
+         * @description 分数拆分：声母/韵母/声调为音节级三项判定通过率（主要展示维度），
+         *     overall 为供应商整卷总分（次要）。无音节时分项为空。
+         */
+        ScoreBreakdown: {
+            /** Overall */
+            overall: number;
+            /** Initial */
+            initial?: number | null;
+            /** Final */
+            final?: number | null;
+            /** Tone */
+            tone?: number | null;
         };
         /** SearchResponse */
         SearchResponse: {
@@ -2588,8 +2373,6 @@ export interface components {
                 [key: string]: unknown;
             } | null;
             quality?: components["schemas"]["CurveQuality"] | null;
-            /** Points */
-            points?: components["schemas"]["CurvePoint"][] | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -3439,71 +3222,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_ClearArchiveResponse_"];
-                };
-            };
-        };
-    };
-    compare_recordings_api_me_recordings_compare_get: {
-        parameters: {
-            query: {
-                a: string;
-                b: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Envelope_ArchiveCompareResponse_"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    learning_events_api_learning_events_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["LearningEventsBody"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Envelope_LearningEventsResponse_"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

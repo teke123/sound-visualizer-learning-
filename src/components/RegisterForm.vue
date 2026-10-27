@@ -1,11 +1,13 @@
 <script setup lang="ts">
-/** RegisterForm：注册（FR-107）：用户名 3–32 唯一、密码 ≥8、可选填方言区/母语背景；
+/** RegisterForm：注册（FR-107）：用户名 3–32 唯一、密码 ≥8、可选填方言区/母语背景与性别；
  * 注册即代表同意服务条款、不自动登录；USERNAME_TAKEN 表单内错误 */
 import { ref } from 'vue'
+import { QBtn, QInput } from 'quasar'
 import { ApiError } from '@/api'
 import { errorCopy } from '@/copy/usePageCopy'
 import { useAuth, validatePassword, validateUsername } from '@/features/auth'
 import DialectSelector from './DialectSelector.vue'
+import GenderSelector from './GenderSelector.vue'
 
 const props = defineProps<{
   redirect?: string | null
@@ -18,6 +20,7 @@ const username = ref('')
 const password = ref('')
 const password2 = ref('')
 const dialect = ref('')
+const gender = ref('')
 const usernameError = ref<string | null>(null)
 const passwordError = ref<string | null>(null)
 const password2Error = ref<string | null>(null)
@@ -32,6 +35,7 @@ async function submit() {
     username: username.value,
     password: password.value,
     dialectBackground: dialect.value || null,
+    gender: gender.value || null,
   })
   if (ok) registered.value = true
 }
@@ -55,29 +59,51 @@ const usernameTaken = () => auth.error.value instanceof ApiError && auth.error.v
     </div>
 
     <template v-else>
-      <label class="field">
-        <span>用户名</span>
-        <input v-model="username" type="text" autocomplete="username" placeholder="3–32 位字母、数字、下划线或中文" />
-        <em v-if="usernameError">{{ usernameError }}</em>
-        <em v-else-if="usernameTaken()">{{ errorCopy(auth.error.value).title }}</em>
-      </label>
-      <label class="field">
-        <span>密码</span>
-        <input v-model="password" type="password" autocomplete="new-password" placeholder="至少 8 位" />
-        <em v-if="passwordError">{{ passwordError }}</em>
-      </label>
-      <label class="field">
-        <span>再输入一次密码</span>
-        <input v-model="password2" type="password" autocomplete="new-password" />
-        <em v-if="password2Error">{{ password2Error }}</em>
-      </label>
+      <QInput
+        v-model="username"
+        class="auth-field"
+        outlined
+        label="用户名"
+        autocomplete="username"
+        placeholder="3–32 位字母、数字、下划线或中文"
+        :error="!!usernameError || usernameTaken()"
+        :error-message="usernameError ?? (usernameTaken() ? errorCopy(auth.error.value).title : '')"
+      />
+      <QInput
+        v-model="password"
+        class="auth-field"
+        outlined
+        type="password"
+        label="密码"
+        autocomplete="new-password"
+        placeholder="至少 8 位"
+        :error="!!passwordError"
+        :error-message="passwordError ?? ''"
+      />
+      <QInput
+        v-model="password2"
+        class="auth-field"
+        outlined
+        type="password"
+        label="再输入一次密码"
+        autocomplete="new-password"
+        :error="!!password2Error"
+        :error-message="password2Error ?? ''"
+      />
       <DialectSelector v-model="dialect" />
+      <GenderSelector v-model="gender" />
 
       <p v-if="auth.error.value && !usernameTaken()" class="form-error">{{ errorCopy(auth.error.value).title }}</p>
 
-      <button type="submit" class="auth-submit" :disabled="auth.busy.value">
-        {{ auth.busy.value ? '注册中…' : '注册' }}
-      </button>
+      <QBtn
+        type="submit"
+        class="auth-submit"
+        unelevated
+        no-caps
+        color="primary"
+        :label="auth.busy.value ? '注册中…' : '注册'"
+        :disable="auth.busy.value"
+      />
       <p class="auth-alt">
         已有账号？
         <RouterLink :to="redirect ? `/account/login?redirect=${encodeURIComponent(redirect)}` : '/account/login'">

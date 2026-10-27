@@ -2,6 +2,7 @@
 /** P04 发音原理目录（FR-501）：气 → 声 → 口型三分类；提供进入 P03 的入口 */
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { QBtn, QCard, QCardSection } from 'quasar'
 import { contentApi, type ArticleCategory, type ArticleSummary } from '@/api'
 import PageState from '@/components/PageState.vue'
 
@@ -54,31 +55,39 @@ function switchCategory(name: string) {
     <PageState v-else-if="error" state="error" :error="error" @retry="load" />
     <template v-else>
       <nav class="category-tabs" aria-label="文章分类">
-        <button
-          type="button"
-          :class="['cat-tab', { active: activeCategory === '' }]"
+        <QBtn
+          no-caps
+          :color="activeCategory === '' ? 'teal-1' : 'blue-grey-4'"
+          :text-color="activeCategory === '' ? 'teal-9' : 'blue-grey-9'"
+          label="全部"
+          :unelevated="activeCategory === ''"
+          :outline="activeCategory !== ''"
           @click="switchCategory('')"
-        >
-          全部
-        </button>
-        <button
+        />
+        <QBtn
           v-for="category in categories"
           :key="category.id"
-          type="button"
-          :class="['cat-tab', { active: activeCategory === category.name }]"
+          no-caps
+          :color="activeCategory === category.name ? 'teal-1' : 'blue-grey-4'"
+          :text-color="activeCategory === category.name ? 'teal-9' : 'blue-grey-9'"
+          :label="category.name"
+          :unelevated="activeCategory === category.name"
+          :outline="activeCategory !== category.name"
           @click="switchCategory(category.name)"
-        >
-          {{ category.name }}
-        </button>
+        />
       </nav>
 
       <p v-if="articles.length === 0" class="no-articles">这一类暂时没有已开放的文章。</p>
       <ul v-else class="article-list">
-        <li v-for="article in articles" :key="article.slug" class="article-item">
-          <RouterLink :to="`/principles/${article.slug}`" class="article-link">
-            <strong>{{ article.title }}</strong>
-            <span v-if="article.summary" class="article-excerpt">{{ article.summary }}</span>
-          </RouterLink>
+        <li v-for="article in articles" :key="article.slug">
+          <QCard flat bordered>
+            <QCardSection>
+              <RouterLink :to="`/principles/${article.slug}`" class="article-link">
+                <strong>{{ article.title }}</strong>
+                <span v-if="article.summary" class="article-excerpt">{{ article.summary }}</span>
+              </RouterLink>
+            </QCardSection>
+          </QCard>
         </li>
       </ul>
     </template>
@@ -109,19 +118,6 @@ function switchCategory(name: string) {
   flex-wrap: wrap
   margin-bottom: 16px
 
-.cat-tab
-  min-height: 44px
-  padding: 4px 16px
-  border-radius: 999px
-  border: 1px solid #cfd8dc
-  background: #fff
-  cursor: pointer
-  &.active
-    border-color: #00897b
-    background: #e0f2f1
-    color: #00695c
-    font-weight: 700
-
 .no-articles
   color: #90a4ae
 
@@ -133,16 +129,10 @@ function switchCategory(name: string) {
   flex-direction: column
   gap: 10px
 
-.article-item
-  border: 1px solid #eceff1
-  border-radius: 10px
-  background: #fff
-
 .article-link
   display: flex
   flex-direction: column
   gap: 4px
-  padding: 14px 16px
   text-decoration: none
   color: #263238
   strong

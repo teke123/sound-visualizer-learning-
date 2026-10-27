@@ -1,13 +1,14 @@
 /**
  * MSW handlers：按后端决策图契约模拟全部 1.0 端点（dev:mock 模式）。
  * 覆盖：内容/搜索/文章/媒体、上传、标定、检测（202 → 完成）、
- * 档案与比较、学习事件与进度、账号、反馈。
+ * 档案、进度、账号、反馈。
  * 口径：注册 / 登录即默认同意服务条款；进度与录音归属登录账号；
- * 录音质量仅作提示，不拦截评分；未标定可跳过（D-20）。
+ * 进度完成 = 本关至少一条检测录音；录音质量仅作提示，不拦截评分；
+ * 未标定可跳过（D-20）。
  */
 import { http, HttpResponse } from 'msw'
+import { stripToneMarks } from '@/phonology/mandarin'
 import type {
-  ArchiveCompareResponse,
   LevelsResponse,
   MeContext,
   RecordingDTO,
@@ -35,6 +36,9 @@ const DIALECT_CODES = new Set([
   'hakka', 'english', 'japanese', 'korean', 'other',
 ])
 
+/** 与后端 identity.usecases.GENDER_CODES 对齐（FR-107） */
+const GENDER_CODES = new Set(['male', 'female', 'other'])
+
 function envelope<T>(data: T, init: { code?: string; message?: string; status?: number; headers?: Record<string, string> } = {}) {
   const { code = 'OK', message = '', status = 200, headers } = init
   return HttpResponse.json(
@@ -60,6 +64,7 @@ function meContext(): MeContext {
     accountId: user ? `acct-${user.username}` : undefined,
     username: user?.username,
     dialectBackground: user?.dialectBackground ?? undefined,
+    gender: user?.gender ?? undefined,
     calibration: state.session.calibration,
     nextLevelId: user ? deriveProgress().nextLevelId : LEVEL_SUMMARIES[0]?.id,
   }
@@ -91,12 +96,14 @@ export const handlers = [
   }),
 
   http.get('/api/search', ({ request }) => {
-    const q = (new URL(request.url).searchParams.get('q') ?? '').trim().toLowerCase()
+    const q = stripToneMarks((new URL(request.url).searchParams.get('q') ?? '').trim().toLowerCase())
+    // 与后端同口径：带调拼音去声调符号后再比对（搜「ma」可命中「mā」）
     const match = (level: (typeof LEVEL_SUMMARIES)[number]) =>
-      [level.targetSound, level.pinyin, level.title, level.representativeChar ?? '', level.type]
-        .join(' ')
-        .toLowerCase()
-        .includes(q)
+      stripToneMarks(
+        [level.targetSound, level.pinyin, level.title, level.representativeChar ?? '', level.type]
+          .join(' ')
+          .toLowerCase(),
+      ).includes(q)
     const results = LEVEL_SUMMARIES.filter(match)
     const near = results.length === 0 ? LEVEL_SUMMARIES.slice(0, 3) : []
     const data: SearchResponse = { results, near, query: q }
@@ -323,7 +330,7 @@ export const handlers = [
     return envelope({ deleted: true })
   }),
 
-  /* --------------------------- 档案、学习与进度 --------------------------- */
+  /* --------------------------- 档案与进度 --------------------------- */
 
   http.get('/api/me/recordings', () => {
     if (!currentUser()) return fail(401, 'AUTH_REQUIRED', '需要登录')
@@ -346,96 +353,16 @@ export const handlers = [
     return envelope({ deleted })
   }),
 
-  http.get('/api/me/recordings/compare', ({ request }) => {
-    const url = new URL(request.url)
-    const a = url.searchParams.get('a') ?? ''
-    const b = url.searchParams.get('b') ?? ''
-    const sideA = state.recordings.get(a)
-    const sideB = state.recordings.get(b)
-    if (!sideA || !sideB) return fail(404, 'NOT_FOUND', '记录不存在或不可见')
-    if (sideA.recording.levelId !== sideB.recording.levelId) {
-      return fail(422, 'VALIDATION_ERROR', '只能比较同一关的两条记录')
-    }
-    const toSide = (item: typeof sideA) => ({
-      recording: {
-        recordingId: item.recording.recordingId,
-        audioId: item.recording.audioId,
-        levelId: item.recording.levelId,
-        createdAt: item.recording.createdAt,
-        verdict: item.result?.quality.signal?.verdict ?? null,
-        qualityAdvice: item.result?.quality.advice ?? null,
-        score: item.result?.score,
-      },
-      result: item.result,
-      rangeSnapshot: null,
-    })
-    const scoreA = sideA.result?.score
-    const scoreB = sideB.result?.score
-    const differences: Array<{ dimension: string; description: string }> = []
-    if (typeof scoreA === 'number' && typeof scoreB === 'number' && scoreA !== scoreB) {
-      const later = new Date(sideB.recording.createdAt ?? 0) > new Date(sideA.recording.createdAt ?? 0) ? '后一条' : '前一条'
-      differences.push({
-        dimension: '分数',
-        description: `两次相差 ${Math.abs(Math.round(scoreA - scoreB))} 分（${later}更高一些）`,
-      })
-    }
-    differences.push({ dimension: '音高曲线', description: '两条曲线的整体走向接近，起伏幅度略有差异。' })
-    const data: ArchiveCompareResponse = {
-      a: toSide(sideA),
-      b: toSide(sideB),
-      comparable: { score: true, curve: true },
-      reasons: [],
-      differences,
-    }
-    return envelope(data)
-  }),
-
-  http.post('/api/learning-events', async ({ request }) => {
-    if (!currentUser()) return fail(401, 'AUTH_REQUIRED', '需要登录')
-    const body = (await request.json()) as { events: Array<{ eventId: string; levelId: string; kind: string; detail: Record<string, unknown> }> }
-    let accepted = 0
-    let duplicates = 0
-    const rejected: Array<{ eventId: string; code: string }> = []
-    for (const event of body.events.slice(0, 50)) {
-      const exists = state.learningEvents.some((e) => e.eventId === event.eventId)
-      if (exists) {
-        duplicates += 1
-        continue
-      }
-      const summary = LEVEL_SUMMARIES.find((item) => item.id === event.levelId)
-      if (!summary) {
-        rejected.push({ eventId: event.eventId, code: 'LEVEL_NOT_PUBLISHED' })
-        continue
-      }
-      if (event.kind === 'listen_quiz') {
-        state.learningEvents.push({
-          eventId: event.eventId,
-          levelId: event.levelId,
-          kind: 'listen_quiz',
-          detail: { questionId: String(event.detail.questionId), choiceIndex: Number(event.detail.choiceIndex) },
-        })
-      } else {
-        state.learningEvents.push({
-          eventId: event.eventId,
-          levelId: event.levelId,
-          kind: 'practice_done',
-          detail: { stepId: String(event.detail.stepId) },
-        })
-      }
-      accepted += 1
-    }
-    return envelope({ accepted, duplicates, rejected })
-  }),
-
   http.get('/api/me/progress', () => {
     if (!currentUser()) return fail(401, 'AUTH_REQUIRED', '需要登录')
+    // 响应形状：{ levels: [{ levelId, completed }], nextLevelId }；completed = 本关有检测录音
     return envelope(deriveProgress())
   }),
 
   /* ------------------------------ 账号 ------------------------------ */
 
   http.post('/api/auth/register', async ({ request }) => {
-    const body = (await request.json()) as { username: string; password: string; dialectBackground?: string | null }
+    const body = (await request.json()) as { username: string; password: string; dialectBackground?: string | null; gender?: string | null }
     if (!/^[\w\u4e00-\u9fa5]{3,32}$/.test(body.username)) {
       return fail(422, 'VALIDATION_ERROR', '用户名需 3–32 个字母、数字、下划线或中文')
     }
@@ -443,31 +370,41 @@ export const handlers = [
     if (body.dialectBackground && !DIALECT_CODES.has(body.dialectBackground)) {
       return fail(422, 'VALIDATION_ERROR', '方言区/母语背景取值不在支持列表内')
     }
+    if (body.gender && !GENDER_CODES.has(body.gender)) {
+      return fail(422, 'VALIDATION_ERROR', '性别取值不在支持列表内')
+    }
     if (state.users.has(body.username)) return fail(409, 'USERNAME_TAKEN', '用户名已被使用')
     state.users.set(body.username, {
       username: body.username,
       password: body.password,
       dialectBackground: body.dialectBackground || null,
+      gender: body.gender || null,
     })
     return envelope({
       accountId: `acct-${body.username}`,
       username: body.username,
       dialectBackground: body.dialectBackground || null,
+      gender: body.gender || null,
     })
   }),
 
   http.patch('/api/me/profile', async ({ request }) => {
     if (!currentUser()) return fail(401, 'AUTH_REQUIRED', '需要登录')
-    const body = (await request.json()) as { dialectBackground?: string | null }
+    const body = (await request.json()) as { dialectBackground?: string | null; gender?: string | null }
     if (body.dialectBackground && !DIALECT_CODES.has(body.dialectBackground)) {
       return fail(422, 'VALIDATION_ERROR', '方言区/母语背景取值不在支持列表内')
     }
+    if (body.gender && !GENDER_CODES.has(body.gender)) {
+      return fail(422, 'VALIDATION_ERROR', '性别取值不在支持列表内')
+    }
     const user = currentUser()!
     user.dialectBackground = body.dialectBackground || null
+    user.gender = body.gender || null
     return envelope({
       accountId: `acct-${user.username}`,
       username: user.username,
       dialectBackground: user.dialectBackground,
+      gender: user.gender,
     })
   }),
 
@@ -493,7 +430,6 @@ export const handlers = [
     if (user!.password !== body.password) return fail(401, 'INVALID_CREDENTIALS', '密码不正确')
     state.users.delete(user!.username)
     state.recordings.clear()
-    state.learningEvents = []
     resetSession()
     return envelope({ deleted: true })
   }),

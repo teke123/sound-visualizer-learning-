@@ -5,6 +5,7 @@
  */
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { QBtn } from 'quasar'
 import { contentApi, type LevelSummary } from '@/api'
 import LevelCard from '@/components/LevelCard.vue'
 import SearchBox from '@/components/SearchBox.vue'
@@ -83,9 +84,14 @@ function onSearch(term: string) {
           <LevelCard v-for="level in nearLevels" :key="level.id" :level="level" />
         </div>
         <p v-else class="no-suggestion">暂时没有相近的已开放关卡。</p>
-        <button type="button" class="wish-open" @click="wishOpen = true">
-          希望增加「{{ q }}」
-        </button>
+        <QBtn
+          outline
+          no-caps
+          color="primary"
+          class="wish-open"
+          :label="`希望增加「${q}」`"
+          @click="wishOpen = true"
+        />
       </section>
     </template>
     <p v-else class="empty-hint">输入拼音开始搜索。</p>
@@ -119,11 +125,4 @@ function onSearch(term: string) {
 
 .wish-open
   margin-top: 14px
-  min-height: 44px
-  padding: 6px 20px
-  border-radius: 999px
-  border: 1px solid #0288d1
-  background: #e1f5fe
-  color: #01579b
-  cursor: pointer
 </style>

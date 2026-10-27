@@ -7,7 +7,6 @@
 from __future__ import annotations
 
 import os
-import secrets
 from pathlib import Path
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
@@ -66,24 +65,6 @@ ALLOWED_ORIGINS: list[str] = [
 ]
 CSRF_ENFORCED: bool = os.environ.get("SVS_CSRF_ENFORCED", "1") not in ("0", "false", "no")
 
-# 会话签名密钥：未配置时生成并落盘，重启保持稳定
-_SECRET_FILE = DATA_DIR / "secret.key"
-
-
-def _load_or_create_secret() -> str:
-    env = os.environ.get("SVS_SECRET")
-    if env:
-        return env
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-    if _SECRET_FILE.exists():
-        return _SECRET_FILE.read_text(encoding="utf-8").strip()
-    value = secrets.token_hex(32)
-    _SECRET_FILE.write_text(value, encoding="utf-8")
-    return value
-
-
-SECRET: str = _load_or_create_secret()
-
 # --- 检测处理模型（D-19：短同步 + 30 秒硬截止）---
 SYNC_WINDOW_SECONDS: float = float(os.environ.get("SVS_SYNC_WINDOW", "8"))
 HARD_DEADLINE_SECONDS: float = float(os.environ.get("SVS_HARD_DEADLINE", "30"))  # 自受理起
@@ -94,8 +75,9 @@ RETRY_AFTER_SECONDS: int = 2           # 202 响应 Retry-After
 EXECUTOR_WORKERS: int = int(os.environ.get("SVS_EXECUTOR_WORKERS", "4"))
 EXECUTOR_QUEUE_LIMIT: int = int(os.environ.get("SVS_EXECUTOR_QUEUE", "32"))
 
-# 声学算法版本：filtered AC F0 管线（五度 degree 1-5 坐标，docs/f0展示修改测试版1.md）
-ALGORITHM_VERSION: str = "acx-2.0.2+tp0.1.0+pm0.5.0d16"
+# 声学算法版本：filtered AC F0 管线（五度 degree 1-5 坐标）；
+# acx-2.0.3：特征读取接口（extract_f0/extract_formants）统一到 f0_pipeline 后递增，作废旧特征缓存
+ALGORITHM_VERSION: str = "acx-2.0.3+tp0.1.0+pm0.5.0d16"
 
 # F0 管线纠偏开关（可在同一批录音上分别评测定参）
 F0_RESCUE_ENABLED: bool = os.environ.get("SVS_F0_RESCUE", "1") not in ("0", "false", "no")
@@ -132,7 +114,6 @@ RATE_LIMITS: dict[str, tuple[int, int]] = {
     "wish": (10, 600),
     "register": (5, 3600),
     "login": (10, 600),
-    "auth": (120, 300),
 }
 
 # --- 管理员（团队自用后台的简单口令）---

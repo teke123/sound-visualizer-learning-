@@ -1,5 +1,5 @@
 /**
- * 音域标定流程（D-20 / FR-1006 / docs/architecture/04 §6.3）：
+ * 音域标定流程（D-20 / FR-1006）：
  * 读取标定文本 → 录音（复用 recorder，40 秒上限）→ 上传 purpose=calibration
  * → POST {audioId}；成功刷新 context；CALIBRATION_FAIL 显示原因与重录指引；
  * 网络或服务失败保留 blob 可重试。

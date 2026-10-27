@@ -1,8 +1,9 @@
 <script setup lang="ts">
 /**
- * P10 声音档案（FR-1101–1103）：未登录 → 登录引导；已登录 → 存档列表 + 删除 + 同关比较。
+ * P10 声音档案（FR-1101–1103）：未登录 → 登录引导；已登录 → 存档列表 + 删除。
  */
 import { computed, onMounted, watch } from 'vue'
+import { QBtn, QCard, QCardSection } from 'quasar'
 import { useArchive } from '@/features/archive'
 import ArchiveList from '@/components/ArchiveList.vue'
 import PageState from '@/components/PageState.vue'
@@ -25,14 +26,16 @@ watch(view, () => void archive.load())
 
     <!-- 未登录：登录后自动保存录音与进度 -->
     <section v-if="view === 'guest'" class="no-archive">
-      <div class="no-archive-card">
-        <h2>登录后查看你的声音档案</h2>
-        <p>登录后每次录音检测的结果都会自动保存到这里，可以在同一关比较两次录音，看到变化。</p>
-        <div class="no-archive-actions">
-          <RouterLink to="/account/login?redirect=/archive" class="na-btn primary">登录</RouterLink>
-          <RouterLink to="/account/register" class="na-btn">注册</RouterLink>
-        </div>
-      </div>
+      <QCard flat bordered class="no-archive-card">
+        <QCardSection>
+          <h2>登录后查看你的声音档案</h2>
+          <p>登录后每次录音检测的结果都会自动保存到这里，随时回看每一次的录音与成绩。</p>
+          <div class="no-archive-actions">
+            <QBtn unelevated no-caps color="primary" label="登录" to="/account/login?redirect=/archive" />
+            <QBtn outline no-caps color="primary" label="注册" to="/account/register" />
+          </div>
+        </QCardSection>
+      </QCard>
     </section>
 
     <!-- 已登录：档案列表 -->
@@ -53,11 +56,8 @@ watch(view, () => void archive.load())
   margin: 0
   font-size: 24px
 
+// 卡片视觉由 QCard flat bordered 提供
 .no-archive-card
-  background: #fff
-  border: 1px solid #eceff1
-  border-radius: 14px
-  padding: 20px
   h2
     margin: 0 0 8px
     font-size: 18px
@@ -70,21 +70,4 @@ watch(view, () => void archive.load())
   display: flex
   gap: 10px
   margin-top: 12px
-
-.na-btn
-  min-height: 44px
-  display: inline-flex
-  align-items: center
-  padding: 4px 20px
-  border-radius: 999px
-  border: 1px solid #90a4ae
-  background: #fff
-  color: #37474f
-  text-decoration: none
-  cursor: pointer
-  &.primary
-    background: #00897b
-    border-color: #00897b
-    color: #fff
-    font-weight: 600
 </style>

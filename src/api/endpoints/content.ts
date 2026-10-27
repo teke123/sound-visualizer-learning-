@@ -1,4 +1,4 @@
-/** content 模块端点：关卡、搜索、文章（docs/decision-map-backend.md） */
+/** content 模块端点：关卡、搜索、文章 */
 import { apiRequest } from '../client'
 import type {
   ArticleCategoriesResponse,

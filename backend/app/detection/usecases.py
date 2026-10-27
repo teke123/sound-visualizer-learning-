@@ -173,10 +173,7 @@ def _consume_future_result(f: asyncio.Future) -> None:
 async def wait_sync_window(outcome: SubmitOutcome) -> SubmitOutcome:
     """同步窗口（约 8 秒）内等待完成；未完成回落 202。
 
-    超时只结束等待、绝不取消执行器任务：wait_for 的超时取消会顺着
-    wrap_future 传给尚未开跑的 concurrent Future（SVS_SYNC_WINDOW 极小时
-    必现），管线永不执行、录音滞留 processing 直到硬截止标 TIMEOUT——
-    故改用不对参与者做取消的 asyncio.wait。
+    超时只结束等待、绝不取消执行器任务。
     """
     future = getattr(outcome.recording, "_future", None)
     if future is None:
@@ -237,7 +234,8 @@ def run_pipeline(recording_id: str) -> None:
         else:
             provider = scoring_uc.get_provider()
             try:
-                prov = provider.evaluate(str(path), det.get("evaluationText", ""))
+                prov = provider.evaluate(str(path), det.get("evaluationText", ""),
+                                         pinyin=det.get("evaluationPinyin"))
             except ProviderError as e:
                 code = "PROVIDER_DOWN" if e.kind == "down" else "PROVIDER_ERROR"
                 _fail(db, rec, code, retryable=True)
@@ -362,9 +360,6 @@ def _provider_payload(prov) -> dict:  # noqa: ANN001
     return {
         "provider_version": prov.provider_version,
         "overall_score": prov.overall_score,
-        "initial_score": prov.initial_score,
-        "final_score": prov.final_score,
-        "tone_score": prov.tone_score,
         "reading": prov.reading,
         "syllables": [
             {"text": s.text, "pinyin": s.pinyin, "t0": s.t0, "t1": s.t1,
@@ -382,9 +377,6 @@ def _provider_from_cache(data: dict):
     return type("CachedProvider", (), {
         "provider_version": data["provider_version"],
         "overall_score": data["overall_score"],
-        "initial_score": data.get("initial_score"),
-        "final_score": data.get("final_score"),
-        "tone_score": data.get("tone_score"),
         "reading": data.get("reading", {}),
         "syllables": [
             SyllableEval(

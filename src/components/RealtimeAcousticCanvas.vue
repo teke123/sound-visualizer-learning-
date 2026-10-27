@@ -2,7 +2,7 @@
 /**
  * RealtimeAcousticCanvas：录音端实时声学反馈画布（FR-907 / FD-03）。
  *
- * - 声调/韵母关（focus='pitch'）主视图为 F0 音高轨迹（半音纵轴）+ 调型目标引导带，
+ * - 声调/韵母关（focus='pitch'）主视图为 F0 音高轨迹（半音纵轴，带五度刻度），
  *   声母关（focus='onset'')主视图为时域能量包络，清音送气/摩擦段按谱重心配色；
  * - 录音中滚动显示最近 4 秒；停止后整段轨迹定格，供本地试听时画播放游标回看；
  * - PCM 经 AudioWorklet 采集、Worker 按固定采样步长分析；rAF 只负责绘制。
@@ -17,7 +17,6 @@ import {
   rangeDegreeToSemitone,
   spectralCentroidHz,
   semitoneToHz,
-  toneTargetContour,
   type PitchRangeHz,
   type AcousticFrame,
   type ToneValue,
@@ -29,7 +28,7 @@ const props = withDefaults(
     active: boolean
     /** 主视图：声调/韵母关 'pitch'，声母关 'onset'（包络为主） */
     focus?: 'pitch' | 'onset'
-    /** 本关目标调型（可从关卡 pinyin 声调符号推导）；无则不画引导带 */
+    /** 本关目标调型（可从关卡 pinyin 声调符号推导）；无则不画五度刻度 */
     targetTone?: ToneValue | null
     /** 个人音域（前置标定）：1 度线=ST(fLo)、5 度线=ST(fHi)，画布 ±2 ST（docs §6.1） */
     rangeHz?: PitchRangeHz | null
@@ -55,13 +54,6 @@ let headerUpdatedAt = 0
 const volumeText = computed(
   () => ({ quiet: '音量偏轻，凑近一点', ok: '音量适中', loud: '爆音！离麦克风远一点' })[volumeLevel.value],
 )
-
-const toneHint = computed(() => {
-  if (!props.targetTone) return null
-  return { 1: '一声 · 保持高平 →', 2: '二声 · 由中爬高 ↗', 3: '三声 · 先降后升 ∨', 4: '四声 · 果断下降 ↘' }[
-    props.targetTone
-  ]
-})
 
 /* ------------------------------ 分析与绘制状态（非响应式） ------------------------------ */
 
@@ -166,8 +158,6 @@ const COLOR = {
   noiseLow: '#fb8c00',
   silence: '#cfd8dc',
   clip: '#d32f2f',
-  band: 'rgba(38, 166, 154, 0.14)',
-  bandLine: 'rgba(0, 137, 123, 0.55)',
   grid: '#eceff1',
   text: '#90a4ae',
 } as const
@@ -235,7 +225,7 @@ function drawPitchLane(
   const degreeSt = (d: number) =>
     fixed ? rangeDegreeToSemitone(fixed, d) : degreeToSemitone(pitchWindow.centerSt, d)
 
-  // 度数网格（有引导带时画五度刻度）
+  // 度数网格（有目标调型时画五度刻度）
   if (props.targetTone) {
     ctx.font = '10px system-ui, sans-serif'
     ctx.textAlign = 'left'
@@ -252,37 +242,6 @@ function drawPitchLane(
       ctx.fillStyle = COLOR.text
       ctx.fillText(String(d), 2, y + 3)
     }
-    // 目标引导带（半透明轨道 + 虚线中心线）；带宽 ±0.45 度（按当前度映射）
-    const contour = toneTargetContour(props.targetTone)
-    const stPerDegree = (degreeSt(5) - degreeSt(1)) / 4
-    const bandHalf = 0.45 * stPerDegree
-    ctx.beginPath()
-    contour.forEach(([tn, degree], i) => {
-      const st = degreeSt(degree)
-      const x = padX + tn * plotW
-      const y = yOf(st + bandHalf)
-      if (i === 0) ctx.moveTo(x, y)
-      else ctx.lineTo(x, y)
-    })
-    for (let i = contour.length - 1; i >= 0; i -= 1) {
-      const [tn, degree] = contour[i]!
-      ctx.lineTo(padX + tn * plotW, yOf(degreeSt(degree) - bandHalf))
-    }
-    ctx.closePath()
-    ctx.fillStyle = COLOR.band
-    ctx.fill()
-    ctx.setLineDash([4, 4])
-    ctx.strokeStyle = COLOR.bandLine
-    ctx.lineWidth = 1
-    ctx.beginPath()
-    contour.forEach(([tn, degree], i) => {
-      const x = padX + tn * plotW
-      const y = yOf(degreeSt(degree))
-      if (i === 0) ctx.moveTo(x, y)
-      else ctx.lineTo(x, y)
-    })
-    ctx.stroke()
-    ctx.setLineDash([])
   } else {
     // 无调型：标出纵轴音高范围（Hz）
     ctx.font = '10px system-ui, sans-serif'
@@ -439,7 +398,6 @@ const ariaLabel = computed(() =>
       <span class="rt-pill" :class="`vol-${volumeLevel}`">● {{ volumeText }}</span>
       <span v-if="focus === 'pitch'" class="rt-pill pitch">
         当前音高 <strong>{{ currentHz !== null ? `${Math.round(currentHz)} Hz` : '—' }}</strong>
-        <em v-if="toneHint">{{ toneHint }}</em>
       </span>
       <span v-if="centroidLabel" class="rt-pill centroid">{{ centroidLabel }}</span>
     </div>
@@ -469,9 +427,6 @@ const ariaLabel = computed(() =>
   background: #eceff1
   strong
     color: #37474f
-  em
-    font-style: normal
-    color: #00897b
   &.vol-ok
     background: #e0f2f1
     color: #00695c

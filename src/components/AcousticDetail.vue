@@ -4,6 +4,7 @@
  * 展开时才请求；共振峰散点图直接 <img> 引用。
  */
 import { ref, watch } from 'vue'
+import { QBtn } from 'quasar'
 import { ApiError, audioF0Url, audioFormantsPngUrl, audioFormantsUrl, detectionApi } from '@/api'
 import type { F0Response, FormantsResponse } from '@/api'
 
@@ -54,9 +55,9 @@ const isApiError = (e: unknown) => e instanceof ApiError
 
 <template>
   <section class="acoustic-detail" aria-label="原始声学特征（选看）">
-    <button type="button" class="ac-toggle" :aria-expanded="expanded" @click="expanded = !expanded">
+    <QBtn flat no-caps class="ac-toggle" :aria-expanded="expanded" @click="expanded = !expanded">
       {{ expanded ? '收起原始声学数据' : '展开原始声学数据（选看，原始 F0 / 共振峰）' }}
-    </button>
+    </QBtn>
     <div v-if="expanded" class="ac-body">
       <p v-if="loading" class="ac-loading">读取中…</p>
       <template v-if="f0">
@@ -84,9 +85,6 @@ const isApiError = (e: unknown) => e instanceof ApiError
 .ac-toggle
   width: 100%
   min-height: 48px
-  background: none
-  border: none
-  cursor: pointer
   font-size: 14px
   color: #546e7a
 

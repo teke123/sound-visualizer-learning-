@@ -4,6 +4,7 @@
  * 经 player store 全局唯一播放；音频 preload none（§9）。
  */
 import { computed } from 'vue'
+import { QBtn } from 'quasar'
 import type { DemoItem } from '@/api'
 import { usePlayerStore } from '@/stores/player'
 
@@ -17,12 +18,12 @@ const player = usePlayerStore()
 const VOICE_LABELS: Record<string, string> = {
   male: '男声',
   female: '女声',
-  FV1: '女声 1 (FV1)',
-  FV2: '女声 2 (FV2)',
-  FV3: '女声 3 (FV3)',
-  MV1: '男声 1 (MV1)',
-  MV2: '男声 2 (MV2)',
-  MV3: '男声 3 (MV3)',
+  FV1: '女声 1',
+  FV2: '女声 2',
+  FV3: '女声 3',
+  MV1: '男声 1',
+  MV2: '男声 2',
+  MV3: '男声 3',
 }
 
 function voiceLabel(voice?: string | null): string {
@@ -30,10 +31,16 @@ function voiceLabel(voice?: string | null): string {
   return VOICE_LABELS[voice] ?? voice
 }
 
+/** 按钮内紧凑展示：性别 + 数字（如「女 1」），代号不进 UI */
+function compactVoiceLabel(voice?: string | null): string {
+  const m = /^([FM])V(\d)$/.exec(voice ?? '')
+  if (m) return `${m[1] === 'F' ? '女' : '男'} ${m[2]}`
+  return voiceLabel(voice)
+}
+
 function speedLabel(item: DemoItem): string {
   const voice = voiceLabel(item.voice)
-  const prefix = item.speed === 'slow' ? '慢速' : '正常语速'
-  return voice ? `${voice}${item.speed === 'slow' ? ' · 慢速' : ''}` : prefix
+  return voice ? `${voice}${item.speed === 'slow' ? ' · 慢速' : ''}` : item.speed === 'slow' ? '慢速' : '正常语速'
 }
 
 function itemKey(item: DemoItem): string {
@@ -62,17 +69,25 @@ const grouped = computed(() => ({
   <div class="demo-player" v-if="items.length > 0">
     <div class="demo-groups">
       <div v-for="(list, speed) in grouped" :key="speed" class="demo-group">
-        <button
+        <QBtn
           v-for="item in list"
           :key="item.mediaId"
-          type="button"
           class="demo-btn"
-          :class="{ active: isPlaying(item) }"
+          :class="{ active: isPlaying(item), slow: item.speed === 'slow' }"
+          no-caps
+          color="primary"
+          :text-color="isPlaying(item) ? 'white' : 'teal-9'"
+          size="13px"
+          :unelevated="isPlaying(item)"
+          :outline="!isPlaying(item)"
+          :icon="isPlaying(item) ? 'pause' : 'play_arrow'"
+          :aria-label="`${isPlaying(item) ? '暂停' : '播放'}示范：${speedLabel(item)}`"
+          :title="speedLabel(item)"
           @click="play(item)"
         >
-          <span class="demo-icon" aria-hidden="true">{{ isPlaying(item) ? '⏸' : '▶' }}</span>
-          <span>{{ speedLabel(item) }}</span>
-        </button>
+          <span>{{ compactVoiceLabel(item.voice) }}</span>
+          <span v-if="item.speed === 'slow'" class="demo-speed-tag">慢</span>
+        </QBtn>
       </div>
     </div>
     <p v-if="player.current?.key?.startsWith('demo:') && player.errorMessage" class="demo-error">
@@ -98,28 +113,26 @@ const grouped = computed(() => ({
   flex-wrap: wrap
   gap: 10px
 
+/* 原 .demo-btn 32px 浅青胶囊：未选中浅青底 / 悬停深一档 / 慢速虚线描边由 scoped 补回。
+   Quasar outline 底色为 transparent !important，填充需 important（仅限 .q-btn--outline 未选中态，
+   不覆盖选中时的实底青）；选中实底青 + 白字 + 600 字重为原版 .active 形态，由 QBtn unelevated + 全局字重承担 */
 .demo-btn
-  display: inline-flex
-  align-items: center
-  gap: 8px
-  min-height: 44px
-  padding: 6px 18px
-  border-radius: 999px
-  border: 1px solid #00897b
-  background: #e0f2f1
-  color: #00695c
-  font-size: 15px
-  cursor: pointer
-  transition: background 0.15s ease, color 0.15s ease
-  &:hover
-    background: #b2dfdb
-  &.active
-    background: #00897b
-    color: #fff
-    font-weight: 600
+  min-height: 32px
+  &.q-btn--outline
+    background: #e0f2f1 !important
+    &:hover
+      background: #b2dfdb !important
+  &.slow:before
+    border-style: dashed
 
-.demo-icon
-  font-size: 12px
+.demo-speed-tag
+  font-size: 11px
+  line-height: 1
+  padding: 2px 4px
+  border-radius: 4px
+  background: rgba(0, 137, 123, 0.12)
+  .demo-btn.active &
+    background: rgba(255, 255, 255, 0.25)
 
 .demo-error
   font-size: 13px

@@ -1,5 +1,5 @@
 /**
- * MSW 固定样例数据（docs/architecture/04 §12：用固定样例关卡 L01、L07、L30
+ * MSW 固定样例数据（用固定样例关卡 L01、L07、L30–L33（ma 四声）
  * —— 外加 L08/L13/L14 支撑易混对 —— 开发与验收结构）。
  */
 import type {
@@ -24,8 +24,10 @@ interface LevelSeed {
   representativeChar?: string
   title: string
   promptText: string
-  description: string
 }
+
+/** ma 四声拼读关：构形内容走真实形态（2D 交互动画 + 三维模型），与后端种子同口径 */
+const MA_LEVEL_IDS = new Set(['L30', 'L31', 'L32', 'L33'])
 
 const SEEDS: LevelSeed[] = [
   {
@@ -38,7 +40,6 @@ const SEEDS: LevelSeed[] = [
     representativeChar: '啊',
     title: '单韵母 a：把嘴张大',
     promptText: '请朗读：「啊」',
-    description: '发 a 时口腔打开，舌头居中放低，声带振动，气流从口腔出。',
   },
   {
     id: 'L07',
@@ -50,7 +51,6 @@ const SEEDS: LevelSeed[] = [
     representativeChar: '波',
     title: '声母 b：双唇一抿就放开',
     promptText: '请朗读：「波」',
-    description: 'b 是双唇塞音：双唇闭合挡住气流，然后放开成阻，声带同时振动。',
   },
   {
     id: 'L08',
@@ -62,7 +62,6 @@ const SEEDS: LevelSeed[] = [
     representativeChar: '坡',
     title: '声母 p：和 b 差在一口气',
     promptText: '请朗读：「坡」',
-    description: 'p 与 b 发音部位相同，区别在于除阻时有明显送气。',
   },
   {
     id: 'L13',
@@ -74,7 +73,6 @@ const SEEDS: LevelSeed[] = [
     representativeChar: '呢',
     title: '声母 n：舌尖顶住上齿龈',
     promptText: '请朗读：「呢」',
-    description: 'n 是舌尖中鼻音：舌尖抵上齿龈，气流从鼻腔通过。',
   },
   {
     id: 'L14',
@@ -86,19 +84,50 @@ const SEEDS: LevelSeed[] = [
     representativeChar: '勒',
     title: '声母 l：舌尖轻抵、气从两边走',
     promptText: '请朗读：「勒」',
-    description: 'l 是舌尖中边音：舌尖抵上齿龈，气流从舌体两侧流出。',
   },
   {
     id: 'L30',
     order: 30,
     layer: 'syllable',
     type: '拼读',
-    targetSound: 'm+a',
+    targetSound: 'mā',
     pinyin: 'mā',
     representativeChar: '妈',
     title: '拼读「妈」：m 和 a 连起来',
     promptText: '请朗读：「妈」',
-    description: 'm 是双唇鼻音，先双唇闭合走鼻腔，随后张开过渡到 a，声带保持振动。',
+  },
+  {
+    id: 'L31',
+    order: 31,
+    layer: 'syllable',
+    type: '拼读',
+    targetSound: 'má',
+    pinyin: 'má',
+    representativeChar: '麻',
+    title: '拼读「麻」：阳平从中间升上去',
+    promptText: '请朗读：「麻」',
+  },
+  {
+    id: 'L32',
+    order: 32,
+    layer: 'syllable',
+    type: '拼读',
+    targetSound: 'mǎ',
+    pinyin: 'mǎ',
+    representativeChar: '马',
+    title: '拼读「马」：上声先降后升',
+    promptText: '请朗读：「马」',
+  },
+  {
+    id: 'L33',
+    order: 33,
+    layer: 'syllable',
+    type: '拼读',
+    targetSound: 'mà',
+    pinyin: 'mà',
+    representativeChar: '骂',
+    title: '拼读「骂」：去声从高处落下来',
+    promptText: '请朗读：「骂」',
   },
 ]
 
@@ -121,109 +150,6 @@ export const CONFUSABLE_PAIRS = [
   { a: 'L13', b: 'L14' },
 ]
 
-function sagittalFor(seed: LevelSeed): NonNullable<LevelDetail['articulation']>['sagittal'] {
-  if (seed.id === 'L01') {
-    return {
-      keyframes: [
-        {
-          label: '张口：舌面低平',
-          holdMs: 900,
-          jaw: 0.75,
-          lips: { aperture: 0.75, rounding: 0, contact: 'none' },
-          tongueTip: { place: 'rest', stricture: 'open' },
-          tongueBody: { height: 0.15, backness: 0.4, stricture: 'open' },
-          velum: 'raised',
-          airflow: 'oral',
-          voicing: true,
-        },
-      ],
-    }
-  }
-  if (seed.id === 'L07' || seed.id === 'L08') {
-    return {
-      keyframes: [
-        {
-          label: '双唇闭合（成阻）',
-          holdMs: 500,
-          jaw: 0.15,
-          lips: { aperture: 0, rounding: 0, contact: 'bilabial' },
-          tongueTip: { place: 'rest', stricture: 'open' },
-          tongueBody: { height: 0.35, backness: 0.5, stricture: 'open' },
-          velum: 'raised',
-          airflow: 'none',
-          voicing: true,
-        },
-        {
-          label: seed.id === 'L07' ? '突然放开（不送气）' : '放开并送气',
-          holdMs: 700,
-          jaw: 0.55,
-          lips: { aperture: 0.45, rounding: 0.1, contact: 'none' },
-          tongueTip: { place: 'alveolar', stricture: 'open' },
-          tongueBody: { height: 0.35, backness: 0.55, stricture: 'open' },
-          velum: 'raised',
-          airflow: seed.id === 'L07' ? 'burst' : 'aspirated_burst',
-          voicing: seed.id === 'L07',
-        },
-      ],
-    }
-  }
-  if (seed.id === 'L13' || seed.id === 'L14') {
-    return {
-      keyframes: [
-        {
-          label: seed.id === 'L13' ? '舌尖抵上齿龈，气走鼻腔' : '舌尖轻抵，气从两侧走',
-          holdMs: 900,
-          jaw: 0.35,
-          lips: { aperture: 0.3, rounding: 0, contact: 'none' },
-          tongueTip: { place: 'alveolar', stricture: 'closure' },
-          tongueBody: { height: 0.3, backness: 0.5, stricture: 'open' },
-          velum: seed.id === 'L13' ? 'lowered' : 'raised',
-          airflow: seed.id === 'L13' ? 'nasal' : 'oral',
-          voicing: true,
-        },
-      ],
-    }
-  }
-  // L30：m → a 拼读过程
-  return {
-    keyframes: [
-      {
-        label: 'm：双唇闭合，气走鼻腔',
-        holdMs: 600,
-        jaw: 0.12,
-        lips: { aperture: 0, rounding: 0, contact: 'bilabial' },
-        tongueTip: { place: 'rest', stricture: 'open' },
-        tongueBody: { height: 0.2, backness: 0.45, stricture: 'open' },
-        velum: 'lowered',
-        airflow: 'nasal',
-        voicing: true,
-      },
-      {
-        label: '过渡：张开接 a',
-        holdMs: 500,
-        jaw: 0.6,
-        lips: { aperture: 0.55, rounding: 0, contact: 'none' },
-        tongueTip: { place: 'rest', stricture: 'open' },
-        tongueBody: { height: 0.18, backness: 0.4, stricture: 'open' },
-        velum: 'raised',
-        airflow: 'oral',
-        voicing: true,
-      },
-      {
-        label: 'a：嘴张大，声音稳定',
-        holdMs: 800,
-        jaw: 0.78,
-        lips: { aperture: 0.78, rounding: 0, contact: 'none' },
-        tongueTip: { place: 'rest', stricture: 'open' },
-        tongueBody: { height: 0.12, backness: 0.4, stricture: 'open' },
-        velum: 'raised',
-        airflow: 'oral',
-        voicing: true,
-      },
-    ],
-  }
-}
-
 export const LEVEL_SUMMARIES: LevelSummary[] = SEEDS.map((seed) => ({
   id: seed.id,
   order: seed.order,
@@ -235,10 +161,6 @@ export const LEVEL_SUMMARIES: LevelSummary[] = SEEDS.map((seed) => ({
   title: seed.title,
   demoMediaId: `aud-${seed.id}-demo`,
   availability: 'open' as const,
-  completionKeys: {
-    quizIds: [`${seed.id}-q1`],
-    practiceStepIds: [`${seed.id}-s1`],
-  },
 }))
 
 export const LEVEL_DETAILS: Record<string, LevelDetail> = Object.fromEntries(
@@ -263,18 +185,29 @@ export const LEVEL_DETAILS: Record<string, LevelDetail> = Object.fromEntries(
           confusables:
             seed.id === 'L07' ? ['L08'] : seed.id === 'L08' ? ['L07'] : seed.id === 'L13' ? ['L14'] : seed.id === 'L14' ? ['L13'] : [],
         },
-        articulation: {
-          media: [
-            {
-              mediaId: `img-${seed.id}-mouth`,
-              kind: 'image' as const,
-              altText: `${seed.title}：口型正视图示意`,
+        articulation: MA_LEVEL_IDS.has(seed.id)
+          ? {
+              // ma 四声关：真实内容形态 —— 2D 正中矢状面交互动画（内置组件渲染）+ 三维模型
+              media: [
+                {
+                  mediaId: `anim-${seed.id}-ma-sagittal`,
+                  kind: 'animation' as const,
+                  component: 'ma-sagittal',
+                  altText: 'ma 正中矢状面发音动画（可播放、可调速）',
+                },
+              ],
+              model3dMediaId: `model3d-${seed.id}-mouth`,
+            }
+          : {
+              media: [
+                {
+                  mediaId: `img-${seed.id}-mouth`,
+                  kind: 'image' as const,
+                  altText: `${seed.title}：口型正视图示意`,
+                },
+              ],
+              model3dMediaId: `model3d-${seed.id}-mouth`,
             },
-          ],
-          description: seed.description,
-          sagittal: sagittalFor(seed),
-          model3dMediaId: `model3d-${seed.id}-mouth`,
-        },
         demos: (['FV1', 'FV2', 'FV3', 'MV1', 'MV2', 'MV3'] as const).map((spk) => ({
           mediaId: `aud-${seed.id}-demo-${spk}`,
           speed: 'normal' as const,
@@ -291,19 +224,8 @@ export const LEVEL_DETAILS: Record<string, LevelDetail> = Object.fromEntries(
           },
         ],
         practice: [
-          {
-            id: `${seed.id}-s1`,
-            title: '占位练习',
-            instruction: '占位练习指令。',
-            repeat: 3,
-            bodyCue: '占位身体提示。',
-          },
-        ],
-        misconceptions: [
-          {
-            phenomenon: '占位误区现象。',
-            fix: '占位纠正建议。',
-          },
+          `跟着示范音读「${seed.representativeChar ?? seed.targetSound}」三遍，注意听自己的发音和示范像不像。`,
+          `放慢速度再读两遍，体会${seed.type === '声母' ? '气流' : '口型'}的变化。`,
         ],
         professional: {
           description: '占位专业与声学说明。',
@@ -314,7 +236,6 @@ export const LEVEL_DETAILS: Record<string, LevelDetail> = Object.fromEntries(
           allowedMetrics: isVowel
             ? ['score', 'tone_curve', 'formants', 'phenomena', 'four_steps']
             : ['score', 'tone_curve', 'phenomena', 'four_steps'],
-          available: true,
         },
       } satisfies LevelDetail,
     ]

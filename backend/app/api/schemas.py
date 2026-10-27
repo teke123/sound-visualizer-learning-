@@ -6,7 +6,7 @@
 """
 from __future__ import annotations
 
-from typing import Generic, List, Literal, Optional, TypeVar, Union
+from typing import Generic, List, Literal, Optional, TypeVar
 
 from pydantic import BaseModel, Field
 
@@ -38,16 +38,12 @@ class MeContext(BaseModel):
     accountId: Optional[str] = None
     username: Optional[str] = None
     dialectBackground: Optional[str] = None
+    gender: Optional[str] = None
     calibration: CalibrationInfo
     nextLevelId: Optional[str] = None
 
 
 # --------------------------------- 关卡 -------------------------------------
-
-class CompletionKeys(BaseModel):
-    quizIds: List[str]
-    practiceStepIds: List[str]
-
 
 class LevelSummary(BaseModel):
     id: str
@@ -58,9 +54,9 @@ class LevelSummary(BaseModel):
     pinyin: str
     representativeChar: Optional[str] = None
     title: str
+    phonology: Optional["LevelPhonology"] = None
     demoMediaId: Optional[str] = None
     availability: Literal["open", "closed"]
-    completionKeys: CompletionKeys
 
 
 class LevelSkeleton(BaseModel):
@@ -93,46 +89,13 @@ class ArticulationMedia(BaseModel):
     mediaId: str
     kind: Literal["image", "animation", "video"]
     altText: str
-
-
-class SagittalLips(BaseModel):
-    aperture: float
-    rounding: float
-    contact: Literal["none", "bilabial", "labiodental"]
-
-
-class SagittalTongueTip(BaseModel):
-    place: Literal["rest", "dental", "alveolar", "postalveolar", "retroflex"]
-    stricture: Literal["open", "approximant", "fricative", "closure"]
-
-
-class SagittalTongueBody(BaseModel):
-    height: float
-    backness: float
-    stricture: Literal["open", "approximant", "fricative", "closure"]
-
-
-class SagittalKeyframe(BaseModel):
-    label: str
-    holdMs: int
-    jaw: float
-    lips: SagittalLips
-    tongueTip: SagittalTongueTip
-    tongueBody: SagittalTongueBody
-    velum: Literal["raised", "lowered"]
-    airflow: Literal["none", "oral", "nasal", "burst", "aspirated_burst",
-                     "friction", "affricate"]
-    voicing: bool
-
-
-class ArticulationSagittal(BaseModel):
-    keyframes: List[SagittalKeyframe]
+    # 交互动画由前端内置组件渲染（如 ma-sagittal 正中矢状面动画）；
+    # 缺省时按静态图/视频直出。媒体资产本身仍是该动画的规范存档。
+    component: Optional[str] = None
 
 
 class Articulation(BaseModel):
     media: Optional[List[ArticulationMedia]] = None
-    description: str
-    sagittal: Optional[ArticulationSagittal] = None
     model3dMediaId: Optional[str] = None
 
 
@@ -156,30 +119,29 @@ class QuizQuestion(BaseModel):
     explanation: Optional[str] = None
 
 
-class PracticeStep(BaseModel):
-    id: str
-    title: str
-    instruction: str
-    repeat: Optional[int] = None
-    durationSec: Optional[float] = None
-    bodyCue: str
-    mediaId: Optional[str] = None
-
-
-class Misconception(BaseModel):
-    phenomenon: str
-    fix: str
-
-
 class Professional(BaseModel):
     description: str
+
+
+class LevelPhonology(BaseModel):
+    """关卡语音学描述段（可选，内容未填写时不下发）。"""
+    ipa: Optional[str] = None                                    # 国际音标，如 "ʈʂ", "ᴀ", "ma˥"
+    kind: Optional[Literal["initial", "final", "syllable", "tone"]] = None
+    initial: Optional[str] = None                                # 声母键，如 "zh", "b", ""
+    final: Optional[str] = None                                  # 韵母键，如 "a", "ang", "iou"
+    tones: Optional[List[int]] = None                            # 覆盖声调，如 [1, 2, 3, 4]
+    place: Optional[str] = None                                  # 发音部位（双唇/唇齿/舌尖前/舌尖中/舌尖后/舌面/舌根）
+    manner: Optional[str] = None                                 # 发音方法（塞音/塞擦音/擦音/鼻音/边音）
+    aspiration: Optional[Literal["aspirated", "unaspirated", "none"]] = None
+    voicing: Optional[Literal["voiceless", "voiced"]] = None
+    hu: Optional[Literal["kaikou", "qichi", "hekou", "cuokou"]] = None
+    finalStructure: Optional[Literal["simple", "compound", "front_nasal", "back_nasal", "special"]] = None
 
 
 class DetectionTask(BaseModel):
     promptText: str
     sampleMediaId: Optional[str] = None
     allowedMetrics: List[str]
-    available: bool
 
 
 class LevelDetail(BaseModel):
@@ -192,12 +154,12 @@ class LevelDetail(BaseModel):
     representativeChar: Optional[str] = None
     title: str
     tags: Optional[List[str]] = None
+    phonology: Optional[LevelPhonology] = None
     nav: Optional[LevelNav] = None
     articulation: Optional[Articulation] = None
     demos: Optional[List[DemoItem]] = None
     quizzes: Optional[List[QuizQuestion]] = None
-    practice: Optional[List[PracticeStep]] = None
-    misconceptions: Optional[List[Misconception]] = None
+    practice: Optional[List[str]] = None
     professional: Optional[Professional] = None
     detection: Optional[DetectionTask] = None
 
@@ -418,27 +380,16 @@ class Phenomenon(BaseModel):
     description: str
 
 
-class FourStepPractice(BaseModel):
-    levelId: Optional[str] = None
-    stepRef: str
-
-
 class FourStep(BaseModel):
     phenomenon: str
     possibleCause: str
     cue: str
-    practice: FourStepPractice
+    practice: str
     wordingSource: str
 
 
-class CurvePoint(BaseModel):
-    """历史 0-5 T 值点（旧曲线数据，前端按版本转换显示）。"""
-    t: float
-    v: float
-
-
 class CurveFrame(BaseModel):
-    """原生 10ms 网格绘图帧（docs/f0展示修改测试版1.md §7.1）。"""
+    """原生 10ms 网格绘图帧。"""
     t: float
     hz: Optional[float] = None
     degree: Optional[float] = None
@@ -482,7 +433,6 @@ class SyllableCurveSide(BaseModel):
     shape: Optional[str] = None
     featurePoints: Optional[dict] = None
     quality: Optional[CurveQuality] = None
-    points: Optional[List[CurvePoint]] = None      # 历史数据
 
 
 class CurveRange(BaseModel):
@@ -493,8 +443,8 @@ class CurveRange(BaseModel):
 class CurveSegment(BaseModel):
     syllable: Optional[str] = None
     toneValue: Optional[float] = None
-    user: Optional[Union[List[CurvePoint], SyllableCurveSide]] = None
-    reference: Optional[Union[List[CurvePoint], SyllableCurveSide]] = None
+    user: Optional[SyllableCurveSide] = None
+    reference: Optional[SyllableCurveSide] = None
 
 
 class ResultCurve(BaseModel):
@@ -552,12 +502,21 @@ class ResultVot(BaseModel):
     note: Optional[str] = None
 
 
+class ScoreBreakdown(BaseModel):
+    """分数拆分：声母/韵母/声调为音节级三项判定通过率（主要展示维度），
+    overall 为供应商整卷总分（次要）。无音节时分项为空。"""
+    overall: float
+    initial: Optional[float] = None
+    final: Optional[float] = None
+    tone: Optional[float] = None
+
+
 class AssessmentResult(BaseModel):
     levelId: str
     providerVersion: str
     algorithmVersion: str
     quality: Quality
-    score: Optional[float] = None
+    score: Optional[ScoreBreakdown] = None
     phenomena: Optional[List[Phenomenon]] = None
     fourSteps: Optional[List[FourStep]] = None
     curve: Optional[ResultCurve] = None
@@ -593,7 +552,7 @@ class ArchiveRecordingSummary(BaseModel):
     createdAt: Optional[str] = None
     verdict: Optional[str] = None
     qualityAdvice: Optional[str] = None
-    score: Optional[float] = None
+    score: Optional[ScoreBreakdown] = None
 
 
 class ArchiveListResponse(BaseModel):
@@ -601,51 +560,9 @@ class ArchiveListResponse(BaseModel):
     nextCursor: Optional[str] = None
 
 
-class ArchiveCompareSide(BaseModel):
-    recording: ArchiveRecordingSummary
-    result: Optional[AssessmentResult] = None
-    rangeSnapshot: Optional[dict] = None
-
-
-class CompareDimensions(BaseModel):
-    score: bool = False
-    curve: bool = False
-
-
-class CompareDifference(BaseModel):
-    dimension: str
-    description: str
-
-
-class ArchiveCompareResponse(BaseModel):
-    a: ArchiveCompareSide
-    b: ArchiveCompareSide
-    comparable: CompareDimensions
-    reasons: Optional[List[str]] = None
-    differences: Optional[List[CompareDifference]] = None
-
-
-class LearningEventsResponse(BaseModel):
-    accepted: int
-    duplicates: int
-    rejected: Optional[List[dict]] = None
-
-
-class ProgressQuiz(BaseModel):
-    passed: int
-    total: int
-
-
-class ProgressPractice(BaseModel):
-    done: int
-    total: int
-
-
 class ProgressLevel(BaseModel):
     levelId: str
     completed: bool
-    quiz: ProgressQuiz
-    practice: ProgressPractice
 
 
 class MeProgress(BaseModel):
@@ -659,13 +576,15 @@ class RegisterResponse(BaseModel):
     accountId: str
     username: str
     dialectBackground: Optional[str] = None
+    gender: Optional[str] = None
 
 
 class ProfileResponse(BaseModel):
-    """PATCH /api/me/profile 响应：方言区/母语背景设置结果"""
+    """PATCH /api/me/profile 响应：方言区/母语背景与性别设置结果"""
     accountId: str
     username: str
     dialectBackground: Optional[str] = None
+    gender: Optional[str] = None
 
 
 class LoginContextPartial(BaseModel):

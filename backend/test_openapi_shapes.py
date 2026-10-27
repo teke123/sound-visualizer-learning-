@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import io
 import os
+import re
 import sys
 import time
 import wave
@@ -29,14 +30,13 @@ import main as backend_main  # noqa: E402
 from app import config  # noqa: E402
 from app.acoustics import transcode  # noqa: E402
 from app.api.schemas import (  # noqa: E402
-    ArchiveCompareResponse, AssessmentResult, AudioUploadResponse, AuthLoginResponse, ArchiveListResponse,
+    AssessmentResult, AudioUploadResponse, AuthLoginResponse, ArchiveListResponse,
     CalibrationFailResult, CalibrationOkResult, DeletedResponse, FeedbackResponse,
-    F0Response, FormantsResponse, HealthData, LearningEventsResponse, LevelDetail,
+    F0Response, FormantsResponse, HealthData, LevelDetail,
     LevelsResponse, MeContext, MeProgress, PitchCalibrationInfo, ProfileResponse,
-    RecordingDeleted, RecordingWithResult, RegisterResponse, SearchResponse,
+    ProgressLevel, RecordingDeleted, RecordingWithResult, RegisterResponse, SearchResponse,
     WishResponse, Envelope,
 )
-from app.pinyin_utils import expected_syllables  # noqa: E402
 
 ORIGIN = {"Origin": "http://localhost:5173"}   # 过 CSRF（同 e2e_test.py）
 
@@ -115,12 +115,12 @@ def silence_bytes(seconds: float = 2.0) -> bytes:
                      + np.random.default_rng(1).standard_normal(n) * 1e-4)
 
 
-def corpus_wav_bytes(text: str, speaker: str = "MV1") -> bytes:
-    """从真人标准音节语料库读取单音节或多音节并拼接为 16kHz 单声道 WAV 字节。"""
+def corpus_wav_bytes(pinyin: str, speaker: str = "MV1") -> bytes:
+    """按带调拼音标注从真人标准音节语料库读取并拼接为 16kHz 单声道 WAV 字节。"""
     corpus = config.CORPUS_DIR
     if corpus is None or not corpus.is_dir():
         raise RuntimeError("请先在 .env 或环境变量配置 CORPUS_DIR")
-    syls = expected_syllables(text)
+    syls = [{"stem": s} for s in re.split(r"[|，,\s]+", pinyin.strip()) if s]
     chunks: list[np.ndarray] = []
     gap = np.zeros(int(0.08 * 16000), dtype=np.float32)
     tmp_dir = config.DATA_DIR / "tmp_test"
@@ -157,14 +157,25 @@ def main() -> int:
 
         r = c.get("/api/levels")
         body = expect("levels → LevelsResponse", r, LevelsResponse)
-        check("  levels 共 30 关", len(body["data"]["levels"]) == 30,
+        # 与种子数据同源对比（关卡随内容追加）
+        from app.content_seed_data import LEVELS
+        check(f"  levels 共 {len(LEVELS)} 关（与种子一致）",
+              len(body["data"]["levels"]) == len(LEVELS),
               str(len(body["data"].get("levels", []))))
+
+        check("  levels 无 completionKeys（字段已删除）",
+              all("completionKeys" not in l for l in body["data"]["levels"]))
 
         r = c.get("/api/levels/L01")
         body = expect("levels/L01 → LevelDetail", r, LevelDetail)
-        check("  L01 含 quiz 与 practice",
+        practice = body["data"].get("practice") or []
+        check("  L01 含 quiz 与纯文本 practice",
               len(body["data"].get("quizzes") or []) > 0
-              and len(body["data"].get("practice") or []) > 0)
+              and isinstance(practice, list) and len(practice) > 0
+              and all(isinstance(p, str) and p for p in practice),
+              str(practice)[:200])
+        check("  L01 无 misconceptions（字段已删除）",
+              "misconceptions" not in body["data"])
 
         r = c.get("/api/search", params={"q": "妈"})
         body = expect("search 妈 → SearchResponse", r, SearchResponse)
@@ -183,14 +194,21 @@ def main() -> int:
         username = f"shape用户_{int(time.time())}"
         r = c.post("/api/auth/register", json={"username": username,
                                                "password": "password123",
-                                               "dialectBackground": "yue"})
-        body = expect("auth/register（带方言背景）→ RegisterResponse", r, RegisterResponse)
-        check("  注册回显 dialectBackground=yue",
-              body["data"].get("dialectBackground") == "yue")
+                                               "dialectBackground": "yue",
+                                               "gender": "female"})
+        body = expect("auth/register（带方言背景与性别）→ RegisterResponse", r, RegisterResponse)
+        check("  注册回显 dialectBackground=yue / gender=female",
+              body["data"].get("dialectBackground") == "yue"
+              and body["data"].get("gender") == "female")
         r = c.post("/api/auth/register", json={"username": f"{username}x",
                                                "password": "password123",
                                                "dialectBackground": "cantonese"})
         expect("auth/register 方言代码非法 → 422", r, None, status=422,
+               code="VALIDATION_ERROR")
+        r = c.post("/api/auth/register", json={"username": f"{username}y",
+                                               "password": "password123",
+                                               "gender": "unknown"})
+        expect("auth/register 性别代码非法 → 422", r, None, status=422,
                code="VALIDATION_ERROR")
         r = c.post("/api/auth/login", json={"username": username,
                                             "password": "password123"})
@@ -204,29 +222,52 @@ def main() -> int:
               body["data"]["calibration"]["status"] == "none")
         check("  context 下发 dialectBackground=yue（FR-107）",
               body["data"].get("dialectBackground") == "yue")
+        check("  context 下发 gender=female（FR-107）",
+              body["data"].get("gender") == "female")
 
-        r = c.patch("/api/me/profile", json={"dialectBackground": "wu"})
+        r = c.patch("/api/me/profile", json={"dialectBackground": "wu",
+                                             "gender": "male"})
         body = expect("PATCH me/profile → ProfileResponse", r, ProfileResponse)
-        check("  profile 更新为 wu", body["data"]["dialectBackground"] == "wu")
-        r = c.patch("/api/me/profile", json={"dialectBackground": None})
+        check("  profile 更新为 wu / male",
+              body["data"]["dialectBackground"] == "wu"
+              and body["data"]["gender"] == "male")
+        r = c.patch("/api/me/profile", json={"dialectBackground": None,
+                                             "gender": None})
         body = expect("PATCH me/profile 清除 → ProfileResponse", r, ProfileResponse)
-        check("  profile 清除为空", body["data"]["dialectBackground"] is None)
-        r = c.patch("/api/me/profile", json={"dialectBackground": "wu"})
+        check("  profile 清除为空",
+              body["data"]["dialectBackground"] is None
+              and body["data"]["gender"] is None)
+        r = c.patch("/api/me/profile", json={"dialectBackground": "wu",
+                                             "gender": "female"})
         body = expect("PATCH me/profile（恢复）→ ProfileResponse", r, ProfileResponse)
-        check("  profile 恢复为 wu", body["data"]["dialectBackground"] == "wu")
+        check("  profile 恢复为 wu / female",
+              body["data"]["dialectBackground"] == "wu"
+              and body["data"]["gender"] == "female")
 
         # ---- 未标定直接检测（D-20） ----
-        rec_audio = upload(c, corpus_wav_bytes("妈", "MV1"),
+        rec_audio = upload(c, corpus_wav_bytes("ma1", "MV1"),
                            "recording", "rec.webm")
         r = c.post("/api/recordings", json={
             "audioId": rec_audio, "levelId": "L30",
             "submissionId": f"shape-{time.time()}"})
+        if r.status_code == 202:  # 契约允许：同步窗口未完成 → 按 Retry-After 轮询
+            pending_id = r.json()["data"]["recording"]["recordingId"]
+            for _ in range(40):
+                r = c.get(f"/api/recordings/{pending_id}")
+                if r.status_code == 200:
+                    break
+                time.sleep(0.3)
         body = expect("recordings POST（未标定）→ RecordingWithResult", r, RecordingWithResult)
         rec_id = body["data"]["recording"]["recordingId"]
         check("  结果含 quality/curve", bool(body["data"]["result"]["quality"])
               and body["data"]["result"]["curve"] is not None)
         strict(AssessmentResult).model_validate(body["data"]["result"])
         check("  result 可单独通过 AssessmentResult 严格校验", True)
+        four_steps = body["data"]["result"].get("fourSteps") or []
+        check("  fourSteps 每步 practice 为非空字符串（短练习文案）",
+              all(isinstance(s.get("practice"), str) and s["practice"]
+                  for s in four_steps),
+              str(four_steps)[:200])
 
         r = c.get(f"/api/recordings/{rec_id}")
         expect("recordings/{id} GET → RecordingWithResult", r, RecordingWithResult)
@@ -244,7 +285,7 @@ def main() -> int:
         vot_level = next((l for l in initials if l["id"] == "L08"), None)
         if vot_level is None:   # 兜底：任一开放的声母关（全量种子下就是 L08）
             vot_level = initials[0]
-        vot_audio = upload(c, corpus_wav_bytes(vot_level["representativeChar"], "MV1"),
+        vot_audio = upload(c, corpus_wav_bytes("po1", "MV1"),   # L08 坡
                            "recording", "rec-vot.webm")
         r = c.post("/api/recordings", json={
             "audioId": vot_audio, "levelId": vot_level["id"],
@@ -275,7 +316,7 @@ def main() -> int:
         expect("pitch-calibration GET（未标定）→ PitchCalibrationInfo", r,
                PitchCalibrationInfo)
 
-        cal_id = upload(c, corpus_wav_bytes("妈坡车米布女妈麻马骂", "MV1"),
+        cal_id = upload(c, corpus_wav_bytes("ma1|po1|che1|mi3|bu4|nv3|ma1|ma2|ma3|ma4", "MV1"),
                         "calibration", "cal.webm")
         r = c.post("/api/pitch-calibration", json={"audioId": cal_id})
         body = expect("pitch-calibration POST → CalibrationOkResult", r, CalibrationOkResult)
@@ -292,7 +333,7 @@ def main() -> int:
                CalibrationFailResult, code="CALIBRATION_FAIL")
 
         # ---- 标定后提交 + 质量提示不拦截 ----
-        rec2_audio = upload(c, corpus_wav_bytes("妈", "MV1"),
+        rec2_audio = upload(c, corpus_wav_bytes("ma1", "MV1"),
                             "recording", "rec2.webm")
         r = c.post("/api/recordings", json={
             "audioId": rec2_audio, "levelId": "L30",
@@ -327,25 +368,21 @@ def main() -> int:
         # ---- 档案 / 学习 ----
         r = c.get("/api/me/recordings", params={"levelId": "L30"})
         expect("me/recordings → ArchiveListResponse", r, ArchiveListResponse)
-        r = c.get("/api/me/recordings/compare", params={"a": rec_id, "b": rec2_id})
-        expect("me/recordings/compare → ArchiveCompareResponse", r,
-               ArchiveCompareResponse)
 
-        d30 = c.get("/api/levels/L30").json()["data"]
-        events = [{"eventId": f"shape-quiz-{q['id']}", "levelId": "L30",
-                   "kind": "listen_quiz",
-                   "detail": {"questionId": q["id"],
-                              "choiceIndex": q["answerIndex"]}}
-                  for q in d30["quizzes"]]
-        events += [{"eventId": f"shape-step-{p['id']}", "levelId": "L30",
-                    "kind": "practice_done", "detail": {"stepId": p["id"]}}
-                   for p in d30["practice"]]
-        r = c.post("/api/learning-events", json={"events": events})
-        expect("learning-events → LearningEventsResponse", r, LearningEventsResponse)
+        # learning-events 接口已下线：路由不存在 → 404
+        r = c.post("/api/learning-events", json={"events": []})
+        check("learning-events 已删除 → 404", r.status_code == 404,
+              f"HTTP {r.status_code}")
+
+        # 进度 = 由未删除检测录音派生（上文已给 L30 提交多条录音）
         r = c.get("/api/me/progress")
         body = expect("me/progress → MeProgress", r, MeProgress)
-        check("  L30 完成", any(x["levelId"] == "L30" and x["completed"]
-                                for x in body["data"]["levels"]))
+        for lv in body["data"]["levels"]:
+            strict(ProgressLevel).model_validate(lv)
+        check("  progress levels 逐项通过 ProgressLevel 严格校验", True)
+        check("  L30 完成（由检测录音派生）",
+              any(x["levelId"] == "L30" and x["completed"]
+                  for x in body["data"]["levels"]))
 
         r = c.post("/api/feedback", json={"type": "clarity", "content": "很有帮助"})
         expect("feedback → FeedbackResponse", r, FeedbackResponse)

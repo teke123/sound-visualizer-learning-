@@ -58,9 +58,6 @@ def physical_cleanup() -> None:
                     db.commit()
                 finally:
                     db.close()
-            elif kind == "score_cache":
-                deletion_log.mark_done(entry)
-                continue
             deletion_log.mark_done(entry)
         except Exception:
             logger.exception("cleanup failed for %s:%s", kind, key)

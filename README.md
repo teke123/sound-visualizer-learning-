@@ -8,8 +8,8 @@
 分数、可观察现象、规则引擎四步反馈和录音质量提示。
 
 > 需求口径：`docs/srs/`（软件需求规格说明书，需求 ID 全局唯一）。
-> API 契约：`docs/decision-map-backend.md`（OpenAPI 为真源，`/docs` 可交互查看）。
-> 架构：`docs/architecture/`（后端实施方案见 03 篇）。
+> API 契约：后端 `/openapi.json`（OpenAPI 为真源，`/docs` 可交互查看）。
+> 架构与实现细节：`openwiki/`（手工维护的项目 wiki）。
 
 ## 环境变量与真人语料库配置（团队协同必读）
 
@@ -104,9 +104,9 @@ env -u PYTHONPATH python3 main.py
 ├── .env.example          # 环境变量配置模板（复制为 .env 配置 CORPUS_DIR 等）
 ├── src/
 │   ├── api/              # API 客户端（唯一网络层：client、endpoints、生成契约类型 generated/）
-│   ├── components/       # 通用组件（DemoPlayer、PageState、RecorderPanel、QualityVerdict 等）
+│   ├── components/       # 通用组件（DemoPlayer、PageState、RealtimeAcousticCanvas、AcousticDetail 等）
 │   ├── copy/             # 文案位（页面文案按页号登记）
-│   ├── features/         # 组合式功能模块（auth / calibration / assessment / result / archive 等）
+│   ├── features/         # 组合式功能模块（auth / calibration / assessment（含 components/ 录音评测组件）/ result / archive 等）
 │   ├── mocks/            # MSW mock（dev:mock 模式，形状与后端契约同步）
 │   ├── pages/            # 页面组件（与上表一一对应）
 │   ├── renderers/        # 渲染器（关卡 / 文章 / 声调曲线 / 共振峰 / 送气段波形 / 声道剖面）
@@ -130,8 +130,7 @@ env -u PYTHONPATH python3 main.py
 │   │   └── admin_ui/     # 自建轻量管理台单页（调用同一用例）
 │   └── requirements.txt
 ├── docs/
-│   ├── srs/              # 软件需求规格说明书（当前需求口径）
-│   └── architecture/     # 架构建议与重构路线图
+│   └── srs/              # 软件需求规格说明书（当前需求口径）
 └── package.json
 ```
 

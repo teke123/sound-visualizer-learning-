@@ -1,11 +1,12 @@
 """声学分析内核：本地信号维质检（音量/噪声/截幅/时长/静音比）、F0 提取
-（Praat/parselmouth 自相关法 + tone_py）、自适应声道长度共振峰提取（Burg）、
+（统一走 f0_pipeline 滤波自相关管线）、自适应声道长度共振峰提取（Burg）、
 送气段/清辅音起始检测（VOT）与曲线可靠性把关。
 
 F0 与归一化方法论结合 tone_py（Rose 1987; Zhu 1999; Xu & Zhang 2024）：
-- 提取：Praat To Pitch (ac)，70–420 Hz / 10 ms，抑制送气/摩擦段高频伪有声；
+- 提取：f0_pipeline 的 Praat 滤波自相关（To Pitch (filtered ac)），50–800 Hz /
+  10 ms（参数与开关集中在 f0_pipeline 与 config），旧 65–420 Hz 路径已下线；
 - 标定音域：新 F0 管线可靠 Hz 的 P3–P97 分位数外扩 6%，用作固定五度音域；
-- T 值换算：对数域 FOR，(log f - log lo)/(log hi - log lo) * 5，截断到 [0, 5]；
+- 五度映射：f0_pipeline.hz_to_degree（对数域，fLo→1、中点→3、fHi→5）；
 - 共振峰：按嗓音基频中位数自动选择声道 ceiling（男声 <165Hz 用 5000Hz，女声用 5500Hz），
   统计时取元音稳态中段（20%–80%）中位数，避开声母协同发音过渡段；
 - 可靠性：有效有声帧数（≥12 帧）+ 八度跳变密度组合判定，兼容长清辅音+短促去声音节。
@@ -18,11 +19,9 @@ from pathlib import Path
 import numpy as np
 
 from app import config
-from app.acoustics import transcode
+from app.acoustics import f0_pipeline, transcode
 
-# F0 提取参数随算法版本进入缓存键
-F0_MIN_HZ = 65.0
-F0_MAX_HZ = 420.0
+# F0 帧网格（毫秒），与 f0_pipeline.HOP_SEC 一致；特征接口的 hopMs 输出用
 F0_HOP_MS = 10.0
 
 # 信号维质量阈值（已在 FV1~3 / MV1~3 真人语料库标定）
@@ -161,40 +160,19 @@ class F0Result:
 
 
 def extract_f0(wav_path: Path) -> F0Result:
-    """Praat To Pitch (ac) 提取基频：
-    使用 silence_threshold=0.05、voicing_threshold=0.52 抑制清辅音送气/摩擦段的
-    高频伪周期（防止把 p/t/k 送气段误判为 450Hz+ 浊音），并对单帧孤立毛刺滤波。"""
-    import parselmouth
-
-    snd = parselmouth.Sound(str(wav_path))
-    if snd.duration < 0.08:
+    """F0 提取（兼容外壳）：实现已统一到 f0_pipeline 滤波自相关管线
+    （To Pitch (filtered ac)，50–800 Hz，10ms 帧网格，主趟 voicing 0.50），
+    此函数只把 PitchTrack 的原生网格映射为旧 F0Result 结构——
+    有效帧给出 hz，主轨 NaN 的帧沿用旧结构「无声帧」表示法（不携带 hz 键），
+    voiced_ranges / 跳变密度 / 可靠性判定等下游推导逻辑保持不变。"""
+    try:
+        track = f0_pipeline.extract_track(wav_path)
+    except f0_pipeline.F0PipelineError:
+        # 与旧实现一致：过短录音返回空结果 + 提示文案
         return F0Result([], [], 0.0, 0.0, False, "录音太短，无法提取音高")
 
-    pitch = parselmouth.praat.call(
-        snd, "To Pitch (ac)",
-        F0_HOP_MS / 1000.0,   # time_step (10 ms)
-        F0_MIN_HZ,            # pitch_floor (65 Hz)
-        15,                   # max_number_of_candidates
-        "no",                 # very_accurate
-        0.05,                 # silence_threshold
-        0.52,                 # voicing_threshold
-        0.01,                 # octave_cost
-        0.35,                 # octave_jump_cost
-        0.14,                 # voiced_unvoiced_cost
-        F0_MAX_HZ,            # pitch_ceiling (420 Hz)
-    )
-    t = np.asarray(pitch.xs(), dtype=float)
-    f0 = np.asarray(pitch.selected_array["frequency"], dtype=float)
-    f0 = np.where((f0 >= F0_MIN_HZ) & (f0 <= F0_MAX_HZ), f0, np.nan)
-
-    # 剔除前后皆 unvoiced 的单帧孤立伪有声点
-    for idx in range(len(f0)):
-        if np.isfinite(f0[idx]):
-            left_ok = idx > 0 and np.isfinite(f0[idx - 1])
-            right_ok = idx + 1 < len(f0) and np.isfinite(f0[idx + 1])
-            if not left_ok and not right_ok:
-                f0[idx] = np.nan
-
+    t = track.times
+    f0 = track.f0            # 主轨 Hz，NaN＝无声（50–800Hz 限幅已在管线内完成）
     voiced = np.isfinite(f0)
     total = len(f0)
     voiced_ratio = float(voiced.mean()) if total else 0.0
@@ -257,16 +235,6 @@ def robust_pitch_range(f0_hz: np.ndarray) -> tuple[float, float] | None:
     return lo, hi
 
 
-def to_t_values(f0_hz: np.ndarray, f_lo: float, f_hi: float) -> np.ndarray:
-    """Hz → T 值 [0,5]（对数域 FOR，带 [0, 5] 边界钳制，防止超出统计音域的点溢出画布）。"""
-    lo, hi = float(np.log(max(f_lo, 1e-3))), float(np.log(max(f_hi, 1e-3)))
-    if hi <= lo:
-        return np.full_like(f0_hz, np.nan, dtype=float)
-    with np.errstate(divide="ignore", invalid="ignore"):
-        raw = (np.log(np.where(f0_hz > 0, f0_hz, np.nan)) - lo) / (hi - lo) * 5.0
-    return np.clip(raw, 0.0, 5.0)
-
-
 # ---------------- 共振峰 ----------------
 
 @dataclass
@@ -277,19 +245,16 @@ class FormantResult:
 
 def extract_formants(wav_path: Path, *, max_formant: float | None = None) -> FormantResult:
     """Praat Burg 共振峰（F1/F2），按有声段给出元音段。
+    有声判定与嗓音基频中位数复用统一 F0 管线（f0_pipeline 滤波自相关）：
     未显式指定 max_formant 时，根据音频基频中位数自动判定声道长度 ceiling：
     男声（median F0 < 165 Hz）用 5000 Hz，女声（≥ 165 Hz）用 5500 Hz。"""
     import parselmouth
 
     snd = parselmouth.Sound(str(wav_path))
-    pitch = parselmouth.praat.call(
-        snd, "To Pitch (ac)",
-        F0_HOP_MS / 1000.0, F0_MIN_HZ, 15, "no",
-        0.05, 0.52, 0.01, 0.35, 0.14, F0_MAX_HZ,
-    )
-    f0 = np.asarray(pitch.selected_array["frequency"], dtype=float)
-    t = np.asarray(pitch.xs(), dtype=float)
-    voiced = f0 > 0
+    f0res = extract_f0(wav_path)
+    t = np.asarray([fr["t"] for fr in f0res.frames], dtype=float)
+    voiced = np.asarray(["hz" in fr for fr in f0res.frames], dtype=bool)
+    f0 = np.asarray([fr.get("hz", np.nan) for fr in f0res.frames], dtype=float)
 
     if max_formant is None:
         voiced_f0 = f0[voiced]

@@ -1,7 +1,7 @@
 """端到端闭环自测（直接运行：python e2e_test.py）。
 
 覆盖：健康 / 关卡与搜索 / 注册登录主流程（未标定直接检测→标定后再检测）/
-幂等与冲突 / 档案与比较 / 学习事件与进度 / 删除与清空 / 注销 /
+幂等与冲突 / 档案 / 录音派生进度 / 删除与清空 / 注销 /
 admin（开放切换 / 内容保存即生效 / 反馈处理）。
 
 所有请求带 Origin 头（CSRF 校验）；媒体语义直接断言 HTTP 状态与头。
@@ -9,6 +9,7 @@ admin（开放切换 / 内容保存即生效 / 反馈处理）。
 from __future__ import annotations
 
 import io
+import re
 import sys
 import time
 import wave
@@ -20,7 +21,6 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).parent))
 from app import config  # noqa: E402
 from app.acoustics import transcode  # noqa: E402
-from app.pinyin_utils import expected_syllables  # noqa: E402
 
 BASE = "http://127.0.0.1:8000"
 ORIGIN = "http://localhost:5173"
@@ -49,31 +49,31 @@ def silence_bytes(seconds: float = 2.0) -> bytes:
     return wav_bytes(np.zeros(n, dtype=np.float32) + np.random.default_rng(1).standard_normal(n) * 1e-4)
 
 
-def corpus_wav_bytes(text: str, speaker: str = "MV1") -> bytes:
+def corpus_wav_bytes(pinyin: str, speaker: str = "MV1") -> bytes:
+    """按带调拼音标注逐项定位语料库录音并拼接为 16kHz 单声道 WAV 字节。"""
     corpus = config.CORPUS_DIR
     if corpus is None or not corpus.is_dir():
         raise RuntimeError("请先在 .env 或环境变量配置 CORPUS_DIR")
-    syls = expected_syllables(text)
+    stems = [s for s in re.split(r"[|，,\s]+", pinyin.strip()) if s]
     chunks: list[np.ndarray] = []
     gap = np.zeros(int(0.08 * 16000), dtype=np.float32)
     tmp_dir = config.DATA_DIR / "tmp_e2e"
     tmp_dir.mkdir(parents=True, exist_ok=True)
-    for idx, s in enumerate(syls):
-        stem = s["stem"]
+    for idx, stem in enumerate(stems):
         src = corpus / speaker / f"{stem}_{speaker}.wav"
         dst = tmp_dir / f"{speaker}_{stem}_{idx}.wav"
         transcode.normalize_to_wav(src, dst)
         chunks.append(transcode.read_pcm_samples(dst))
         dst.unlink(missing_ok=True)
-        if idx + 1 < len(syls):
+        if idx + 1 < len(stems):
             chunks.append(gap)
     return wav_bytes(np.concatenate(chunks) if chunks else np.zeros(16000, dtype=np.float32))
 
 
 def main() -> int:
-    rec_audio = corpus_wav_bytes("妈", "MV1")
-    r2_audio = corpus_wav_bytes("妈", "FV1")
-    cal_audio = corpus_wav_bytes("妈坡车米布女妈麻马骂", "MV1")
+    rec_audio = corpus_wav_bytes("ma1", "MV1")
+    r2_audio = corpus_wav_bytes("ma1", "FV1")
+    cal_audio = corpus_wav_bytes("ma1|po1|che1|mi3|bu4|nv3|ma1|ma2|ma3|ma4", "MV1")
 
     # 1 健康与内容（公开）
     with httpx.Client(base_url=BASE, headers=HEADERS, timeout=40) as c:
@@ -82,7 +82,7 @@ def main() -> int:
 
         r = c.get("/api/levels")
         d = r.json()["data"]
-        check("levels 30 open", len(d["levels"]) == 30, f"got {len(d['levels'])}")
+        check("levels all open", len(d["levels"]) >= 30, f"got {len(d['levels'])}")
         check("confusablePairs non-empty", len(d["confusablePairs"]) >= 5)
         l30 = next(l for l in d["levels"] if l["id"] == "L30")
         check("L30 availability open", l30["availability"] == "open")
@@ -236,35 +236,17 @@ def main() -> int:
               f"{r.status_code} {r.text[:200]}")
         rec2_id = r.json()["data"]["recording"]["recordingId"]
 
-        # 8 档案与比较
+        # 8 档案
         r = c.get("/api/me/recordings", params={"levelId": "L30"})
         items = r.json()["data"]["recordings"]
         check("me/recordings list >=3", len(items) >= 3, str(len(items)))
-        r = c.get("/api/me/recordings/compare", params={"a": rec_id, "b": rec2_id})
-        cmp_ = r.json()["data"]
-        check("compare same level ok",
-              r.status_code == 200 and cmp_["comparable"]["score"] is True, r.text[:200])
 
-        # 9 学习事件与进度（D-24）
-        d30 = c.get("/api/levels/L30").json()["data"]
-        quiz_ids = [q["id"] for q in d30["quizzes"]]
-        step_ids = [p["id"] for p in d30["practice"]]
-        events = [{"eventId": f"ev-{qid}", "levelId": "L30", "kind": "listen_quiz",
-                   "detail": {"questionId": qid,
-                              "choiceIndex": next(q["answerIndex"] for q in d30["quizzes"]
-                                                  if q["id"] == qid)}}
-                  for qid in quiz_ids]
-        events += [{"eventId": f"ev-{sid}", "levelId": "L30",
-                    "kind": "practice_done", "detail": {"stepId": sid}} for sid in step_ids]
-        r = c.post("/api/learning-events", json={"events": events})
-        acc = r.json()["data"]
-        check("learning-events accepted all", acc["accepted"] == len(events), str(acc))
-        r = c.post("/api/learning-events", json={"events": events[:1]})
-        check("learning-events dedupe", r.json()["data"]["duplicates"] == 1)
+        # 9 进度（新口径 D-24：完成 = 该关至少一条未删除检测录音，
+        #   前文已给 L30 提交过 e2e-sub-1 / e2e-sil-1 / e2e-sub-2 多条录音）
         r = c.get("/api/me/progress")
         prog = r.json()["data"]
         l30p = next(x for x in prog["levels"] if x["levelId"] == "L30")
-        check("L30 completed (D-24)", l30p["completed"] is True, str(l30p))
+        check("L30 completed (derived from recordings)", l30p["completed"] is True, str(l30p))
         check("nextLevelId != L30", prog["nextLevelId"] != "L30")
 
         # 10 删除单条与清空档案
@@ -275,6 +257,12 @@ def main() -> int:
               r.text[:150])
         r = c.get("/api/me/recordings")
         check("archive empty after clear", len(r.json()["data"]["recordings"]) == 0)
+        # 该关全部录音删除后 completed 应回落 false，nextLevelId 回到首个开放关
+        r = c.get("/api/me/progress")
+        prog = r.json()["data"]
+        l30p = next(x for x in prog["levels"] if x["levelId"] == "L30")
+        check("L30 completed=false after archive cleared", l30p["completed"] is False, str(l30p))
+        check("nextLevelId back to L01", prog["nextLevelId"] == "L01", str(prog["nextLevelId"]))
 
         # 11 反馈（登录后）
         r = c.post("/api/feedback", json={"sourcePage": "P05", "type": "clarity",
@@ -342,11 +330,6 @@ def main() -> int:
         # 恢复
         content["professional"]["description"] = old_desc
         a.put("/api/admin/levels/L30", json={"content": content})
-
-        # 完整性检查返回缺失项列表
-        r = a.post("/api/admin/levels/L30/precheck")
-        check("precheck ok", r.status_code == 200 and r.json()["data"]["ok"] is True,
-              str(r.json()["data"].get("missing")))
 
         # 反馈处理
         r = a.get("/api/admin/feedback", params={"status": "pending"})

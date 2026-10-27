@@ -86,12 +86,3 @@ class CalibrationTextRow(Base):
     active: Mapped[bool] = mapped_column(default=True)
     note: Mapped[str | None] = mapped_column(Text)
     updated_at: Mapped[datetime.datetime] = mapped_column(DateTime)
-
-
-class SagittalPresetRow(Base):
-    __tablename__ = "sagittal_preset"
-
-    key: Mapped[str] = mapped_column(String(64), primary_key=True)   # L01..L30 或音标名
-    layer: Mapped[str] = mapped_column(String(16))
-    target_sound: Mapped[str] = mapped_column(String(16))
-    keyframes: Mapped[str] = mapped_column(Text)      # JSON

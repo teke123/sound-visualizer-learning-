@@ -4,6 +4,7 @@
  * 名称、拼音、代表字、试听、进入。
  */
 import { computed } from 'vue'
+import { QBadge, QBtn, QCard, QCardSection } from 'quasar'
 import type { LevelSummary } from '@/api'
 import { mediaUrl } from '@/api'
 import { usePlayerStore } from '@/stores/player'
@@ -26,40 +27,52 @@ function playDemo() {
 </script>
 
 <template>
-  <article class="level-card" :data-level-id="level.id">
-    <div class="card-head">
-      <span class="card-id">{{ level.id }}</span>
-      <h3 class="card-title">{{ level.title }}</h3>
-      <span v-if="completed" class="card-done">已学完</span>
-    </div>
-    <p class="card-sub">
-      <span class="card-pinyin">{{ level.pinyin }}</span>
-      <span v-if="level.representativeChar" class="card-char">「{{ level.representativeChar }}」</span>
-      <span class="card-type">{{ level.type }}</span>
-    </p>
-    <div class="card-actions">
-      <button
-        v-if="showListen !== false && level.demoMediaId"
-        type="button"
-        class="card-btn"
-        @click="playDemo"
-      >
-        {{ player.isCurrent(listenKey) ? '⏸ 暂停' : '▶ 试听' }}
-      </button>
-      <RouterLink v-if="level.availability !== 'closed'" :to="`/learn/${level.id}`" class="card-btn primary">
-        进入关卡
-      </RouterLink>
-      <span v-else class="card-btn disabled">未开放</span>
-    </div>
-  </article>
+  <QCard flat bordered tag="article" class="level-card" :data-level-id="level.id">
+    <QCardSection class="card-body">
+      <div class="card-head">
+        <span class="card-id">{{ level.id }}</span>
+        <h3 class="card-title">{{ level.title }}</h3>
+        <QBadge v-if="completed" color="positive" class="card-done">已学完</QBadge>
+      </div>
+      <p class="card-sub">
+        <span class="card-pinyin">{{ level.pinyin }}</span>
+        <span v-if="level.representativeChar" class="card-char">「{{ level.representativeChar }}」</span>
+        <span class="card-type">{{ level.type }}</span>
+      </p>
+      <div class="card-actions">
+        <QBtn
+          v-if="showListen !== false && level.demoMediaId"
+          outline
+          no-caps
+          color="blue-grey-4"
+          text-color="blue-grey-9"
+          class="card-btn"
+          :label="player.isCurrent(listenKey) ? '⏸ 暂停' : '▶ 试听'"
+          @click="playDemo"
+        />
+        <QBtn
+          v-if="level.availability !== 'closed'"
+          outline
+          no-caps
+          color="primary"
+          text-color="teal-9"
+          class="card-btn primary"
+          label="进入关卡"
+          :to="`/learn/${level.id}`"
+        />
+        <QBtn v-else outline no-caps color="blue-grey-3" text-color="blue-grey-3" class="card-btn" label="未开放" disable />
+      </div>
+    </QCardSection>
+  </QCard>
 </template>
 
 <style scoped lang="sass">
 .level-card
-  background: #fff
-  border: 1px solid #eceff1
-  border-radius: 12px
-  padding: 16px
+  display: flex
+  flex-direction: column
+
+.card-body
+  flex: 1
   display: flex
   flex-direction: column
   gap: 8px
@@ -82,11 +95,6 @@ function playDemo() {
 
 .card-done
   margin-left: auto
-  font-size: 12px
-  color: #2e7d32
-  background: #e8f5e9
-  padding: 2px 8px
-  border-radius: 999px
 
 .card-sub
   display: flex
@@ -107,25 +115,12 @@ function playDemo() {
   gap: 10px
   margin-top: auto
 
+/* 原 .card-btn：44px 触达高度 / 8px 圆角（非胶囊）；
+   .primary 浅青底 + 字重 600（Quasar outline 底色为 transparent !important，填充需 important 补回） */
 .card-btn
   min-height: 44px
-  display: inline-flex
-  align-items: center
-  padding: 4px 16px
   border-radius: 8px
-  border: 1px solid #90a4ae
-  background: #fff
-  color: #37474f
-  text-decoration: none
-  font-size: 14px
-  cursor: pointer
   &.primary
-    border-color: #00897b
-    background: #e0f2f1
-    color: #00695c
+    background: #e0f2f1 !important
     font-weight: 600
-  &.disabled
-    color: #b0bec5
-    border-color: #eceff1
-    cursor: default
 </style>

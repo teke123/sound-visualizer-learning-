@@ -1,95 +1,224 @@
 <script setup lang="ts">
 /**
- * P06 发音库（FR-701–703）：已开放关目录（分层）、试听、任选两关比较、易混快捷项。
+ * P06 发音库（§2 音系表格化重构）：四张音系表（辅音声母 / 韵母+舌位图 / 音节表 / 声调）
+ * 现代语音学口径：部位/方法用 IPA 通行术语，韵母按介音 × 韵尾（G-V-X）组织，
+ * 正词法拼写规则收拢到页内折叠区。
+ * + 搜索 / 易混组高亮 + 详情侧栏（选中后才展开，表格让位）+ 比较托盘（任选两关或易混对一键比较）。
  * 工具页：不承载进度（进度呈现归 P03）。
  */
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { QBadge, QBtn, QCheckbox, QExpansionItem, QInput, QTab, QTabPanel, QTabPanels, QTabs } from 'quasar'
 import { useLevelsStore } from '@/stores/levels'
 import { useComparePanel } from '@/features/compare'
-import LevelCard from '@/components/LevelCard.vue'
 import ComparePanel from '@/components/ComparePanel.vue'
 import PageState from '@/components/PageState.vue'
+import InitialMatrix from '@/components/library/InitialMatrix.vue'
+import FinalMatrix from '@/components/library/FinalMatrix.vue'
+import SyllableMatrix from '@/components/library/SyllableMatrix.vue'
+import ToneTable from '@/components/library/ToneTable.vue'
+import SoundDetailPanel from '@/components/library/SoundDetailPanel.vue'
+import { buildCoverage } from '@/components/library/matching'
+import {
+  CONFUSABLE_GROUPS,
+  FINAL_BY_KEY,
+  INITIAL_BY_KEY,
+  type FinalInfo,
+  type InitialInfo,
+  type SyllableCell,
+  type ToneInfo,
+} from '@/phonology/mandarin'
 
+const router = useRouter()
 const levelsStore = useLevelsStore()
 const compare = useComparePanel()
 
-const pickMode = ref(false)
-const selected = ref<string[]>([])
+type LibraryView = 'initials' | 'finals' | 'syllables' | 'tones'
+const VIEWS: Array<{ key: LibraryView; label: string }> = [
+  { key: 'initials', label: '声母表' },
+  { key: 'finals', label: '韵母表' },
+  { key: 'syllables', label: '音节表' },
+  { key: 'tones', label: '声调表' },
+]
+
+const view = ref<LibraryView>('initials')
+const showChar = ref(true)
+const showIpa = ref(true)
+const query = ref('')
+const activeGroupKey = ref<string | null>(null)
+
+/** QTabs / QTabPanels 的 model-value 回写（string|number → LibraryView） */
+function onViewChange(name: string | number) {
+  view.value = name as LibraryView
+}
+
+type Selection =
+  | { kind: 'initial'; initial: InitialInfo }
+  | { kind: 'final'; final: FinalInfo }
+  | { kind: 'tone'; tone: ToneInfo }
+  | { kind: 'syllable'; initial: string; final: string; cell: SyllableCell }
+
+const selection = ref<Selection | null>(null)
+const selectedLevels = ref<string[]>([])
+
+const levels = computed(() => levelsStore.published)
+const activeGroup = computed(() => CONFUSABLE_GROUPS.find((g) => g.key === activeGroupKey.value) ?? null)
+
+/** 易混组高亮：按视图拆分为声母键 / 韵母键集合（音节表两者并用） */
+const initialHighlight = computed(() =>
+  activeGroup.value && activeGroup.value.initials.length > 0 ? activeGroup.value.initials : null,
+)
+const finalHighlight = computed(() =>
+  activeGroup.value && activeGroup.value.finals.length > 0 ? activeGroup.value.finals : null,
+)
+const syllableHighlight = computed(() =>
+  activeGroup.value ? [...activeGroup.value.initials, ...activeGroup.value.finals] : null,
+)
+
+function toggleGroup(key: string) {
+  activeGroupKey.value = activeGroupKey.value === key ? null : key
+  // 易混组只作用于对应表：激活时自动切到相关视图，避免点了个寂寞
+  const group = CONFUSABLE_GROUPS.find((g) => g.key === activeGroupKey.value)
+  if (!group) return
+  if (group.initials.length > 0 && group.finals.length === 0 && view.value === 'finals') {
+    view.value = 'initials'
+  } else if (group.finals.length > 0 && group.initials.length === 0 && view.value === 'initials') {
+    view.value = 'finals'
+  }
+}
+
+function selectInitial(initial: InitialInfo) {
+  selection.value = { kind: 'initial', initial }
+}
+function selectFinal(final: FinalInfo) {
+  selection.value = { kind: 'final', final }
+}
+function selectTone(tone: ToneInfo) {
+  selection.value = { kind: 'tone', tone }
+}
+function selectSyllable(payload: { initial: string; final: string; cell: SyllableCell }) {
+  selection.value = { kind: 'syllable', ...payload }
+}
+/** 元音舌位图点击 → 选中对应韵母并打开详情 */
+function selectVowel(finalKey: string) {
+  const final = FINAL_BY_KEY.get(finalKey)
+  if (final) selection.value = { kind: 'final', final }
+}
+function closeDetail() {
+  selection.value = null
+}
+
+const detailProps = computed(() => {
+  const s = selection.value
+  return {
+    initial: s?.kind === 'initial' ? s.initial : null,
+    final: s?.kind === 'final' ? s.final : null,
+    tone: s?.kind === 'tone' ? s.tone : null,
+    syllable:
+      s?.kind === 'syllable' ? { initial: s.initial, final: s.final, cell: s.cell } : null,
+  }
+})
+const detailOpen = computed(() => selection.value !== null)
+const activeFinalKey = computed(() => (selection.value?.kind === 'final' ? selection.value.final.key : null))
+
+function enterLevel(levelId: string) {
+  void router.push(`/learn/${levelId}`)
+}
+
+/* ------------------------------ 比较托盘 ------------------------------ */
+
+function addCompare(levelId: string) {
+  if (selectedLevels.value.includes(levelId)) return
+  selectedLevels.value = [...selectedLevels.value.slice(-1), levelId]
+}
+function removeCompare(levelId: string) {
+  selectedLevels.value = selectedLevels.value.filter((id) => id !== levelId)
+}
+function runCompare() {
+  const a = selectedLevels.value[0]
+  const b = selectedLevels.value[1]
+  if (!a || !b) return
+  void compare.open(a, b)
+}
+function comparePair(aId: string, bId: string) {
+  void compare.open(aId, bId)
+}
+function trayLabel(levelId: string): string {
+  const level = levelsStore.byId.get(levelId)
+  return level ? `${level.title}（${level.targetSound}）` : levelId
+}
+
+/** 易混组一键比较：pair 双方都有专属已开放关才可点，否则置灰「未开放」 */
+const pairButtons = computed(() => {
+  const group = activeGroup.value
+  if (!group) return []
+  const cov = buildCoverage(levels.value)
+  return group.pairs.map(([a, b]) => {
+    const levelA = cov.byInitial.get(a) ?? cov.byFinal.get(a) ?? null
+    const levelB = cov.byInitial.get(b) ?? cov.byFinal.get(b) ?? null
+    return { a, b, levelA, levelB, ready: levelA !== null && levelB !== null }
+  })
+})
+
+function pairLabel(key: string): string {
+  const info = INITIAL_BY_KEY.get(key) ?? FINAL_BY_KEY.get(key)
+  return info ? `${key}「${info.char}」` : key
+}
+
+const compareOpen = computed(() => compare.pair.value !== null)
 
 onMounted(() => {
   if (!levelsStore.loaded) void levelsStore.refresh()
 })
-
-const LAYERS = [
-  { key: 'vowel', name: '单韵母' },
-  { key: 'initial', name: '声母' },
-  { key: 'syllable', name: '拼读' },
-] as const
-
-const byLayer = computed(() =>
-  LAYERS.map((layer) => ({
-    ...layer,
-    levels: levelsStore.published.filter((level) => level.layer === layer.key),
-  })),
-)
-
-const compareOpen = computed(() => compare.pair.value !== null)
-
-function togglePick(levelId: string) {
-  if (selected.value.includes(levelId)) {
-    selected.value = selected.value.filter((id) => id !== levelId)
-  } else {
-    selected.value = [...selected.value.slice(-1), levelId]
-  }
-}
-
-function compareSelection() {
-  if (selected.value.length === 2) {
-    void compare.open(selected.value[0]!, selected.value[1]!)
-    selected.value = []
-    pickMode.value = false
-  }
-}
-
-function comparePair(aId: string, bId: string) {
-  void compare.open(aId, bId)
-}
 </script>
 
 <template>
   <div class="library-page">
     <header class="lib-head">
-      <div>
-        <h1>发音库</h1>
-      </div>
-      <button type="button" :class="['pick-toggle', { active: pickMode }]" @click="pickMode = !pickMode; selected = []">
-        {{ pickMode ? '退出选择' : '任选两关比较' }}
-      </button>
+      <h1>发音库</h1>
+      <QInput
+        v-model="query"
+        type="search"
+        outlined
+        rounded
+        placeholder="搜拼音 / IPA / 代表字 / 关卡"
+        aria-label="搜索发音库"
+        class="lib-search"
+      />
     </header>
 
-    <div v-if="pickMode" class="pick-bar">
-      <span>已选 {{ selected.length }} / 2</span>
-      <button type="button" class="pick-go" :disabled="selected.length !== 2" @click="compareSelection">
-        打开比较
-      </button>
-    </div>
-
-    <!-- 易混对快捷项（FR-703） -->
-    <section v-if="levelsStore.confusablePairs.length > 0 && !pickMode" class="quick-pairs" aria-label="易混关快捷比较">
-      <h2>易混关快捷比较</h2>
-      <div class="quick-row">
-        <button
-          v-for="pair in levelsStore.confusablePairs"
-          :key="`${pair.a}-${pair.b}`"
-          type="button"
-          class="quick-btn"
-          @click="comparePair(pair.a, pair.b)"
-        >
-          {{ levelsStore.byId.get(pair.a)?.targetSound ?? pair.a }} vs
-          {{ levelsStore.byId.get(pair.b)?.targetSound ?? pair.b }}
-        </button>
+    <div class="lib-controls">
+      <QTabs
+        :model-value="view"
+        no-caps
+        active-color="primary"
+        indicator-color="primary"
+        @update:model-value="onViewChange"
+      >
+        <QTab v-for="v in VIEWS" :key="v.key" :name="v.key" :label="v.label" no-caps />
+      </QTabs>
+      <div class="lib-filters">
+        <QCheckbox v-model="showChar" label="显示汉字" class="lib-check" />
+        <QCheckbox v-model="showIpa" label="显示 IPA" class="lib-check" />
       </div>
-    </section>
+      <div class="lib-groups">
+        <span class="groups-label">易混组</span>
+        <QBtn
+          v-for="g in CONFUSABLE_GROUPS"
+          :key="g.key"
+          no-caps
+          :color="activeGroupKey === g.key ? 'teal-1' : 'blue-grey-4'"
+          :text-color="activeGroupKey === g.key ? 'teal-9' : 'blue-grey-9'"
+          :unelevated="activeGroupKey === g.key"
+          :outline="activeGroupKey !== g.key"
+          :title="g.hint"
+          :aria-pressed="activeGroupKey === g.key"
+          @click="toggleGroup(g.key)"
+        >
+          {{ g.name }}
+        </QBtn>
+      </div>
+    </div>
 
     <PageState v-if="levelsStore.loading && !levelsStore.loaded" state="loading" />
     <PageState
@@ -98,20 +227,119 @@ function comparePair(aId: string, bId: string) {
       :error="levelsStore.error"
       @retry="levelsStore.refresh()"
     />
-    <template v-else>
-      <section v-for="layer in byLayer" :key="layer.key" class="lib-layer" :aria-label="layer.name">
-        <h2>{{ layer.name }}</h2>
-        <p v-if="layer.levels.length === 0" class="layer-empty">暂无已开放关卡</p>
-        <div class="lib-grid">
-          <div v-for="level in layer.levels" :key="level.id" class="lib-cell">
-            <button v-if="pickMode" type="button" :class="['pick-check', { checked: selected.includes(level.id) }]" @click="togglePick(level.id)">
-              {{ selected.includes(level.id) ? '✓ 已选' : '选择' }}
-            </button>
-            <LevelCard :level="level" :show-listen="!pickMode" />
-          </div>
-        </div>
-      </section>
-    </template>
+    <div v-else class="lib-main">
+      <div class="lib-table-zone">
+        <QTabPanels :model-value="view" animated @update:model-value="onViewChange">
+          <QTabPanel name="initials" class="q-pa-none">
+            <InitialMatrix
+              :levels="levels"
+              :show-ipa="showIpa"
+              :show-char="showChar"
+              :highlight="initialHighlight"
+              :query="query"
+              @select="selectInitial"
+            />
+          </QTabPanel>
+          <QTabPanel name="finals" class="q-pa-none">
+            <FinalMatrix
+              :levels="levels"
+              :show-ipa="showIpa"
+              :show-char="showChar"
+              :highlight="finalHighlight"
+              :query="query"
+              :active-final-key="activeFinalKey"
+              @select="selectFinal"
+              @select-vowel="selectVowel"
+            />
+          </QTabPanel>
+          <QTabPanel name="syllables" class="q-pa-none">
+            <SyllableMatrix
+              :levels="levels"
+              :show-ipa="showIpa"
+              :show-char="showChar"
+              :highlight="syllableHighlight"
+              :query="query"
+              @select="selectSyllable"
+            />
+          </QTabPanel>
+          <QTabPanel name="tones" class="q-pa-none">
+            <ToneTable :query="query" @select="selectTone" />
+          </QTabPanel>
+        </QTabPanels>
+      </div>
+      <div v-if="detailOpen" class="lib-side">
+        <SoundDetailPanel
+          :open="detailOpen"
+          :initial="detailProps.initial"
+          :final="detailProps.final"
+          :tone="detailProps.tone"
+          :syllable="detailProps.syllable"
+          :levels="levels"
+          @close="closeDetail"
+          @enter-level="enterLevel"
+          @add-compare="addCompare"
+        />
+      </div>
+    </div>
+
+    <!-- 正词法说明：拼音拼写规则与语音学分类解耦（严式 IPA 与拼写的映射收拢于此） -->
+    <QExpansionItem class="lib-ortho" label="拼音正词法与拼写规则" header-class="lib-ortho-header">
+      <ul class="lib-ortho-list">
+        <li>y / w 隔音改写：零声母 i / u 系韵母前加 y / w（衣 yi、乌 wu、呀 ya、挖 wa）；ü 系改 y 并省两点（鱼 yu、月 yue、元 yuan、云 yun）。</li>
+        <li>省写：iou / uei / uen 与声母相拼时省作 iu / ui / un（六 liu、贵 gui、温 wen → 论 lun）。</li>
+        <li>ü 省两点：j / q / x 后 ü 省分音符（居 ju、缺 que、军 jun）。</li>
+        <li>本页 IPA 为严式标音：介音记 [j / w / ɥ]，双元音韵尾加不成音节号 ◌̯（如 [ai̯]）；-i 为成音节辅音 [z̩ / ʐ̩]；r 主标卷舌近音 [ɻ]。</li>
+      </ul>
+    </QExpansionItem>
+
+    <section
+      v-if="selectedLevels.length > 0 || pairButtons.length > 0"
+      class="lib-tray"
+      aria-label="比较托盘"
+    >
+      <div v-if="selectedLevels.length > 0" class="tray-items">
+        <template v-for="(id, idx) in selectedLevels" :key="id">
+          <span v-if="idx === 1" class="tray-vs">vs</span>
+          <span class="tray-item">
+            {{ trayLabel(id) }}
+            <QBtn
+              flat
+              round
+              dense
+              color="secondary"
+              icon="close"
+              :aria-label="`移除 ${trayLabel(id)}`"
+              @click="removeCompare(id)"
+            />
+          </span>
+        </template>
+        <QBtn
+          unelevated
+          no-caps
+          color="primary"
+          label="并排比较"
+          :disable="selectedLevels.length !== 2"
+          @click="runCompare"
+        />
+      </div>
+      <div v-if="pairButtons.length > 0" class="tray-pairs">
+        <span class="pairs-label">{{ activeGroup?.name }} · 一键比较</span>
+        <QBtn
+          v-for="p in pairButtons"
+          :key="`${p.a}-${p.b}`"
+          outline
+          no-caps
+          :color="p.ready ? 'blue-grey-4' : 'blue-grey-3'"
+          :text-color="p.ready ? 'blue-grey-9' : 'blue-grey-6'"
+          :disable="!p.ready"
+          :title="p.ready ? `${p.levelA?.title} vs ${p.levelB?.title}` : '该对立组尚未开放关卡'"
+          @click="p.ready && p.levelA && p.levelB && comparePair(p.levelA.id, p.levelB.id)"
+        >
+          {{ pairLabel(p.a) }} vs {{ pairLabel(p.b) }}
+          <QBadge v-if="!p.ready" class="pair-off" outline color="blue-grey-4" label="未开放" />
+        </QBtn>
+      </div>
+    </section>
 
     <ComparePanel
       :open="compareOpen"
@@ -128,7 +356,7 @@ function comparePair(aId: string, bId: string) {
 .library-page
   display: flex
   flex-direction: column
-  gap: 24px
+  gap: 18px
 
 .lib-head
   display: flex
@@ -137,97 +365,125 @@ function comparePair(aId: string, bId: string) {
   gap: 12px
   flex-wrap: wrap
   h1
-    margin: 0 0 4px
-    font-size: 24px
-  p
     margin: 0
-    color: #78909c
-    font-size: 14px
+    font-size: 24px
 
-.pick-toggle
-  min-height: 44px
-  padding: 4px 18px
-  border-radius: 999px
-  border: 1px solid #0288d1
-  background: #e1f5fe
-  color: #01579b
-  cursor: pointer
-  font-weight: 600
-  &.active
-    background: #0288d1
-    color: #fff
+.lib-search
+  width: min(340px, 100%)
 
-.pick-bar
+.lib-controls
+  display: flex
+  flex-direction: column
+  gap: 10px
+
+.lib-filters
   display: flex
   align-items: center
-  justify-content: space-between
-  background: #e1f5fe
-  border-radius: 10px
-  padding: 8px 14px
-  span
-    color: #01579b
-    font-size: 14px
-
-.pick-go
-  min-height: 40px
-  padding: 2px 16px
-  border: none
-  border-radius: 8px
-  background: #0288d1
-  color: #fff
-  cursor: pointer
-  &:disabled
-    opacity: 0.5
-
-.quick-pairs
-  h2
-    font-size: 16px
-    margin: 0 0 8px
-
-.quick-row
-  display: flex
+  gap: 16px
   flex-wrap: wrap
+
+.lib-check
+  // QCheckbox 行高对齐筛选项
+  min-height: 44px
+
+.lib-groups
+  display: flex
+  align-items: center
   gap: 8px
+  flex-wrap: wrap
 
-.quick-btn
-  min-height: 40px
-  padding: 2px 14px
-  border-radius: 999px
-  border: 1px solid #b39ddb
-  background: #ede7f6
-  color: #4527a0
-  cursor: pointer
-
-.lib-layer h2
-  font-size: 17px
-  margin: 0 0 12px
-
-.layer-empty
-  color: #b0bec5
+.groups-label
   font-size: 13px
+  color: #78909c
 
-.lib-grid
-  display: grid
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr))
-  gap: 14px
+.lib-main
+  display: flex
+  gap: 16px
+  align-items: flex-start
 
-.lib-cell
+// 正词法折叠区：折叠交互由 QExpansionItem 提供，容器保持卡片外观
+.lib-ortho
+  border: 1px solid #eceff1
+  border-radius: 12px
+  background: #fff
+  overflow: hidden
+
+// QExpansionItem 的 header 是其内部元素，需 :deep() 才能命中
+.lib-ortho :deep(.lib-ortho-header)
+  font-size: 14px
+  color: #546e7a
+
+.lib-ortho-list
+  margin: 0 16px 12px
+  padding-left: 20px
   display: flex
   flex-direction: column
   gap: 6px
+  li
+    font-size: 13px
+    color: #607d8b
+    line-height: 1.6
+    font-family: var(--font-ipa)
 
-.pick-check
-  align-self: flex-end
-  min-height: 36px
-  padding: 2px 14px
-  border-radius: 999px
-  border: 1px solid #90a4ae
+.lib-table-zone
+  flex: 1 1 640px
+  min-width: 0
+
+.lib-side
+  flex: 0 0 320px
+  width: 320px
+  position: sticky
+  top: 16px
+
+@media (max-width: 1080px)
+  .lib-main
+    flex-direction: column
+  .lib-side
+    position: static
+    width: 100%
+    flex: 1 1 auto
+
+.lib-tray
+  border: 1px solid #eceff1
+  border-radius: 12px
   background: #fff
-  cursor: pointer
+  padding: 12px 14px
+  display: flex
+  flex-direction: column
+  gap: 10px
+
+.tray-items
+  display: flex
+  align-items: center
+  gap: 10px
+  flex-wrap: wrap
+
+.tray-item
+  display: inline-flex
+  align-items: center
+  gap: 6px
+  background: #e0f2f1
+  color: #00695c
+  border-radius: 999px
+  padding: 4px 6px 4px 14px
+  font-size: 14px
+  max-width: 100%
+
+.tray-vs
+  color: #90a4ae
   font-size: 13px
-  &.checked
-    border-color: #0288d1
-    background: #e1f5fe
-    color: #01579b
-    font-weight: 600
+
+.tray-pairs
+  display: flex
+  align-items: center
+  gap: 8px
+  flex-wrap: wrap
+
+.pairs-label
+  font-size: 13px
+  color: #78909c
+
+.pair-off
+  margin-left: 8px
+  font-size: 11px
 </style>

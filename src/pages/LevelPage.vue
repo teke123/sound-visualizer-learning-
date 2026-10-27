@@ -5,10 +5,9 @@
  */
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { ApiError, contentApi, type LevelDetail } from '@/api'
-import { levelDetailCache } from '@/features/compare'
+import { ApiError, type LevelDetail } from '@/api'
 import { useLevelsStore } from '@/stores/levels'
-import LevelLearnSection from './LevelLearnSection.vue'
+import LevelLearnSection from '@/features/assessment/components/LevelLearnSection.vue'
 import PageState from '@/components/PageState.vue'
 
 const route = useRoute()
@@ -25,11 +24,10 @@ async function load(): Promise<void> {
   notVisible.value = false
   loadError.value = null
   try {
-    const cached = levelDetailCache.get(levelId.value)
+    // 先用缓存渲染，随后强制刷新（§6.9）
+    const cached = levelsStore.getCachedDetail(levelId.value)
     if (cached) level.value = cached
-    const res = await contentApi.level(levelId.value)
-    level.value = res.data
-    levelDetailCache.set(levelId.value, res.data)
+    level.value = await levelsStore.loadLevelDetail(levelId.value, { force: true })
   } catch (err) {
     level.value = null
     if (
@@ -54,7 +52,7 @@ onMounted(() => {
 
 watch(levelId, () => void load(), { immediate: true })
 
-/* 锚点滚动（#quiz / #practice / #record / #step-{id}） */
+/* 锚点滚动（#practice / #record） */
 watch(
   () => route.hash,
   (hash) => {

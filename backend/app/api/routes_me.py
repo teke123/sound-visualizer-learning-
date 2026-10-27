@@ -1,4 +1,4 @@
-"""档案、学习事件与进度、注销路由（均要求登录）。"""
+"""档案、进度与注销路由（均要求登录）。"""
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Request
@@ -6,8 +6,8 @@ from pydantic import BaseModel
 
 from app.api.deps import Actor, get_actor, require_user
 from app.api.schemas import (
-    ArchiveCompareResponse, ArchiveListResponse, ClearArchiveResponse, DeletedResponse,
-    Envelope, LearningEventsResponse, MeProgress, ProfileResponse,
+    ArchiveListResponse, ClearArchiveResponse, DeletedResponse,
+    Envelope, MeProgress, ProfileResponse,
 )
 from app.archive import usecases as archive_uc
 from app.identity import usecases as identity_uc
@@ -33,39 +33,7 @@ async def clear_my_recordings(request: Request, actor: Actor = Depends(get_actor
     return envelope(request, result)
 
 
-@router.get("/me/recordings/compare", response_model=Envelope[ArchiveCompareResponse])
-async def compare_recordings(request: Request, a: str, b: str,
-                             actor: Actor = Depends(get_actor)):
-    user = require_user(actor)
-    return envelope(request, archive_uc.compare_recordings(actor.db, user=user, a=a, b=b))
-
-
-# ---------------- 学习事件与进度 ----------------
-
-class EventItem(BaseModel):
-    eventId: str
-    levelId: str
-    kind: str
-    detail: dict
-
-
-class LearningEventsBody(BaseModel):
-    events: list[EventItem]
-
-
-@router.post("/learning-events", response_model=Envelope[LearningEventsResponse])
-async def learning_events(request: Request, body: LearningEventsBody,
-                          actor: Actor = Depends(get_actor)):
-    user = require_user(actor)
-    if not body.events or len(body.events) > archive_uc.EVENT_BATCH_LIMIT:
-        from app.platform.envelope import ApiError
-
-        raise ApiError(422, "VALIDATION_ERROR", "事件批次须为 1–50 条")
-    result = archive_uc.accept_learning_events(
-        actor.db, user=user,
-        events=[e.model_dump() for e in body.events])
-    return envelope(request, result)
-
+# ---------------- 进度 ----------------
 
 @router.get("/me/progress", response_model=Envelope[MeProgress])
 async def my_progress(request: Request, actor: Actor = Depends(get_actor)):
@@ -76,8 +44,9 @@ async def my_progress(request: Request, actor: Actor = Depends(get_actor)):
 # ---------------- 个人资料 ----------------
 
 class ProfileBody(BaseModel):
-    """dialectBackground 传 null 或空串清除（FR-106 / FR-107）"""
+    """dialectBackground / gender 传 null 或空串清除（FR-106 / FR-107）"""
     dialectBackground: str | None = None
+    gender: str | None = None
 
 
 @router.patch("/me/profile", response_model=Envelope[ProfileResponse])
@@ -85,7 +54,8 @@ async def update_profile(request: Request, body: ProfileBody,
                          actor: Actor = Depends(get_actor)):
     user = require_user(actor)
     result = identity_uc.update_profile(actor.db, user=user,
-                                        dialect_background=body.dialectBackground)
+                                        dialect_background=body.dialectBackground,
+                                        gender=body.gender)
     return envelope(request, result)
 
 

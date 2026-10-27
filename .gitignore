@@ -14,7 +14,9 @@ dist-ssr/
 coverage/
 *.local
 .venv/
-.zcode/
+
+docs/
+
 
 # OS junk
 .DS_Store
@@ -31,7 +33,7 @@ ehthumbs.db
 *.sln
 *.sw?
 .cursor/
-
+.zcode/
 *.tsbuildinfo
 .eslintcache
 

@@ -170,7 +170,7 @@ def get_spectrogram_png(db: Session, row: AudioRow) -> Path:
     return config.DATA_DIR / payload["path"]
 
 
-# ---------------- 音高哼鸣（Sonification，docs/f0展示修改测试版1.md §5.2）----------------
+# ---------------- 音高哼鸣（Sonification）----------------
 
 def _hum_wav_path(key: str) -> Path:
     d = config.DATA_DIR / "hum"

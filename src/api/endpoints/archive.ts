@@ -1,13 +1,10 @@
-/** archive / learning / feedback 模块端点（docs/decision-map-backend.md） */
+/** archive / feedback 模块端点 */
 import { apiRequest } from '../client'
 import type {
-  ArchiveCompareResponse,
   ArchiveListResponse,
   ClearArchiveResponse,
   FeedbackPayload,
   FeedbackResponse,
-  LearningEvent,
-  LearningEventsResponse,
   WishResponse,
 } from '../generated/types'
 
@@ -21,20 +18,6 @@ export const archiveApi = {
   },
   clearMine() {
     return apiRequest<ClearArchiveResponse>('/me/recordings', { method: 'DELETE' })
-  },
-  /** 本人同关 archived 两条比较 */
-  compare(a: string, b: string) {
-    return apiRequest<ArchiveCompareResponse>(`/me/recordings/compare?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`)
-  },
-}
-
-export const learningApi = {
-  /** 单批 ≤50；按 eventId 去重 */
-  postEvents(events: LearningEvent[]) {
-    return apiRequest<LearningEventsResponse>('/learning-events', {
-      method: 'POST',
-      body: { events },
-    })
   },
 }
 

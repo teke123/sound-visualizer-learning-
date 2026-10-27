@@ -55,7 +55,7 @@ def test_parse_doc_example() -> None:
 
     result = _result_from_parsed(parsed)
     assert result.overall_score == pytest.approx(92.5)
-    assert result.tone_score == pytest.approx(100.0)
+    assert result.scores["tone_score"] == pytest.approx(100.0)
     assert len(result.scores) >= 6
     assert len(result.syllables) == 7
     s0 = result.syllables[0]
@@ -73,10 +73,21 @@ def test_parse_doc_example() -> None:
     t0s = [s.t0 for s in result.syllables]
     assert t0s == sorted(t0s)
 
-    # 期望声调回填：识别 qi9 → 期望 4，识别值保留在 detail
-    _apply_expected_tones(result, "今天天气怎么样", None)
+    # 期望声调回填：识别 qi9 → 期望 4（标注为准），识别值保留在 detail
+    _apply_expected_tones(result, "今天天气怎么样",
+                          "jin1|tian1|tian1|qi4|zen3|me5|yang4")
     assert result.syllables[3].tone_value == 4
     assert result.syllables[3].detail["recognizedTone"] == 9
+    assert result.syllables[6].tone_value == 4
+
+
+def test_apply_expected_tones_requires_annotation() -> None:
+    """无拼音标注不做回填（不做文本侧推断），保留识别调型。"""
+    parsed = parse_full(_doc_example_xml())
+    result = _result_from_parsed(parsed)
+    before = [s.tone_value for s in result.syllables]
+    _apply_expected_tones(result, "今天天气怎么样", None)
+    assert [s.tone_value for s in result.syllables] == before
 
 
 ERROR_XML = """<?xml version="1.0" encoding="UTF-8"?>

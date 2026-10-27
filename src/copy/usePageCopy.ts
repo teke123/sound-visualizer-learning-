@@ -1,5 +1,5 @@
 /**
- * 文案集中地（docs/architecture/04 §3/§10）：
+ * 文案集中地：
  * 页面状态文案、错误码 → 文案与下一步动作的映射只有这一处；
  * 现象、四步等内容文案来自后端，不在前端改写。
  */
@@ -33,7 +33,7 @@ const NETWORK_COPY: ErrorCopy = {
   hint: '请检查网络后重试；你的录音仍保留在页面上，可直接重试。',
 }
 
-/** 错误码 / 状态码 → 文案与下一步动作（docs/architecture/04 §7 表） */
+/** 错误码 / 状态码 → 文案与下一步动作 */
 const CODE_COPY: Record<string, ErrorCopy> = {
   NETWORK: NETWORK_COPY,
   QUALITY_FAIL: {
@@ -48,6 +48,7 @@ const CODE_COPY: Record<string, ErrorCopy> = {
   DECODE_FAILED: { title: '没录上', hint: '这次录音无法读取，请重新录制后再提交。' },
   AUTH_REQUIRED: { title: '需要登录', hint: '请先登录后再进行此操作。' },
   INVALID_CREDENTIALS: { title: '用户名或密码不正确', hint: '本站不提供密码找回；忘记密码只能重新注册。' },
+  FORBIDDEN: { title: '没有权限', hint: '当前身份无法执行此操作，请确认登录账号后重试。' },
   NOT_FOUND: { title: PAGE_STATE_COPY.notVisible, hint: '内容可能已删除、下架或过期。' },
   LEVEL_NOT_PUBLISHED: {
     title: '这一关暂时不可见',
@@ -76,7 +77,7 @@ const CODE_COPY: Record<string, ErrorCopy> = {
 const STATUS_COPY: Record<number, ErrorCopy> = {
   400: CODE_COPY.DECODE_FAILED!,
   401: CODE_COPY.AUTH_REQUIRED!,
-  403: CODE_COPY.FORBIDDEN ?? { title: '没有权限', hint: '当前身份无法执行此操作。' },
+  403: CODE_COPY.FORBIDDEN!,
   404: CODE_COPY.NOT_FOUND!,
   409: { title: '状态冲突', hint: '当前状态不支持此操作，请刷新页面后重试。' },
   413: CODE_COPY.FILE_TOO_LARGE!,

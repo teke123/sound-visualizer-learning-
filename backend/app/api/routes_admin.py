@@ -6,7 +6,6 @@
 from __future__ import annotations
 
 import asyncio
-import hashlib
 
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from pydantic import BaseModel
@@ -14,13 +13,14 @@ from sqlalchemy.orm import Session
 
 from app import config
 from app.api.deps import admin_session_cookie, db_session
+from app.content import media as content_media_uc
 from app.content import usecases as content_uc
 from app.content.models import (
-    ArticleRow, CalibrationTextRow, CategoryRow, LevelRow, MediaAssetRow,
-    ReferenceSpeakerRow,
+    ArticleRow, LevelRow, MediaAssetRow, ReferenceSpeakerRow,
 )
 from app.db import JSONText, now
-from app.ids import new_id
+from app.ids import new_id, new_token
+from app.feedback import usecases as feedback_uc
 from app.platform.deletion_log import deletion_log
 from app.platform.envelope import ApiError, envelope
 from app.platform.rate_limit import client_ip, limiter
@@ -46,7 +46,7 @@ async def admin_login(request: Request, body: AdminLoginBody,
     limiter.check("login", f"admin:{client_ip(request)}")
     if body.username != config.ADMIN_USERNAME or body.password != config.ADMIN_PASSWORD:
         raise ApiError(401, "INVALID_CREDENTIALS", "管理员用户名或密码不正确")
-    session_id = new_id(24)
+    session_id = new_token(24)
     from app.security_models import AdminSessionRow
 
     import datetime as _dt
@@ -232,41 +232,23 @@ class CategoryBody(BaseModel):
 async def admin_create_category(request: Request, body: CategoryBody,
                                 db: Session = Depends(db_session)):
     _admin(request, db)
-    if db.query(CategoryRow).filter(CategoryRow.name == body.name).count():
-        raise ApiError(409, "INVALID_STATE", "分类已存在")
-    db.add(CategoryRow(name=body.name, sort=body.sort, created_at=now()))
-    db.commit()
-    return envelope(request, {"created": True})
+    return envelope(request, content_uc.create_category(
+        db, name=body.name, sort=body.sort))
 
 
 @router.put("/categories/{category_id}")
 async def admin_rename_category(request: Request, category_id: int, body: CategoryBody,
                                 db: Session = Depends(db_session)):
     _admin(request, db)
-    row = db.get(CategoryRow, category_id)
-    if row is None:
-        raise ApiError(404, "NOT_FOUND", "分类不存在")
-    row.name = body.name
-    row.sort = body.sort
-    db.commit()
-    return envelope(request, {"id": row.id, "name": row.name})
+    return envelope(request, content_uc.rename_category(
+        db, category_id, name=body.name, sort=body.sort))
 
 
 @router.delete("/categories/{category_id}")
 async def admin_delete_category(request: Request, category_id: int,
                                 db: Session = Depends(db_session)):
     _admin(request, db)
-    row = db.get(CategoryRow, category_id)
-    if row is None:
-        raise ApiError(404, "NOT_FOUND", "分类不存在")
-    used = sum(
-        1 for a in db.query(ArticleRow).all()
-        if (JSONText.load(a.content, {}) or {}).get("category") == row.name)
-    if used:
-        raise ApiError(409, "INVALID_STATE", f"仍有 {used} 篇文章使用该分类，请先改分类")
-    db.delete(row)
-    db.commit()
-    return envelope(request, {"deleted": True})
+    return envelope(request, content_uc.delete_category(db, category_id))
 
 
 # ---------------- 媒体 ----------------
@@ -279,42 +261,10 @@ async def admin_upload_media(request: Request, kind: str = Form(...),
                              db: Session = Depends(db_session)):
     actor = _admin(request, db)
     raw = await file.read()
-    if not raw:
-        raise ApiError(422, "VALIDATION_ERROR", "空文件")
-    media_id = new_id("md_")
-    ext = (file.filename or "bin").rsplit(".", 1)[-1].lower()[:8]
-    out_dir = config.MEDIA_DIR
-    out_dir.mkdir(parents=True, exist_ok=True)
-    path = out_dir / f"{media_id}.{ext}"
-    path.write_bytes(raw)
-    mime = file.content_type or "application/octet-stream"
-    duration = None
-    if mime.startswith("audio/"):
-        from app.acoustics.transcode import probe_duration
-        import tempfile
-        import contextlib
-        import os as _os
-
-        fd, tmp = tempfile.mkstemp(suffix=".bin")
-        _os.close(fd)
-        with open(tmp, "wb") as f:
-            f.write(raw)
-        try:
-            duration = probe_duration(__import__("pathlib").Path(tmp)) or None
-        finally:
-            with contextlib.suppress(OSError):
-                _os.unlink(tmp)
-    asset = MediaAssetRow(
-        id=media_id, kind=kind, filename=file.filename or media_id,
-        storage_path=str(path.relative_to(config.DATA_DIR)), mime=mime,
-        size_bytes=len(raw), purpose=purpose, license_note=licenseNote or None,
-        author=actor, sha256=hashlib.sha256(raw).hexdigest(),
-        duration_sec=duration, text=text or None, uploaded_by=actor,
-        created_at=now(),
-    )
-    db.add(asset)
-    db.commit()
-    return envelope(request, {"mediaId": media_id, "kind": kind, "sizeBytes": len(raw)})
+    return envelope(request, content_media_uc.register_media_asset(
+        db, kind=kind, filename=file.filename, mime=file.content_type,
+        raw=raw, purpose=purpose, license_note=licenseNote, text=text,
+        uploaded_by=actor))
 
 
 @router.get("/media")
@@ -334,24 +284,7 @@ async def admin_list_media(request: Request, db: Session = Depends(db_session)):
 async def admin_delete_media(request: Request, media_id: str,
                              db: Session = Depends(db_session)):
     _admin(request, db)
-    asset = db.get(MediaAssetRow, media_id)
-    if asset is None:
-        raise ApiError(404, "NOT_FOUND", "媒体不存在")
-    # 仍被关卡或文章内容引用的媒体不可删
-    referenced_ids: set[str] = set()
-    for lv in db.query(LevelRow).all():
-        if media_id in (lv.content or ""):
-            referenced_ids.add(lv.id)
-    for a in db.query(ArticleRow).all():
-        if media_id in (a.content or ""):
-            referenced_ids.add(a.slug)
-    if referenced_ids:
-        raise ApiError(409, "INVALID_STATE",
-                       f"媒体仍被内容引用（{', '.join(sorted(referenced_ids))}），请先解除引用")
-    asset.deleted_at = now()
-    deletion_log.append(kind="file", key=asset.storage_path)
-    db.commit()
-    return envelope(request, {"deleted": True})
+    return envelope(request, content_media_uc.delete_media_asset(db, media_id))
 
 
 # ---------------- 标定文本与参考发音人 ----------------
@@ -367,37 +300,25 @@ async def admin_get_calibration(request: Request, db: Session = Depends(db_sessi
     })
 
 
+class CalibrationSyllable(BaseModel):
+    text: str          # 单字（读音与声调以拼音标注为准）
+    pinyin: str        # 带调拼音标注，如 ma1、nv3
+
+
 class CalibrationTextBody(BaseModel):
     textVersion: str
     text: str
-    syllables: list[str]
+    syllables: list[CalibrationSyllable]
 
 
 @router.put("/calibration-text")
 async def admin_set_calibration(request: Request, body: CalibrationTextBody,
                                 db: Session = Depends(db_session)):
-    """标定文本配置：须覆盖六个单韵母（FR-1403）。"""
     _admin(request, db)
-    from app.pinyin_utils import expected_syllables, main_vowel
-
-    found = set()
-    for syl in body.syllables:
-        exp = expected_syllables(syl)
-        if exp:
-            v = main_vowel(exp[0].get("plain", ""))
-            if v:
-                found.add(v)
-    missing = {"a", "o", "e", "i", "u", "ü"} - found
-    if missing:
-        raise ApiError(422, "VALIDATION_ERROR",
-                       "标定文本须覆盖六个单韵母（缺 " + "、".join(sorted(missing)) + "）")
-    for row in db.query(CalibrationTextRow).all():
-        row.active = False
-    db.add(CalibrationTextRow(text_version=body.textVersion, text=body.text,
-                              syllables=JSONText.dump(body.syllables), active=True,
-                              updated_at=now()))
-    db.commit()
-    return envelope(request, {"textVersion": body.textVersion})
+    return envelope(request, content_uc.set_calibration_text(
+        db, text_version=body.textVersion, text=body.text,
+        syllables=[{"text": s.text, "pinyin": s.pinyin}
+                   for s in body.syllables]))
 
 
 @router.get("/reference-speakers")
@@ -478,8 +399,6 @@ class HandleBody(BaseModel):
 async def admin_handle_feedback(request: Request, feedback_id: str, body: HandleBody,
                                 db: Session = Depends(db_session)):
     actor = _admin(request, db)
-    from app.feedback import usecases as feedback_uc
-
     result = feedback_uc.handle_feedback(db, feedback_id=feedback_id,
                                          status=body.status, admin_actor=actor)
     return envelope(request, result)
@@ -500,15 +419,5 @@ async def admin_wishes(request: Request, db: Session = Depends(db_session)):
 async def admin_handle_wish(request: Request, wish_id: str, body: HandleBody,
                             db: Session = Depends(db_session)):
     actor = _admin(request, db)
-    from app.feedback.models import WishRow
-
-    row = db.get(WishRow, wish_id)
-    if row is None:
-        raise ApiError(404, "NOT_FOUND", "希望增加记录不存在")
-    if body.status not in ("adopted", "rejected"):
-        raise ApiError(422, "VALIDATION_ERROR", "状态只允许 adopted / rejected")
-    row.status = body.status
-    row.handled_by = actor
-    row.handled_at = now()
-    db.commit()
-    return envelope(request, {"wishId": row.id, "status": row.status})
+    return envelope(request, feedback_uc.handle_wish(
+        db, wish_id=wish_id, status=body.status, admin_actor=actor))

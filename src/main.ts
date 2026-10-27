@@ -1,5 +1,5 @@
 /**
- * 应用入口（docs/architecture/04 §1/§2）：
+ * 应用入口：
  * Vue 3 + Quasar v2（按需组件）+ Pinia + vue-router；
  * dev:mock 模式（后端未就绪）先启动 MSW 再挂载。
  */

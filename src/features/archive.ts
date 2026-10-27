@@ -1,10 +1,10 @@
 /**
- * 声音档案：本人存档列表、删除、清空、同关比较（FR-1101–1103）。
- * 状态为模块级单例：ArchivePage 与 ArchiveList 共享同一份数据
- * （此前每个组件各建实例导致列表永远为空）。
+ * 声音档案：本人存档列表、删除、清空（FR-1101–1103）。状态为模块级
+ * 单例：ArchivePage 与 ArchiveList 共享同一份数据（此前每个组件各建
+ * 实例导致列表永远为空）。
  */
 import { computed, ref } from 'vue'
-import { archiveApi, detectionApi, type ArchiveCompareResponse, type ArchiveRecordingSummary } from '@/api'
+import { archiveApi, detectionApi, type ArchiveRecordingSummary } from '@/api'
 import { useContextStore } from '@/stores/context'
 import { useLevelsStore } from '@/stores/levels'
 
@@ -16,9 +16,6 @@ const error = ref<unknown>(null)
 const nextCursor = ref<string | undefined>(undefined)
 const loadingMore = ref(false)
 const loadMoreError = ref<unknown>(null)
-const compareData = ref<ArchiveCompareResponse | null>(null)
-const compareLoading = ref(false)
-const compareError = ref<unknown>(null)
 
 /** 两种态：未登录（登录引导）/ 已登录（档案列表）—— P10 按 context 渲染 */
 function viewOf(contextStore: ReturnType<typeof useContextStore>) {
@@ -94,22 +91,6 @@ export function useArchive() {
     return groups
   })
 
-  async function compare(a: string, b: string): Promise<boolean> {
-    compareLoading.value = true
-    compareError.value = null
-    try {
-      const res = await archiveApi.compare(a, b)
-      compareData.value = res.data
-      return true
-    } catch (err) {
-      compareError.value = err
-      compareData.value = null
-      return false
-    } finally {
-      compareLoading.value = false
-    }
-  }
-
   function levelTitle(levelId: string): string {
     return levelsStore.byId.get(levelId)?.title ?? levelId
   }
@@ -126,14 +107,10 @@ export function useArchive() {
     hasMore,
     loadingMore,
     loadMoreError,
-    compareData,
-    compareLoading,
-    compareError,
     load,
     loadMore,
     removeOne,
     clearAll,
-    compare,
     levelTitle,
   }
 }

@@ -3,6 +3,7 @@
  * FeedbackWidget：纠错（FR-1502，subtype：文字/声音/图片/字幕）→ 后端 content_error
  */
 import { ref } from 'vue'
+import { QBtn, QInput } from 'quasar'
 import { errorCopy } from '@/copy/usePageCopy'
 import { useFeedback } from '@/features/feedback'
 
@@ -32,15 +33,16 @@ async function submitDetail() {
 
 <template>
   <section class="feedback-widget" aria-label="页面反馈">
-    <h3>发现内容有错？</h3>
-
-    <button type="button" class="fb-btn" @click="expanded = !expanded">
-      {{ expanded ? '收起' : '报告错误' }}
-    </button>
+    <div class="fb-row-inline">
+      <span class="fb-title">发现内容有错？</span>
+      <QBtn flat no-caps class="fb-toggle" @click="expanded = !expanded">
+        {{ expanded ? '收起' : '报告错误' }}
+      </QBtn>
+    </div>
     <div v-if="expanded" class="fb-expand">
       <label class="fb-label">错误类型</label>
       <div class="fb-row" role="radiogroup" aria-label="错误类型">
-        <button
+        <QBtn
           v-for="option in [
             { key: 'text', label: '文字' },
             { key: 'audio', label: '声音' },
@@ -48,18 +50,38 @@ async function submitDetail() {
             { key: 'subtitle', label: '字幕' },
           ]"
           :key="option.key"
-          type="button"
-          :class="['fb-chip', { active: subtype === option.key }]"
+          no-caps
+          class="fb-chip"
+          size="13px"
+          :color="subtype === option.key ? 'teal-1' : 'blue-grey-2'"
+          :text-color="subtype === option.key ? 'teal-9' : 'blue-grey-6'"
+          :unelevated="subtype === option.key"
+          :outline="subtype !== option.key"
           @click="subtype = option.key as typeof subtype"
         >
           {{ option.label }}
-        </button>
+        </QBtn>
       </div>
       <label class="fb-label">错在哪里？</label>
-      <textarea v-model="detail" rows="2" class="fb-input" placeholder="请描述看到的问题"></textarea>
-      <button type="button" class="fb-btn primary" :disabled="!detail.trim() || feedback.submitting.value" @click="submitDetail">
+      <QInput
+        v-model="detail"
+        type="textarea"
+        :rows="2"
+        class="fb-input"
+        placeholder="请描述看到的问题"
+        outlined
+      />
+      <QBtn
+        outline
+        no-caps
+        color="primary"
+        text-color="teal-9"
+        class="fb-submit"
+        :disable="!detail.trim() || feedback.submitting.value"
+        @click="submitDetail"
+      >
         提交纠错
-      </button>
+      </QBtn>
     </div>
 
     <p v-if="feedback.submitted.value" class="fb-status ok">已收到，谢谢你的反馈！</p>
@@ -71,76 +93,58 @@ async function submitDetail() {
 </template>
 
 <style scoped lang="sass">
+/* 页底不显眼的附属模块：小字号、无卡片边框与底色 */
 .feedback-widget
-  margin-top: 28px
-  border: 1px solid #eceff1
-  border-radius: 12px
-  padding: 14px 16px
-  background: #fafafa
+  margin-top: 24px
+  font-size: 13px
 
-  h3
-    margin: 0 0 10px
-    font-size: 15px
-    color: #37474f
+.fb-row-inline
+  display: flex
+  align-items: center
+  gap: 8px
+
+.fb-title
+  color: #90a4ae
 
 .fb-row
   display: flex
   gap: 10px
   flex-wrap: wrap
 
-.fb-btn
-  min-height: 44px
-  padding: 4px 18px
-  border-radius: 999px
-  border: 1px solid #cfd8dc
-  background: #fff
-  cursor: pointer
-  font-size: 14px
-  &.primary
-    background: #00897b
-    border-color: #00897b
-    color: #fff
-    font-weight: 600
-  &:disabled
-    opacity: 0.55
-    cursor: default
-
-.fb-chip
-  min-height: 40px
-  padding: 2px 14px
-  border-radius: 999px
-  border: 1px solid #cfd8dc
-  background: #fff
-  cursor: pointer
-  &.active
-    border-color: #00897b
-    background: #e0f2f1
-    color: #00695c
-    font-weight: 600
+/* 页底低调的入口按钮：保留灰色下划线文字形态（中性灰，非品牌语义色） */
+.fb-toggle
+  font-size: 13px
+  color: #78909c
+  text-decoration: underline
 
 .fb-expand
-  margin-top: 10px
+  margin-top: 8px
   display: flex
   flex-direction: column
-  gap: 8px
+  gap: 6px
   align-items: flex-start
 
 .fb-label
-  font-size: 13px
-  color: #78909c
+  font-size: 12px
+  color: #b0bec5
+
+/* 原 .fb-chip 32px 高的紧凑 chip（半径走全局 999px 胶囊） */
+.fb-chip
+  min-height: 32px
+
+/* 原 .fb-btn.primary 青描边透明底 8px 圆角 36px 高 */
+.fb-submit
+  border-radius: 8px
+  min-height: 36px
 
 .fb-input
   width: 100%
-  border: 1px solid #cfd8dc
-  border-radius: 8px
-  padding: 8px 12px
-  font-size: 14px
-  box-sizing: border-box
-  resize: vertical
+  max-width: 420px
+  font-size: 13px
 
 .fb-status
-  margin: 10px 0 0
-  font-size: 13px
+  margin: 6px 0 0
+  font-size: 12px
   &.ok
     color: #2e7d32
   &.err

@@ -1,18 +1,20 @@
 <script setup lang="ts">
 /**
  * P11 账号页（FR-106 / FR-102–108）：
- * 未登录 → 注册 / 登录入口与说明；已登录 → 方言区/母语背景设置（FR-107）、
+ * 未登录 → 注册 / 登录入口与说明；已登录 → 性别与方言区/母语背景设置（FR-107）、
  * 退出、重新标定、清空档案入口、注销（密码确认 + 二次确认）。
  */
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { QBtn } from 'quasar'
 import { useContextStore } from '@/stores/context'
-import { dialectLabel, useAuth } from '@/features/auth'
+import { dialectLabel, genderLabel, useAuth } from '@/features/auth'
 import { useCalibration } from '@/features/calibration'
 import { errorCopy } from '@/copy/usePageCopy'
-import CalibrationPanel from '@/components/CalibrationPanel.vue'
+import CalibrationPanel from '@/features/assessment/components/CalibrationPanel.vue'
 import DangerConfirmDialog from '@/components/DangerConfirmDialog.vue'
 import DialectSelector from '@/components/DialectSelector.vue'
+import GenderSelector from '@/components/GenderSelector.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -23,22 +25,31 @@ const deleteOpen = ref(false)
 const clearArchiveOpen = ref(false)
 const recalibrateOpen = ref(false)
 
-// 方言区/母语背景（FR-107）：随 context 下发，本地编辑后保存
+// 方言区/母语背景与性别（FR-107）：随 context 下发，本地编辑后全量保存
 const dialectDraft = ref('')
-const dialectSaved = ref(false)
+const genderDraft = ref('')
+const profileSaved = ref(false)
 watch(
-  () => contextStore.context.dialectBackground,
-  (code) => {
-    dialectDraft.value = code ?? ''
-    dialectSaved.value = false
+  () => [contextStore.context.dialectBackground, contextStore.context.gender] as const,
+  ([dialect, gender]) => {
+    dialectDraft.value = dialect ?? ''
+    genderDraft.value = gender ?? ''
+    profileSaved.value = false
   },
   { immediate: true },
 )
-const dialectDirty = computed(() => (dialectDraft.value || null) !== (contextStore.context.dialectBackground ?? null))
+const profileDirty = computed(
+  () =>
+    (dialectDraft.value || null) !== (contextStore.context.dialectBackground ?? null) ||
+    (genderDraft.value || null) !== (contextStore.context.gender ?? null),
+)
 
-async function saveDialect() {
-  const ok = await auth.updateDialectBackground(dialectDraft.value || null)
-  if (ok) dialectSaved.value = true
+async function saveProfile() {
+  const ok = await auth.updateProfile({
+    dialectBackground: dialectDraft.value || null,
+    gender: genderDraft.value || null,
+  })
+  if (ok) profileSaved.value = true
 }
 
 // FR-1006：结果页「去标定」直达 #calibration 锚点时自动打开标定面板
@@ -96,31 +107,35 @@ function openClearArchive() {
     <section v-else class="profile-card">
       <h2>{{ contextStore.context.username }}</h2>
       <p class="cal-status">
-        音域：{{ contextStore.context.calibration.status === 'personal' ? '已标定（个人音域）' : '未标定（可在录音前标定，也可跳过）' }}
+        音域：{{ contextStore.context.calibration.status === 'personal' ? '已标定' : '未标定（可在录音前标定，也可跳过）' }}
       </p>
       <p class="dialect-status">
         方言区 / 母语背景：{{ contextStore.context.dialectBackground ? dialectLabel(contextStore.context.dialectBackground) : '未填写' }}
-        <span class="dialect-note">（反馈提示会结合你的背景给出更贴切的建议）</span>
+      </p>
+      <p class="dialect-status">
+        性别：{{ contextStore.context.gender ? genderLabel(contextStore.context.gender) : '未填写' }}
       </p>
       <div class="dialect-edit">
         <DialectSelector v-model="dialectDraft" />
-        <button
+        <GenderSelector v-model="genderDraft" />
+        <QBtn
           type="button"
-          class="acc-btn"
-          :disabled="!dialectDirty || auth.busy.value"
-          @click="saveDialect"
-        >
-          {{ auth.busy.value ? '保存中…' : '保存背景' }}
-        </button>
+          unelevated
+          no-caps
+          color="primary"
+          :label="auth.busy.value ? '保存中…' : '保存资料'"
+          :disable="!profileDirty || auth.busy.value"
+          @click="saveProfile"
+        />
       </div>
-      <p v-if="dialectSaved" class="dialect-saved">✅ 已更新。</p>
+      <p v-if="profileSaved" class="dialect-saved">✅ 已更新。</p>
       <p v-if="auth.error.value" class="dialect-error">{{ errorCopy(auth.error.value).title }}</p>
 
       <div class="profile-actions">
-        <button type="button" class="acc-btn" @click="recalibrateOpen = true">重新标定音域</button>
-        <button type="button" class="acc-btn" @click="openClearArchive">删除录音 / 清空档案</button>
-        <button type="button" class="acc-btn" @click="logout">退出登录</button>
-        <button type="button" class="acc-btn danger" @click="deleteOpen = true">注销账号</button>
+        <QBtn type="button" outline no-caps color="blue-grey-4" text-color="blue-grey-9" label="重新标定音域" @click="recalibrateOpen = true" />
+        <QBtn type="button" outline no-caps color="blue-grey-4" text-color="blue-grey-9" label="删除录音 / 清空档案" @click="openClearArchive" />
+        <QBtn type="button" outline no-caps color="blue-grey-4" text-color="blue-grey-9" label="退出登录" @click="logout" />
+        <QBtn type="button" outline no-caps color="red-3" text-color="red-9" label="注销账号" @click="deleteOpen = true" />
       </div>
     </section>
 
@@ -204,10 +219,6 @@ function openClearArchive() {
   font-size: 14px
   color: #546e7a
 
-.dialect-note
-  color: #90a4ae
-  font-size: 12px
-
 .dialect-edit
   display: flex
   gap: 10px
@@ -231,6 +242,7 @@ function openClearArchive() {
   gap: 10px
   margin-top: 14px
 
+// 未登录「登录 / 注册」入口的 RouterLink 胶囊样式（原按钮已换 QBtn，仅这两个链接仍用）
 .acc-btn
   min-height: 44px
   padding: 4px 18px
@@ -248,7 +260,4 @@ function openClearArchive() {
     border-color: #00897b
     color: #fff
     font-weight: 600
-  &.danger
-    border-color: #ef9a9a
-    color: #c62828
 </style>

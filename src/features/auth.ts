@@ -7,7 +7,6 @@ import { ref } from 'vue'
 import { identityApi } from '@/api'
 import { useContextStore } from '@/stores/context'
 import { useProgressStore } from '@/stores/progress'
-import { useOutboxStore } from '@/stores/outbox'
 import { useRecorderStore } from '@/stores/recorder'
 
 export const USERNAME_PATTERN = /^[\w\u4e00-\u9fa5]{3,32}$/
@@ -34,6 +33,18 @@ export function dialectLabel(code?: string | null): string {
   return DIALECT_OPTIONS.find((option) => option.value === code)?.label ?? code ?? ''
 }
 
+/** 性别选项（FR-107）：代码与后端 GENDER_CODES 对齐，用于音高参考与
+ * 后续分组统计；纯选填 */
+export const GENDER_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
+  { value: 'male', label: '男' },
+  { value: 'female', label: '女' },
+  { value: 'other', label: '其他 / 不便透露' },
+]
+
+export function genderLabel(code?: string | null): string {
+  return GENDER_OPTIONS.find((option) => option.value === code)?.label ?? code ?? ''
+}
+
 export function validateUsername(username: string): string | null {
   if (!USERNAME_PATTERN.test(username)) {
     return '用户名需 3–32 个字符，可用字母、数字、下划线或中文'
@@ -49,7 +60,6 @@ export function validatePassword(password: string): string | null {
 export function useAuth() {
   const contextStore = useContextStore()
   const progressStore = useProgressStore()
-  const outbox = useOutboxStore()
   const recorder = useRecorderStore()
 
   const busy = ref(false)
@@ -59,6 +69,7 @@ export function useAuth() {
     username: string
     password: string
     dialectBackground?: string | null
+    gender?: string | null
   }): Promise<boolean> {
     busy.value = true
     error.value = null
@@ -74,12 +85,15 @@ export function useAuth() {
     }
   }
 
-  /** 设置/修改方言区背景（FR-107）：成功后刷新 context 使其随身份下发 */
-  async function updateDialectBackground(value: string | null): Promise<boolean> {
+  /** 设置/修改方言区背景与性别（FR-107）：全量覆盖，成功后刷新 context 使其随身份下发 */
+  async function updateProfile(payload: {
+    dialectBackground: string | null
+    gender: string | null
+  }): Promise<boolean> {
     busy.value = true
     error.value = null
     try {
-      await identityApi.updateProfile({ dialectBackground: value })
+      await identityApi.updateProfile(payload)
       await contextStore.refresh()
       return true
     } catch (err) {
@@ -113,7 +127,7 @@ export function useAuth() {
     }
   }
 
-  /** 退出：清除 outbox 与账号内存状态；重新拉 context */
+  /** 退出：清除账号内存状态；重新拉 context */
   async function logout(): Promise<void> {
     busy.value = true
     try {
@@ -146,9 +160,8 @@ export function useAuth() {
   function finishAccountDeletion() {
     recorder.release()
     progressStore.onAccountErased()
-    void outbox.clear()
     void contextStore.refresh()
   }
 
-  return { busy, error, register, updateDialectBackground, login, logout, deleteAccount, finishAccountDeletion }
+  return { busy, error, register, updateProfile, login, logout, deleteAccount, finishAccountDeletion }
 }

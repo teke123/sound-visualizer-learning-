@@ -33,19 +33,17 @@ export type MeContext = Schemas['MeContext']
 
 /* --------------------------------- 关卡 ----------------------------------- */
 
-export type CompletionKeys = Schemas['CompletionKeys']
 export type LevelSummary = Schemas['LevelSummary']
 export type LevelSkeleton = Schemas['LevelSkeleton']
 export type ConfusablePair = Schemas['ConfusablePair']
 export type LevelsResponse = Schemas['LevelsResponse']
 export type LevelNav = Schemas['LevelNav']
-export type SagittalKeyframe = Schemas['SagittalKeyframe']
 export type Articulation = Schemas['Articulation']
+export type ArticulationMedia = Schemas['ArticulationMedia']
 export type DemoItem = Schemas['DemoItem']
 export type QuizQuestion = Schemas['QuizQuestion']
-export type PracticeStep = Schemas['PracticeStep']
-export type Misconception = Schemas['Misconception']
 export type Professional = Schemas['Professional']
+export type LevelPhonology = Schemas['LevelPhonology']
 export type LevelDetail = Schemas['LevelDetail']
 
 /* --------------------------------- 搜索 ----------------------------------- */
@@ -86,7 +84,6 @@ export type QualityReading = Schemas['QualityReading']
 export type Quality = Schemas['Quality']
 export type Phenomenon = Schemas['Phenomenon']
 export type FourStep = Schemas['FourStep']
-export type CurvePoint = Schemas['CurvePoint']
 export type CurveFrame = Schemas['CurveFrame']
 export type ComparisonPoint = Schemas['ComparisonPoint']
 export type CurveQuality = Schemas['CurveQuality']
@@ -100,29 +97,18 @@ export type FormantRegion = Schemas['FormantRegion']
 export type ResultFormants = Schemas['ResultFormants']
 export type VotSpan = Schemas['VotSpan']
 export type ResultVot = Schemas['ResultVot']
+export type ScoreBreakdown = Schemas['ScoreBreakdown']
 export type AssessmentResult = Schemas['AssessmentResult']
 export type RecordingWithResult = Schemas['RecordingWithResult']
 export type RecordingSubmitResponse = Schemas['RecordingWithResult']
 export type RecordingDeleted = Schemas['RecordingDeleted']
 
-/* ------------------------------ 档案与学习 -------------------------------- */
+/* ------------------------------ 档案与进度 -------------------------------- */
 
 export type ArchiveRecordingSummary = Schemas['ArchiveRecordingSummary']
 export type ArchiveListResponse = Schemas['ArchiveListResponse']
 export type ClearArchiveResponse = Schemas['ClearArchiveResponse']
-export type ArchiveCompareSide = Schemas['ArchiveCompareSide']
-export type ArchiveCompareResponse = Schemas['ArchiveCompareResponse']
 
-/** 请求负载：判别联合（生成的 EventItem.detail 为宽松 object，此处收窄） */
-export type LearningEvent = {
-  eventId: string
-  levelId: string
-} & (
-  | { kind: 'listen_quiz'; detail: { questionId: string; choiceIndex: number } }
-  | { kind: 'practice_done'; detail: { stepId: string } }
-)
-
-export type LearningEventsResponse = Schemas['LearningEventsResponse']
 export type ProgressLevel = Schemas['ProgressLevel']
 export type MeProgress = Schemas['MeProgress']
 

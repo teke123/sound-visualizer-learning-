@@ -1,31 +1,26 @@
 <script setup lang="ts">
 /**
  * P09 结果页（FR-1001–1008 / §6.4）：
- * 202 → ProcessingStage 轮询（页面隐藏暂停）；录音质量为友好提示、不拦截展示；
- * 分数、现象、曲线、共振峰（单韵母）、频谱图、四步、回放、AcousticDetail、保存状态；
- * 404 → 「记录不存在或不可见」；同键重试仅当从提交页跳转（FD-15）。
+ * 202 → ProcessingStage 轮询（页面隐藏暂停）；
+ * 完成态主体复用 ResultBody（质量/分数/曲线/共振峰/频谱图/现象/四步，与页内结果共用），
+ * 页面专属：标题、未标定引导（插在质量与分数之间的原位置）、回放与下一步、
+ * AcousticDetail；404 → 「记录不存在或不可见」；同键重试仅当从提交页跳转（FD-15）。
  */
-import { computed, defineAsyncComponent, ref } from 'vue'
-import { useRoute } from 'vue-router'
-import { audioFileUrl, audioSpectrogramPngUrl, mediaUrl } from '@/api'
+import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { QBtn } from 'quasar'
+import { audioFileUrl } from '@/api'
 import { useRecordingResult } from '@/features/result'
 import { usePlayerStore } from '@/stores/player'
 import { useLevelsStore } from '@/stores/levels'
 import { useContextStore } from '@/stores/context'
-import QualityVerdict from '@/components/QualityVerdict.vue'
-import ScoreCard from '@/components/ScoreCard.vue'
-import PhenomenaList from '@/components/PhenomenaList.vue'
-import FourStepsList from '@/components/FourStepsList.vue'
 import AcousticDetail from '@/components/AcousticDetail.vue'
-import SaveStatusBanner from '@/components/SaveStatusBanner.vue'
-import ProcessingStage from '@/components/ProcessingStage.vue'
+import ProcessingStage from '@/features/assessment/components/ProcessingStage.vue'
 import PageState from '@/components/PageState.vue'
-
-const ToneCurveChart = defineAsyncComponent(() => import('@/renderers/ToneCurveChart.vue'))
-const FormantChart = defineAsyncComponent(() => import('@/renderers/FormantChart.vue'))
-const VotWaveformChart = defineAsyncComponent(() => import('@/renderers/VotWaveformChart.vue'))
+import ResultBody from '@/features/assessment/components/ResultBody.vue'
 
 const route = useRoute()
+const router = useRouter()
 const player = usePlayerStore()
 const levelsStore = useLevelsStore()
 const contextStore = useContextStore()
@@ -36,8 +31,6 @@ const result = useRecordingResult(recordingId)
 const phase = result.phase
 const recording = result.recording
 const assessment = result.result
-
-const quality = computed(() => assessment.value?.quality)
 
 const playbackKey = computed(() => `audio:${recording.value?.audioId ?? ''}`)
 
@@ -52,12 +45,36 @@ const levelTitle = computed(() => {
   return levelId ? (levelsStore.byId.get(levelId)?.title ?? levelId) : ''
 })
 
+/** 专业与声学说明（FR-610 改版）：正文从关卡页后移到完整检测结果页 */
+const professionalText = ref<string | null>(null)
+
+watch(
+  () => recording.value?.levelId ?? null,
+  (levelId) => {
+    professionalText.value = null
+    if (!levelId) return
+    // 与关卡页共用 levels store 的详情入口：保持一次性拉取（不套用先缓存后刷新）
+    levelsStore
+      .loadLevelDetail(levelId, { force: true })
+      .then((detail) => {
+        professionalText.value = detail.professional?.description || null
+      })
+      .catch(() => {
+        professionalText.value = null
+      })
+  },
+  { immediate: true },
+)
+
 const retryable = computed(
   () => phase.value === 'failed' && result.entry.value?.recordingId === recordingId.value,
 )
 
-// 频谱图按 audioId 读取派生图片（FR-1005），加载失败时说明而非留破图
-const spectrogramError = ref(false)
+/** 同键重试：后端重放产生新记录 ID 时跟随跳转（其余情况原地重查） */
+async function onRetrySubmission() {
+  const outcome = await result.retrySubmission()
+  if (outcome?.changed) void router.push(`/result/${outcome.recordingId}`)
+}
 </script>
 
 <template>
@@ -80,10 +97,15 @@ const spectrogramError = ref(false)
       <h1>这次检测没有完成</h1>
       <p class="fail-hint">可能是评分服务繁忙或处理超时。</p>
       <div class="fail-actions">
-        <button v-if="retryable" type="button" class="act-btn primary" @click="result.retrySubmission()">
-          重试本次提交
-        </button>
-        <RouterLink :to="result.retakeRoute()" class="act-btn">重新录音</RouterLink>
+        <QBtn
+          v-if="retryable"
+          unelevated
+          no-caps
+          color="primary"
+          label="重试本次提交"
+          @click="onRetrySubmission"
+        />
+        <QBtn outline no-caps color="blue-grey-4" text-color="blue-grey-9" label="重新录音" :to="result.retakeRoute()" />
       </div>
     </div>
 
@@ -93,82 +115,56 @@ const spectrogramError = ref(false)
         <h1>{{ levelTitle }} · 检测结果</h1>
       </header>
 
-      <!-- 录音质量提示（FR-1001：友好提示，不拦截评分与可视化） -->
-      <QualityVerdict v-if="quality" :quality="quality" />
+      <!-- 完成态公共主体：质量 / 分数 / 声学对比图 / 现象与四步（与页内结果共用） -->
+      <ResultBody :result="assessment" :audio-id="recording.audioId" :recording-id="recordingId">
+        <!-- 未标定 → 个人对比入口（FR-1006）：经插槽保持在质量提示与分数之间 -->
+        <template #after-quality>
+          <div v-if="contextStore.isAuthenticated && !contextStore.calibrationValid" class="calib-entry">
+            <p>本次结果用的是通用参考范围，还没有你的个人音域与元音空间。</p>
+            <QBtn
+              unelevated
+              no-caps
+              color="primary"
+              label="去标定以获得更精准个人对比"
+              to="/account#calibration"
+            />
+          </div>
+        </template>
+      </ResultBody>
 
-      <!-- 未标定 → 个人对比入口（FR-1006） -->
-      <div v-if="contextStore.isAuthenticated && !contextStore.calibrationValid" class="calib-entry">
-        <p>本次结果用的是通用参考范围，还没有你的个人音域与元音空间。</p>
-        <RouterLink to="/account#calibration" class="act-btn primary">去标定以获得更精准个人对比</RouterLink>
-      </div>
-
-      <!-- 分数（FR-1002） -->
-      <ScoreCard v-if="typeof assessment.score === 'number'" :score="assessment.score" />
-
-      <!-- 曲线对比（FR-1005） -->
-      <section class="result-section" aria-label="音高曲线对比">
-        <h2>音高曲线对比</h2>
-        <p class="curve-note">实线是这次录音，虚线是标准参考；已按你的音域换算到统一标度；点线段表示该片段置信度较低。</p>
-        <ToneCurveChart v-if="assessment.curve" :curve="assessment.curve" :audio-id="recording.audioId" :recording-id="recordingId" />
+      <!-- 专业与声学说明（FR-610 改版）：正文自关卡页后移至此 -->
+      <section v-if="professionalText" class="result-section" aria-label="专业与声学说明">
+        <h2>专业与声学说明</h2>
+        <p class="pro-content">{{ professionalText }}</p>
       </section>
-
-      <!-- 共振峰（仅单韵母关，FR-1005） -->
-      <section v-if="assessment.formants" class="result-section" aria-label="共振峰对比">
-        <h2>共振峰对比</h2>
-        <FormantChart :formants="assessment.formants" />
-      </section>
-
-      <!-- 送气段波形对比（声母关，FR-1005） -->
-      <section v-if="assessment.vot" class="result-section" aria-label="送气段波形对比">
-        <h2>送气段波形对比（VOT）</h2>
-        <p class="curve-note">横轴是时间，高亮区域是清辅音（送气/摩擦）噪声段，竖线是嗓音起始；两者间隔即 VOT——送气声母这段明显更长。</p>
-        <VotWaveformChart
-          :vot="assessment.vot"
-          :user-audio-url="audioFileUrl(recording.audioId)"
-          :reference-audio-url="assessment.vot.referenceMediaId ? mediaUrl(assessment.vot.referenceMediaId) : undefined"
-        />
-      </section>
-
-      <!-- 频谱图（FR-1005：时间×频率能量分布） -->
-      <section class="result-section" aria-label="频谱图">
-        <h2>频谱图</h2>
-        <p class="curve-note">横轴是时间，纵轴是频率，颜色越亮表示这一时刻该频率的能量越强，用来整体查看这次录音的频率能量分布。</p>
-        <img
-          v-if="!spectrogramError"
-          :src="audioSpectrogramPngUrl(recording.audioId)"
-          alt="本次录音频谱图（时间×频率热力图）"
-          loading="lazy"
-          class="spectrogram-img"
-          @error="spectrogramError = true"
-        />
-        <p v-else class="curve-note">频谱图暂时读取不到，可刷新页面重试。</p>
-      </section>
-
-      <!-- 现象（FR-1004） -->
-      <PhenomenaList v-if="assessment.phenomena" :phenomena="assessment.phenomena" />
-
-      <!-- 四步（FR-1007） -->
-      <FourStepsList v-if="assessment.fourSteps" :steps="assessment.fourSteps" />
 
       <!-- 回放与行动（FR-1008） -->
       <section class="result-section" aria-label="回放与下一步">
         <h2>回放与下一步</h2>
         <div class="act-row">
-          <button type="button" class="act-btn" @click="playRecording">
-            {{ player.isCurrent(playbackKey) ? '⏸ 暂停本次录音' : '▶ 回放本次录音' }}
-          </button>
-          <RouterLink v-if="levelsStore.byId.get(recording.levelId)" :to="`/learn/${recording.levelId}`" class="act-btn">
-            回关卡练习
-          </RouterLink>
-          <RouterLink :to="result.retakeRoute()" class="act-btn">重录一次</RouterLink>
+          <QBtn
+            outline
+            no-caps
+            color="blue-grey-4"
+            text-color="blue-grey-9"
+            :label="player.isCurrent(playbackKey) ? '⏸ 暂停本次录音' : '▶ 回放本次录音'"
+            @click="playRecording"
+          />
+          <QBtn
+            v-if="levelsStore.byId.get(recording.levelId)"
+            outline
+            no-caps
+            color="blue-grey-4"
+            text-color="blue-grey-9"
+            label="回关卡练习"
+            :to="`/learn/${recording.levelId}`"
+          />
+          <QBtn outline no-caps color="blue-grey-4" text-color="blue-grey-9" label="重录一次" :to="result.retakeRoute()" />
         </div>
       </section>
 
       <!-- 原始声学折叠区（FD-16） -->
       <AcousticDetail v-if="recording.audioId" :audio-id="recording.audioId" />
-
-      <!-- 保存状态：结果自动保存到声音档案（FR-1008） -->
-      <SaveStatusBanner />
     </template>
   </div>
 </template>
@@ -190,10 +186,11 @@ const spectrogramError = ref(false)
     font-size: 18px
     margin: 0 0 10px
 
-.curve-note
-  font-size: 13px
-  color: #78909c
-  margin: 0 0 8px
+.pro-content
+  white-space: pre-wrap
+  line-height: 1.8
+  color: #37474f
+  margin: 0
 
 .calib-entry
   background: #f1f8f6
@@ -209,11 +206,6 @@ const spectrogramError = ref(false)
     margin: 0
     font-size: 14px
     color: #546e7a
-
-.spectrogram-img
-  max-width: 100%
-  border-radius: 8px
-  background: #fff
 
 .result-failed
   text-align: center
@@ -231,22 +223,4 @@ const spectrogramError = ref(false)
   gap: 12px
   flex-wrap: wrap
   justify-content: center
-
-.act-btn
-  min-height: 44px
-  display: inline-flex
-  align-items: center
-  padding: 4px 18px
-  border-radius: 999px
-  border: 1px solid #90a4ae
-  background: #fff
-  color: #37474f
-  text-decoration: none
-  cursor: pointer
-  font-size: 14px
-  &.primary
-    background: #00897b
-    border-color: #00897b
-    color: #fff
-    font-weight: 600
 </style>

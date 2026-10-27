@@ -1,12 +1,12 @@
 /**
- * fetch 客户端：envelope 解析、类型化错误、202 与 Retry-After（docs/architecture/04 §7）
+ * fetch 客户端：envelope 解析、类型化错误、202 与 Retry-After
  * 全项目唯一的网络层；其他层只处理 ApiResult / ApiError。
  */
 import type { Envelope } from './generated/types'
 
 export const API_BASE = '/api'
 
-/** 202 缺省轮询间隔（docs/architecture/04 §6.4） */
+/** 202 缺省轮询间隔 */
 export const DEFAULT_RETRY_AFTER_MS = 2000
 
 export interface ApiResult<T> {
@@ -46,14 +46,6 @@ export class ApiError extends Error {
     this.nextStep = init.nextStep
     this.retryAfterMs = init.retryAfterMs
     this.data = init.data
-  }
-
-  /** 是否可按同 submissionId / 同负载重试 */
-  get retryable(): boolean {
-    if (this.code === 'RATE_LIMITED' || this.code === 'SERVER_BUSY' || this.code === 'TIMEOUT') return true
-    if (this.status === 0 || this.status === 500 || this.status === 502 || this.status === 503) return true
-    if (this.status === 504) return true
-    return false
   }
 }
 

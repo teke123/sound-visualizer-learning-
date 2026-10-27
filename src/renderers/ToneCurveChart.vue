@@ -1,10 +1,9 @@
 <script setup lang="ts">
 /**
  * ToneCurveChart：结果音高曲线（degree 1-5 五度坐标 / 相对半音 / Hz 三视图，
- * 按音节分段拼接；docs/f0展示修改测试版1.md §6.2）。
+ * 按音节分段拼接）。
  * - 「我的曲线」与「标准曲线」同屏叠加：原生网格帧、connectNulls:false，
  *   静音/清音缺口自然断开；可靠段实线、低置信度段同色点线（共享图例）。
- * - 历史 0-5 T 值数据按 D = 1 + 0.8·T 版本转换显示（docs §4.3）。
  * - 哼鸣 A/B 试听：听标准音高 / 听我的音高 / 按我的音域听标准，播放游标同步。
  * 本组件由页面异步加载，echarts 不进首屏包（§9）。
  */
@@ -14,7 +13,7 @@ import { LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent, MarkLineComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
 import VChart from 'vue-echarts'
-import type { ResultCurve, SyllableCurveSide, CurvePoint } from '@/api'
+import type { ResultCurve, SyllableCurveSide } from '@/api'
 import { usePlayerStore } from '@/stores/player'
 import { audioF0HumUrl, mediaF0HumUrl } from '@/api'
 import { splitByConfidence, type CurvePlotPoint as Pt } from '@/utils/curveSegments'
@@ -40,11 +39,6 @@ const view = ref<ViewMode>('degree')
 const chartHeight = computed(() => `${props.height ?? 320}px`)
 const unavailable = computed(() => props.curve.status !== 'ok')
 
-/** 历史数据（user/reference 为 {t,v} 点列）按 T→degree 转换 */
-function isLegacySide(side: unknown): side is CurvePoint[] {
-  return Array.isArray(side)
-}
-
 function sideRange(side: 'user' | 'reference'): { fLo: number; fHi: number } | null {
   const c = props.curve
   const r = side === 'user' ? c.userRange : c.referenceRange
@@ -56,17 +50,8 @@ function relSt(hz: number, range: { fLo: number; fHi: number }): number {
 }
 
 /** 单侧曲线 → 绘图点列（x = 音节序号 + 音节内相对时间 u） */
-function sidePoints(segIndex: number, side: unknown, range: { fLo: number; fHi: number } | null): Pt[] {
-  if (isLegacySide(side)) {
-    // 历史 0-5 T 值：x 已是归一化 t，v → degree
-    return side.map((p) => ({
-      x: segIndex + p.t,
-      y: 1 + 0.8 * p.v,
-      conf: 1,
-      src: 'measured',
-    }))
-  }
-  const s = side as SyllableCurveSide | null
+function sidePoints(segIndex: number, side: SyllableCurveSide | null | undefined, range: { fLo: number; fHi: number } | null): Pt[] {
+  const s = side ?? null
   const frames = s?.frames
   if (!frames || !s || s.analysisStart == null || s.analysisEnd == null) return []
   const dur = Math.max(s.analysisEnd - s.analysisStart, 1e-6)
@@ -99,8 +84,8 @@ const segments = computed(() => {
   for (const seg of props.curve.segments ?? []) {
     const user = sidePoints(idx, seg.user, userRange)
     const ref = sidePoints(idx, seg.reference, refRange ?? userRange)
-    const userSide = isLegacySide(seg.user) ? null : (seg.user as SyllableCurveSide | null)
-    const refSide = isLegacySide(seg.reference) ? null : (seg.reference as SyllableCurveSide | null)
+    const userSide = seg.user ?? null
+    const refSide = seg.reference ?? null
     out.push({
       meta: {
         syllable: seg.syllable ?? '',
@@ -290,8 +275,8 @@ const humCursorX = computed<number | null>(() => {
   for (let i = 0; i < segments.value.length; i += 1) {
     const seg = props.curve.segments?.[i]
     if (!seg) continue
-    const side = (isUser ? seg.user : seg.reference) as SyllableCurveSide | null
-    if (!side || Array.isArray(side)) continue
+    const side = (isUser ? seg.user : seg.reference) ?? null
+    if (!side) continue
     const { analysisStart, analysisEnd } = side
     if (analysisStart == null || analysisEnd == null) continue
     if (t >= analysisStart - 0.02 && t <= analysisEnd + 0.02) {

@@ -41,7 +41,6 @@ class PitchRangeRow(Base):
     vowel_space: Mapped[str | None] = mapped_column(Text)  # JSON：六元音 F1/F2 均值与总体统计
     algorithm_version: Mapped[str] = mapped_column(String(64))
     basis_calibration_id: Mapped[str | None] = mapped_column(String(64))  # 标定基线来源（快照 id）
-    source_recording_ids: Mapped[str | None] = mapped_column(Text)        # 兼容既有数据库；固定标定写入 []
     updated_at: Mapped[datetime.datetime] = mapped_column(DateTime)
     deleted_at: Mapped[datetime.datetime | None] = mapped_column(DateTime)
 

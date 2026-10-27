@@ -1,8 +1,9 @@
-"""MockProvider：确定性测试替身（docs/architecture/03 第 9 节「Provider 测试替身」）。
+"""MockProvider：确定性测试替身。
 
 行为契约：
-- 输入规范化 WAV 与评测文本，输出 SyllableEval + 朗读维检错；
-- 结论由（PCM 内容 + 文本）完全决定：同音频同文本永远同结果（FR-1003）；
+- 输入规范化 WAV、评测文本与带调拼音标注，输出 SyllableEval + 朗读维检错；
+  期望音节（文本/拼音/声调）完全来自标注，不做文本侧推断；
+- 结论由（PCM 内容 + 标注）完全决定：同音频同标注永远同结果（FR-1003）；
 - 音节时间戳来自本地有声检测；声调对错由音节内 F0 走向与期望声调比对得出，
   使现象与曲线分析对真实输入敏感；
 - 环境变量 SVS_MOCK_PROVIDER 可强制故障路径：
@@ -17,7 +18,7 @@ from pathlib import Path
 import numpy as np
 
 from app.acoustics import analysis
-from app.pinyin_utils import expected_syllables
+from app.pinyin_utils import annotated_syllables
 from app.scoring.provider import ProviderError, ProviderResult, ScoringProvider, SyllableEval
 
 
@@ -47,7 +48,8 @@ class MockProvider(ScoringProvider):
     name = "mock"
     version = "mock-1.0.0"
 
-    def evaluate(self, wav_path: str, evaluation_text: str) -> ProviderResult:
+    def evaluate(self, wav_path: str, evaluation_text: str,
+                 pinyin: str | None = None) -> ProviderResult:
         import time
 
         mode = os.environ.get("SVS_MOCK_PROVIDER", "")
@@ -60,7 +62,7 @@ class MockProvider(ScoringProvider):
         pcm_hash = hashlib.sha256(path.read_bytes()).hexdigest()
         seed = int(pcm_hash[:12], 16)
 
-        expected = expected_syllables(evaluation_text)
+        expected = annotated_syllables(evaluation_text, pinyin or "")
         result = ProviderResult(provider_version=self.version)
 
         f0res = analysis.extract_f0(path)
@@ -112,12 +114,6 @@ class MockProvider(ScoringProvider):
         base = 96.0 - 6.0 * n_bad
         jitter = (seed % 7) - 3
         result.overall_score = round(max(0.0, min(100.0, base + jitter)), 1)
-        if any(not s.initial_ok for s in result.syllables):
-            result.initial_score = round(max(60.0, result.overall_score - 5), 1)
-        if any(not s.final_ok for s in result.syllables):
-            result.final_score = round(max(60.0, result.overall_score - 5), 1)
-        if any(not s.tone_ok for s in result.syllables):
-            result.tone_score = round(max(60.0, result.overall_score - 8), 1)
         return result
 
     @staticmethod

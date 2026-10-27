@@ -85,6 +85,7 @@ def create_all() -> None:
     init_engine()
     Base.metadata.create_all(_engine)
     _ensure_column("user", "dialect_background", "VARCHAR(32)")
+    _ensure_column("user", "gender", "VARCHAR(16)")
 
 
 # --- JSON 便捷序列化（SQLite 存 JSON 文本列）---

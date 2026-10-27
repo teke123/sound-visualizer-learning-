@@ -80,3 +80,17 @@ def handle_feedback(db: Session, *, feedback_id: str, status: str,
     row.handled_at = now()
     db.commit()
     return {"feedbackId": row.id, "status": row.status}
+
+
+def handle_wish(db: Session, *, wish_id: str, status: str,
+                admin_actor: str) -> dict:
+    row = db.get(WishRow, wish_id)
+    if row is None:
+        raise ApiError(404, "NOT_FOUND", "希望增加记录不存在")
+    if status not in ("adopted", "rejected"):
+        raise ApiError(422, "VALIDATION_ERROR", "状态只允许 adopted / rejected")
+    row.status = status
+    row.handled_by = admin_actor
+    row.handled_at = now()
+    db.commit()
+    return {"wishId": row.id, "status": row.status}

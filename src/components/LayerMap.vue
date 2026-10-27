@@ -5,6 +5,7 @@
  * 不承载专业说明与 IPA；完成标记来自进度门面。
  */
 import { computed } from 'vue'
+import { QBadge, QCard, QCardSection } from 'quasar'
 import type { LevelSkeleton, LevelSummary } from '@/api'
 
 const props = withDefaults(
@@ -24,10 +25,10 @@ interface MapNode {
   completed: boolean
 }
 
-const LAYERS: Array<{ key: LevelSummary['layer']; name: string; hint: string }> = [
-  { key: 'vowel', name: '第一层 · 单韵母', hint: '把六个单韵母的口型摆稳' },
-  { key: 'initial', name: '第二层 · 声母', hint: '逐个声母过关，重点区分易混音' },
-  { key: 'syllable', name: '第三层 · 拼读', hint: '把声母和韵母拼起来' },
+const LAYERS: Array<{ key: LevelSummary['layer']; name: string }> = [
+  { key: 'vowel', name: '单韵母' },
+  { key: 'initial', name: '声母' },
+  { key: 'syllable', name: '拼读' },
 ]
 
 const layers = computed(() =>
@@ -59,29 +60,38 @@ const layers = computed(() =>
 
 <template>
   <div class="layer-map">
-    <section v-for="layer in layers" :key="layer.key" class="map-layer" :aria-label="layer.name">
-      <header class="layer-head">
-        <h2>{{ layer.name }}</h2>
-        <p>{{ layer.hint }}</p>
-      </header>
-      <div class="layer-nodes">
-        <template v-for="node in layer.nodes" :key="node.id">
-          <RouterLink
-            v-if="node.published"
-            :to="`/learn/${node.id}`"
-            class="map-node published"
-            :class="{ completed: node.completed }"
-          >
-            <span class="node-sound">{{ node.label }}</span>
-            <span v-if="node.completed" class="node-done" aria-label="已完成">✓</span>
-          </RouterLink>
-          <span v-else class="map-node skeleton" aria-label="未开放">
-            <span class="node-sound">{{ node.label }}</span>
-            <span class="node-id">未开放</span>
-          </span>
-        </template>
-      </div>
-    </section>
+    <QCard
+      v-for="layer in layers"
+      :key="layer.key"
+      tag="section"
+      flat
+      bordered
+      class="map-layer"
+      :aria-label="layer.name"
+    >
+      <QCardSection>
+        <header class="layer-head">
+          <h2>{{ layer.name }}</h2>
+        </header>
+        <div class="layer-nodes">
+          <template v-for="node in layer.nodes" :key="node.id">
+            <RouterLink
+              v-if="node.published"
+              :to="`/learn/${node.id}`"
+              class="map-node published"
+              :class="{ completed: node.completed }"
+            >
+              <span class="node-sound">{{ node.label }}</span>
+              <QBadge v-if="node.completed" class="node-done" color="positive" aria-label="已完成">✓</QBadge>
+            </RouterLink>
+            <span v-else class="map-node skeleton" aria-label="未开放">
+              <span class="node-sound">{{ node.label }}</span>
+              <QBadge class="node-id" color="grey-3" text-color="grey-7">未开放</QBadge>
+            </span>
+          </template>
+        </div>
+      </QCardSection>
+    </QCard>
   </div>
 </template>
 
@@ -91,20 +101,10 @@ const layers = computed(() =>
   flex-direction: column
   gap: 24px
 
-.map-layer
-  background: #fff
-  border: 1px solid #eceff1
-  border-radius: 12px
-  padding: 16px
-
 .layer-head
   h2
-    margin: 0
+    margin: 0 0 12px
     font-size: 17px
-  p
-    margin: 4px 0 12px
-    font-size: 13px
-    color: #90a4ae
 
 .layer-nodes
   display: flex
@@ -142,13 +142,8 @@ const layers = computed(() =>
   font-size: 20px
   font-weight: 700
 
-.node-id
-  font-size: 11px
-
 .node-done
   position: absolute
   top: 4px
   right: 6px
-  color: #2e7d32
-  font-size: 13px
 </style>

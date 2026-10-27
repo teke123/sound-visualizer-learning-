@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ma 正中矢状面发音动画</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 12px;
+    background: #fff;
+    color: #37474f;
+    font-family: "Microsoft YaHei", system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+<div id="ma-sagittal-redraw">
+  <style>
+    #ma-sagittal-redraw {
+      --foreground: #37474f;
+      --background: #ffffff;
+      --red: rgb(224 46 42);
+      --orange: rgb(226 85 7);
+      --green: rgb(0 162 64);
+      /* 原 codex 主题 color-mix 推导值固定为浅色调色板（与站点一致） */
+      --ma-ink: #37474f;
+      --ma-tissue: #eceff1;
+      --ma-tissue-edge: #78909c;
+      --ma-bone: #f1ecdc;
+      --ma-bone-edge: #8ba0ab;
+      --ma-tongue: #e7a59e;
+      --ma-tongue-edge: #a6827f;
+      --ma-lip: #e6999b;
+      --ma-velum: #bce0cd;
+      --ma-velum-edge: #90b8a4;
+      --ma-air: #1f9eb2;
+      width:100%; max-width:560px; margin-inline:auto;
+      color:var(--foreground);
+      font-family:"Microsoft YaHei",var(--font-sans),system-ui,sans-serif;
+    }
+    #ma-sagittal-redraw .anatomy { width:100%; height:auto; display:block; }
+    #ma-sagittal-redraw .edge { fill:none; stroke:var(--ma-tissue-edge); stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+    #ma-sagittal-redraw .fine { fill:none; stroke:var(--ma-tissue-edge); stroke-width:1.1; stroke-linecap:round; stroke-linejoin:round; }
+    #ma-sagittal-redraw .tooth { fill:var(--ma-bone); stroke:var(--ma-bone-edge); stroke-width:1.3; stroke-linejoin:round; }
+    #ma-sagittal-redraw .lip { fill:var(--ma-lip); stroke:var(--ma-tongue-edge); stroke-width:1.3; stroke-linejoin:round; }
+    #ma-sagittal-redraw .label { fill:var(--ma-ink); font:inherit; font-size:calc(16px * var(--ma-svg-scale, 1)); }
+    #ma-sagittal-redraw .leader { fill:none; stroke:var(--ma-tissue-edge); stroke-width:1; stroke-linecap:round; }
+    #ma-sagittal-redraw .flow { fill:none; stroke:var(--ma-air); stroke-width:2.5; stroke-linecap:round; stroke-linejoin:round; }
+    #ma-sagittal-redraw .flow-guide { opacity:.16; stroke-width:1.4; }
+    #ma-sagittal-redraw .flow-motion { stroke-dasharray:5 15; }
+    #ma-sagittal-redraw .readout { display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:4px 16px; margin:4px 0 8px; }
+    #ma-sagittal-redraw .timeline { margin:0; }
+    #ma-sagittal-redraw .transport { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-top:8px; }
+    #ma-sagittal-redraw .rate { display:flex; align-items:center; gap:8px; margin-left:auto; }
+    #ma-sagittal-redraw .rate select { width:auto; }
+    #ma-sagittal-redraw .tabular-nums { font-variant-numeric:tabular-nums; }
+    #ma-sagittal-redraw button {
+      font:inherit; min-height:36px; padding:0 14px; border-radius:999px;
+      border:1px solid #cfd8dc; background:#fff; color:#37474f; cursor:pointer;
+    }
+    #ma-sagittal-redraw button.primary { background:#00897b; border-color:#00897b; color:#fff; font-weight:600; }
+    #ma-sagittal-redraw select { font:inherit; min-height:36px; border-radius:8px; border:1px solid #cfd8dc; background:#fff; color:#37474f; }
+    #ma-sagittal-redraw input[type=range] { width:100%; accent-color:#00897b; }
+    #ma-sagittal-redraw .text-muted { color:#90a4ae; }
+    #ma-sagittal-redraw .text-small { font-size:13px; }
+    #ma-sagittal-redraw .sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+    @media(max-width:440px) {
+      #ma-sagittal-redraw .transport { gap:6px; }
+      #ma-sagittal-redraw .rate { margin-left:0; }
+      #ma-sagittal-redraw .optional-label { display:none; }
+    }
+  </style>
+
+  <svg class="anatomy" xmlns="http://www.w3.org/2000/svg" viewBox="72 65 586 545" role="img" aria-labelledby="ma-redraw-title ma-redraw-desc">
+    <title id="ma-redraw-title">ma 发音动作，正中矢状面</title>
+    <desc id="ma-redraw-desc">面部朝左。发 m 时双唇闭合，软腭降低，气流经鼻腔；过渡到 a 时下颌打开，舌体降低，软腭抬起关闭鼻咽通路，气流从口腔流出。形态与时序为教学示意。</desc>
+    <defs>
+      <linearGradient id="ma-root-blend" x1="0" y1="430" x2="0" y2="507" gradientUnits="userSpaceOnUse">
+        <stop offset="0" stop-color="var(--ma-tongue)" />
+        <stop offset="1" stop-color="var(--ma-tissue)" />
+      </linearGradient>
+      <marker id="ma-redraw-arrow" viewBox="0 0 8 8" refX="6" refY="4" markerWidth="5" markerHeight="5" orient="auto">
+        <path d="M1 1 L7 4 L1 7" fill="none" stroke="var(--ma-air)" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" />
+      </marker>
+    </defs>
+
+    <path id="ma-head-fill" fill="var(--ma-tissue)" />
+    <path id="ma-cavity" fill="var(--background)" />
+    <path class="edge" d="M238 36 C229 78 201 123 175 156 C157 178 126 195 123 213 C120 229 137 242 157 238 C172 234 178 244 173 257 C171 265 165 271 164 277 C155 279 146 281 143 287" />
+    <path class="edge" d="M640 36 L620 178 C607 219 602 251 606 284 C611 318 620 347 622 377 L626 598" />
+    <path id="ma-lower-face" class="edge" />
+    <path class="fine" d="M157 238 C177 235 187 211 204 185 C236 144 282 132 337 136 C375 138 399 145 412 169 C425 194 437 199 460 212 C489 228 516 225 537 240 C560 256 567 278 568 304 C570 342 580 373 582 411 C584 445 581 478 578 504 L581 598" />
+
+    <path fill="var(--ma-bone)" stroke="var(--ma-bone-edge)" stroke-width="1.3" d="M190 275 C251 249 335 237 424 240 L424 262 C343 254 267 258 213 285 L195 291 Z" />
+    <path class="fine" opacity=".55" d="M206 270 C265 250 343 246 408 249" />
+    <path id="ma-soft-palate" fill="var(--ma-velum)" stroke="var(--ma-velum-edge)" stroke-width="1.6" stroke-linejoin="round" />
+    <path fill="var(--ma-lip)" opacity=".45" d="M190 275 C201 273 211 279 216 286 L214 294 C205 296 196 294 192 290 Z" />
+    <path class="tooth" d="M195 284 C201 281 209 282 213 286 L211 308 Q205 314 197 309 Z" />
+
+    <g id="ma-jaw">
+      <path fill="var(--ma-bone)" stroke="var(--ma-bone-edge)" stroke-width="1.3" d="M195 331 C186 342 186 359 196 375 C203 386 216 393 231 395 L237 384 C222 377 215 365 214 349 L214 332 Z" />
+      <path fill="var(--ma-lip)" opacity=".5" d="M185 320 C193 316 204 321 216 332 L217 345 C207 350 194 341 190 335 Z" />
+      <path class="tooth" d="M199 321 Q207 317 215 321 L216 338 Q209 344 201 338 Z" />
+      <path class="lip" d="M146 300 C159 304 179 304 190 298 C196 307 191 315 183 319 C169 324 157 320 151 315 C148 310 146 306 146 300 Z" />
+    </g>
+
+    <path id="ma-tongue-fill" fill="url(#ma-root-blend)" />
+    <path id="ma-tongue-surface" fill="none" stroke="var(--ma-tongue-edge)" stroke-width="1.7" stroke-linecap="round" />
+    <path id="ma-floor" class="fine" opacity=".55" />
+    <path id="ma-epiglottis" fill="var(--ma-tissue)" stroke="var(--ma-tissue-edge)" stroke-width="1.2" />
+    <path class="fine" d="M521 540 C527 553 529 574 529 598" />
+
+    <path class="lip" d="M143 287 C155 280 178 285 190 298 C179 304 159 304 146 300 C142 297 140 291 143 287 Z" />
+
+    <g aria-hidden="true">
+      <path id="ma-trunk-guide" class="flow flow-guide" />
+      <path id="ma-trunk-flow" class="flow flow-motion" />
+      <g id="ma-nasal-flow">
+        <path id="ma-nasal-guide" class="flow flow-guide" />
+        <path id="ma-nasal-dashes" class="flow flow-motion" />
+        <path id="ma-nasal-arrow" class="flow" marker-end="url(#ma-redraw-arrow)" />
+      </g>
+      <g id="ma-oral-flow">
+        <path id="ma-oral-guide" class="flow flow-guide" />
+        <path id="ma-oral-dashes" class="flow flow-motion" />
+        <path id="ma-oral-arrow" class="flow" marker-end="url(#ma-redraw-arrow)" />
+      </g>
+      <text class="label" x="310" y="188" text-anchor="middle">鼻腔</text>
+      <text id="ma-tongue-label" class="label" text-anchor="middle">舌</text>
+      <path id="ma-palate-leader" class="leader" />
+      <text class="label" x="594" y="215">软腭</text>
+      <path id="ma-lip-leader" class="leader optional-label" />
+      <text class="label optional-label" x="132" y="273" text-anchor="end">双唇</text>
+    </g>
+  </svg>
+
+  <div class="readout">
+    <span><span id="ma-phase">m</span><span class="text-muted"> · </span><span id="ma-phase-detail">双唇闭合，气流经鼻腔</span></span>
+  </div>
+  <div class="timeline">
+    <label class="sr-only" for="ma-progress">动画进度</label>
+    <input class="form-range" id="ma-progress" type="range" min="0" max="180" step="1" value="0" aria-label="动画进度" />
+  </div>
+  <div class="transport">
+    <button class="btn primary" id="ma-play" type="button" aria-pressed="true">暂停</button>
+    <label class="rate" for="ma-speed"><span class="text-small">速度</span>
+      <select class="form-select" id="ma-speed" aria-label="播放速度">
+        <option value="0.125">0.125×</option>
+        <option value="0.25" selected>0.25×</option>
+        <option value="0.5">0.5×</option>
+        <option value="1">1×</option>
+      </select>
+    </label>
+    <label><input id="ma-loop" type="checkbox" checked /><span>循环</span></label>
+  </div>
+
+  <script>
+    (() => {
+      const root = document.getElementById('ma-sagittal-redraw');
+      const $ = id => root.querySelector('#ma-' + id);
+      const clamp = x => Math.max(0, Math.min(1, x));
+      const mix = (a,b,t) => a+(b-a)*t;
+      const smooth = (x,a,b) => { const t=clamp((x-a)/(b-a)); return t*t*(3-2*t); };
+      const fmt = n => Number(n.toFixed(2));
+      const xy = p => `${fmt(p[0])} ${fmt(p[1])}`;
+      const curve = pts => `C${pts.map(xy).join(' ')}`;
+      const nFrames = 180;
+      const duration = 1.2;
+      let progress=0, speed=.25, looping=true, playing=true, last=0, request=0;
+      let phase='';
+
+      // Mandibular motion is shared by teeth, lip, chin and the anterior floor.
+      // The condyle lies lateral to this section and is a hidden motion anchor.
+      function jawPoint(x,y,j) {
+        const a = -12.5*j*Math.PI/180, dx=x-520, dy=y-270;
+        return [520+dx*Math.cos(a)-dy*Math.sin(a)-6*j,
+                270+dx*Math.sin(a)+dy*Math.cos(a)+4*j];
+      }
+
+      // Construct the velum around a curved midline. Its thickness stays present
+      // through the lift instead of collapsing during endpoint interpolation.
+      function velum(v) {
+        const p0=[423,251], p1=[477,251];
+        const p2=[mix(511,521,v), mix(286,266,v)];
+        const p3=[mix(524,559,v), mix(324,268,v)];
+        const upper=[], lower=[];
+        let endNormal, endTangent;
+        for(let i=0;i<=32;i++) {
+          const t=i/32, u=1-t;
+          const x=u*u*u*p0[0]+3*u*u*t*p1[0]+3*u*t*t*p2[0]+t*t*t*p3[0];
+          const y=u*u*u*p0[1]+3*u*u*t*p1[1]+3*u*t*t*p2[1]+t*t*t*p3[1];
+          const dx=3*u*u*(p1[0]-p0[0])+6*u*t*(p2[0]-p1[0])+3*t*t*(p3[0]-p2[0]);
+          const dy=3*u*u*(p1[1]-p0[1])+6*u*t*(p2[1]-p1[1])+3*t*t*(p3[1]-p2[1]);
+          const len=Math.hypot(dx,dy), nx=dy/len, ny=-dx/len;
+          const w=mix(11,mix(7,10,v),t);
+          upper.push([x+nx*w,y+ny*w]); lower.push([x-nx*w,y-ny*w]);
+          if(i===32) { endNormal=[nx,ny]; endTangent=[dx/len,dy/len]; }
+        }
+        const cap=[], r=mix(7,10,v);
+        for(let i=1;i<9;i++) {
+          const a=Math.PI*i/9;
+          cap.push([p3[0]+r*(endNormal[0]*Math.cos(a)+endTangent[0]*Math.sin(a)),
+                    p3[1]+r*(endNormal[1]*Math.cos(a)+endTangent[1]*Math.sin(a))]);
+        }
+        return {d:`M${xy(upper[0])} L${[...upper.slice(1),...cap,...lower.reverse()].map(xy).join(' L')} Z`, tip:p3};
+      }
+
+      function render(t) {
+        progress=clamp(t);
+        const j=smooth(progress,.24,.66);
+        const v=smooth(progress,.23,.60);
+        const tongue=smooth(progress,.12,.66);
+        const P=(x,y)=>jawPoint(x,y,j);
+        const lowerFront=P(146,300);
+        const lowerInner=P(190,298);
+        const chin=[P(151,315),P(159,329),P(157,348),P(164,365),P(173,388),P(199,402),P(228,409),P(275,423),P(332,419),P(375,433)];
+        const lowerFace=`M${xy(lowerFront)} ${curve(chin.slice(0,3))} ${curve(chin.slice(3,6))} ${curve(chin.slice(6,9))} C${xy(chin[9])} 429 490 440 528 C450 553 455 578 458 598`;
+        $('lower-face').setAttribute('d',lowerFace);
+        $('head-fill').setAttribute('d',`M238 36 C229 78 201 123 175 156 C157 178 126 195 123 213 C120 229 137 242 157 238 C172 234 178 244 173 257 C171 265 165 271 164 277 C155 279 146 281 143 287 C140 291 142 297 146 300 L${xy(lowerFront)} ${lowerFace.substring(lowerFace.indexOf(' C')+1)} L626 598 L622 377 C620 347 611 318 606 284 C602 251 607 219 620 178 L640 36 Z`);
+
+        const floor=[P(375,421),P(309,416),P(255,390),P(221,365),P(208,342),lowerInner];
+        $('cavity').setAttribute('d',`M155 238 C177 235 187 211 204 185 C236 144 282 132 337 136 C375 138 399 145 412 169 C425 194 437 199 460 212 C489 228 516 225 537 240 C560 256 567 278 568 304 C570 342 580 373 582 411 C584 445 581 478 578 504 L581 598 L529 598 C527 562 518 520 490 478 C474 459 461 449 446 443 ${curve(floor.slice(0,3))} ${curve(floor.slice(3,6))} C${xy(P(179,304))} ${xy(P(159,304))} ${xy(lowerFront)} L146 300 C159 304 179 304 190 298 C198 285 195 278 190 275 C180 270 169 271 173 257 C177 245 169 237 155 238 Z`);
+
+        const angle=-12.5*j;
+        $('jaw').setAttribute('transform',`translate(${fmt(-6*j)} ${fmt(4*j)}) rotate(${fmt(angle)} 520 270)`);
+
+        // Anterior tongue follows its mandibular support; the root remains
+        // continuous with the floor. Preparation starts before lip release.
+        const tip=P(219,337);
+        tip[1]+=2*tongue;
+        const A=[mix(239,259,tongue),mix(333,392,tongue)];
+        const B=[mix(268,296,tongue),mix(322,378,tongue)];
+        const C=[mix(305,335,tongue),mix(322,378,tongue)];
+        const D=[mix(347,382,tongue),mix(322,377,tongue)];
+        const E=[mix(381,426,tongue),mix(332,388,tongue)];
+        const F=[mix(411,452,tongue),mix(353,409,tongue)];
+        const G=[mix(447,478,tongue),mix(378,430,tongue)];
+        const H=[mix(474,489,tongue),mix(412,449,tongue)];
+        const I=[mix(485,490,tongue),mix(448,473,tongue)];
+        const surface=`M${xy(tip)} ${curve([A,B,C])} ${curve([D,E,F])} ${curve([G,H,I])}`;
+        $('tongue-surface').setAttribute('d',surface);
+        $('tongue-fill').setAttribute('d',`${surface} C490 486 496 497 502 505 C479 499 467 477 450 461 C433 445 ${xy(P(401,438))} ${xy(P(365,425))} C${xy(P(303,417))} ${xy(P(247,388))} ${xy(P(225,361))} Q${xy(P(214,346))} ${xy(tip)} Z`);
+        $('floor').setAttribute('d',`M${xy(P(227,372))} C${xy(P(259,400))} ${xy(P(319,421))} ${xy(P(372,426))}`);
+        $('tongue-label').setAttribute('x',mix(352,370,tongue));
+        $('tongue-label').setAttribute('y',mix(383,431,tongue));
+
+        const epi=2*tongue;
+        $('epiglottis').setAttribute('d',`M514 541 C503 517 503 493 ${495+epi} 480 C${490+epi} 469 ${492+epi} 456 ${497+epi} 451 C${503+epi} 448 ${507+epi} 456 ${505+epi} 465 C${502+epi} 478 509 494 514 509 L521 536 Z`);
+        const palate=velum(v);
+        $('soft-palate').setAttribute('d',palate.d);
+        $('palate-leader').setAttribute('d',`M594 222 L577 222 L${xy([palate.tip[0]-21,palate.tip[1]-8])}`);
+        $('lip-leader').setAttribute('d',`M123 280 L136 280 L151 291`);
+
+        const trunk='M551 580 C548 554 544 530 545 506 C547 469 551 438 549 406';
+        const gapX=(palate.tip[0]+mix(7,10,v)+567)/2;
+        const tipY=palate.tip[1];
+        const nasal=`M549 406 C548 369 552 349 ${fmt(gapX)} ${fmt(tipY+15)} C${fmt(gapX+1)} ${fmt(tipY-4)} 559 269 540 254 C530 245 510 243 489 237 C447 224 412 217 371 220 C313 222 267 236 221 243 C193 247 170 245 145 241 L112 237`;
+        const mouthY=(300+lowerFront[1])/2;
+        const passageY=Math.max(316,mouthY);
+        const oral=`M549 406 C548 373 535 350 509 338 C460 318 398 316 332 321 C270 326 238 ${fmt(passageY)} 216 ${fmt(passageY)} C205 ${fmt(passageY)} 196 ${fmt(passageY)} 185 ${fmt(passageY)} C170 ${fmt(passageY)} 160 ${fmt(mouthY)} 143 ${fmt(mouthY)} L113 ${fmt(mouthY)}`;
+        ['trunk-guide','trunk-flow'].forEach(id=>$(id).setAttribute('d',trunk));
+        ['nasal-guide','nasal-dashes'].forEach(id=>$(id).setAttribute('d',nasal));
+        ['oral-guide','oral-dashes'].forEach(id=>$(id).setAttribute('d',oral));
+        $('nasal-arrow').setAttribute('d','M132 239 L112 237');
+        $('oral-arrow').setAttribute('d',`M134 ${fmt(mouthY)} L113 ${fmt(mouthY)}`);
+        const nasalAlpha=1-smooth(v,.42,.94);
+        const oralAlpha=smooth(j,.015,.38);
+        $('nasal-flow').setAttribute('opacity',nasalAlpha);
+        $('oral-flow').setAttribute('opacity',oralAlpha);
+        // Every moving mark uses this same time, including when paused.
+        const dash=fmt(-progress*360);
+        ['trunk-flow','nasal-dashes','oral-dashes'].forEach(id=>$(id).setAttribute('stroke-dashoffset',dash));
+
+        const key=progress<.255?'m':progress<.66?'transition':'a';
+        if(phase!==key) {
+          phase=key;
+          $('phase').textContent=key==='transition'?'m → a':key;
+          $('phase-detail').textContent=key==='m'?'双唇闭合，气流经鼻腔':key==='transition'?'双唇打开，舌体降低，软腭抬升':'口腔打开，气流经口腔';
+        }
+        const frame=Math.round(progress*nFrames);
+        $('progress').value=frame;
+        $('progress').setAttribute('aria-valuetext',`${Math.round(progress*100)}%`);
+      }
+
+      function paintPlay() {
+        $('play').textContent=playing?'暂停':'播放';
+        $('play').setAttribute('aria-pressed',String(playing));
+      }
+      function setPlaying(next) {
+        playing=next; cancelAnimationFrame(request); paintPlay();
+        if(playing) { last=performance.now(); request=requestAnimationFrame(tick); }
+      }
+      function tick(now) {
+        if(!playing) return;
+        const dt=Math.min((now-last)/1000,.08); last=now;
+        let next=progress+dt*speed/duration;
+        if(next>=1) {
+          if(looping) next%=1;
+          else {render(1);setPlaying(false);return;}
+        }
+        render(next); request=requestAnimationFrame(tick);
+      }
+      $('play').addEventListener('click',()=>{if(!playing&&progress>=1)render(0);setPlaying(!playing);});
+      $('progress').addEventListener('input',e=>{setPlaying(false);render(Number(e.target.value)/nFrames);});
+      $('speed').addEventListener('change',e=>{speed=Number(e.target.value);});
+      $('loop').addEventListener('change',e=>{looping=e.target.checked;});
+      const resizeLabels=()=>root.style.setProperty('--ma-svg-scale',586/root.querySelector('.anatomy').getBoundingClientRect().width);
+      new ResizeObserver(resizeLabels).observe(root);
+      resizeLabels();
+      render(0);
+      // 尊重系统「减少动态」偏好：默认停在 m 姿态，由学习者手动播放
+      if(matchMedia('(prefers-reduced-motion: reduce)').matches) playing=false;
+      setPlaying(playing);
+    })();
+  </script>
+</div>
+</body>
+</html>

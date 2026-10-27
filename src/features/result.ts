@@ -1,41 +1,29 @@
 /**
- * useRecordingResult：按 recordingId 读取与轮询结果（docs/architecture/04 §6.4）。
+ * useRecordingResult：按 recordingId 读取与轮询结果。
  * 202 → ProcessingStage + 按 Retry-After（缺省 2 秒）轮询；
  * 页面隐藏时暂停，恢复可见时立即查询。
- * 从提交页面跳转而来的 submissionId 与负载经内存传递（FD-15：跨页面只提供重新录音）。
+ * 不依赖 vue-router：同键重试只返回结果（含后端重放产生的新 recordingId），
+ * 跳转与否由调用方决定；提交侧的内存交接见 ./submittedEntry（FD-15）。
  */
 import { onScopeDispose, ref, watch, type Ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { useDocumentVisibility } from '@vueuse/core'
 import { ApiError, DEFAULT_RETRY_AFTER_MS, detectionApi } from '@/api'
 import type { AssessmentResult, RecordingDTO } from '@/api'
 import { useContextStore } from '@/stores/context'
-import { useLevelsStore } from '@/stores/levels'
+import { getSubmittedEntry, setSubmittedEntry, type SubmittedEntry } from './submittedEntry'
 
-/** 提交页面 → 结果页的内存交接（刷新/直接打开后为 null，只提供重新录音） */
-export interface SubmittedEntry {
-  recordingId: string
-  submissionId: string
-  audioId: string
-  levelId: string
-}
-
-let submittedEntry: SubmittedEntry | null = null
-
-export function setSubmittedEntry(entry: SubmittedEntry | null) {
-  submittedEntry = entry
-}
-
-export function getSubmittedEntry(): SubmittedEntry | null {
-  return submittedEntry
-}
+export type { SubmittedEntry } from './submittedEntry'
 
 export type ResultPhase = 'loading' | 'processing' | 'completed' | 'failed' | 'not-found'
 
+/** 同键重试结果：changed = 后端重放产生了新的 recordingId（是否跟随跳转由调用方决定） */
+export interface RetrySubmissionResult {
+  recordingId: string
+  changed: boolean
+}
+
 export function useRecordingResult(recordingId: Ref<string>) {
-  const router = useRouter()
   const contextStore = useContextStore()
-  const levelsStore = useLevelsStore()
 
   const phase = ref<ResultPhase>('loading')
   const recording = ref<RecordingDTO | null>(null)
@@ -127,34 +115,34 @@ export function useRecordingResult(recordingId: Ref<string>) {
     if (pollHandle !== null) window.clearTimeout(pollHandle)
   })
 
-  /** 提交页面内的同键重试（仅当内存 entry 匹配本记录；FD-15）；同 submissionId 重放返回同一 recordingId */
-  async function retrySubmission(): Promise<void> {
+  /**
+   * 提交页面内的同键重试（仅当内存 entry 匹配本记录；FD-15）；同 submissionId 重放返回同一 recordingId。
+   * 返回 null = 无匹配 entry 未重试；changed = true 时后端重放产生了新记录 ID，
+   * 内存 entry 已同步为新 ID，调用方自行决定跳转或原地展示。
+   */
+  async function retrySubmission(): Promise<RetrySubmissionResult | null> {
     const current = entry.value
-    if (!current || current.recordingId !== recordingId.value) return
+    if (!current || current.recordingId !== recordingId.value) return null
     const res = await detectionApi.submitRecording({
       audioId: current.audioId,
       levelId: current.levelId,
       submissionId: current.submissionId,
     })
-    if (res.data.recording.recordingId !== current.recordingId) {
-      // 保险：后端返回了新的记录 ID 时跟随跳转
-      entry.value = { ...current, recordingId: res.data.recording.recordingId }
+    const nextId = res.data.recording.recordingId
+    if (nextId !== current.recordingId) {
+      // 保险：后端返回了新的记录 ID，同步内存交接后交调用方处理
+      entry.value = { ...current, recordingId: nextId }
       setSubmittedEntry(entry.value)
-      void router.push(`/result/${res.data.recording.recordingId}`)
-      return
+      return { recordingId: nextId, changed: true }
     }
     void fetchOnce()
+    return { recordingId: nextId, changed: false }
   }
 
   /** 重新录音去向：回到关卡页 P05 录音区 */
   function retakeRoute(): string {
     const levelId = recording.value?.levelId ?? entry.value?.levelId
     return levelId ? `/learn/${levelId}#record` : '/library'
-  }
-
-  function refreshLevels() {
-    levelsStore.invalidate()
-    void levelsStore.refresh({ background: true })
   }
 
   return {
@@ -167,6 +155,5 @@ export function useRecordingResult(recordingId: Ref<string>) {
     fetchOnce,
     retrySubmission,
     retakeRoute,
-    refreshLevels,
   }
 }

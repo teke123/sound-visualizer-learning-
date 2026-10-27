@@ -1,7 +1,7 @@
 /**
  * recorder store：唯一 MediaRecorder 封装（授权、格式选择、时长上限、释放）。
  * 采集参数关闭回声消除 / 降噪 / 自动增益（若浏览器允许），避免改变音高与能量；
- * iOS：AudioContext 在首次手势时 resume（docs/architecture/04 §8）。
+ * iOS：AudioContext 在首次手势时 resume。
  *
  * 职责边界（FR-907）：本 store 只管录音状态机与产出音频 Blob；
  * 实时分析通过 AudioWorklet 输出带采样位置的 PCM，由 Worker 分析、画布渲染。

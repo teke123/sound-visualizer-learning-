@@ -1,121 +1,40 @@
-"""拼音文本工具（纯函数，无 app 内依赖）：评测文本音节化、声母/韵母拆分、
-主元音提取、语料库音节文件名归一。供内容搜索、评分标定与 Mock Provider 共用。"""
+"""拼音文本工具（纯函数，无 app 内依赖）：带调拼音标注解析、声母/韵母拆分、
+主元音提取。供评分（期望声调/试题构造）、标定（元音归属）与内容搜索共用。
+
+评测文本的读音与声调一律以关卡内容携带的拼音标注为准（讯飞试题用同一标注
+构造 interphonic 格式，期望声调回填同源），不做文本侧推断。
+"""
 from __future__ import annotations
 
 import re
 
-# 单字呼读音/教学定音覆盖表：修正 pypinyin 在单字脱离词境时的多音字歧义
-# 例如：L01「啊」作阴平示范 a1；L10「佛」声母 f 呼读音 fo2（pypinyin 默认 fu2）；
-# L11「得」声母 d 呼读音 de2；L14「勒」四声示范 le4（pypinyin 默认 lei1）
-_CHAR_PINYIN_OVERRIDES: dict[str, str] = {
-    "啊": "a1",
-    "噢": "o1",
-    "喔": "o1",
-    "鹅": "e2",
-    "一": "yi1",
-    "衣": "yi1",
-    "医": "yi1",
-    "乌": "wu1",
-    "迂": "yu1",
-    "鱼": "yu2",
-    "五": "wu3",
-    "波": "bo1",
-    "坡": "po1",
-    "摸": "mo1",
-    "佛": "fo2",
-    "得": "de2",
-    "特": "te4",
-    "讷": "ne4",
-    "勒": "le4",
-    "哥": "ge1",
-    "科": "ke1",
-    "喝": "he1",
-    "鸡": "ji1",
-    "机": "ji1",
-    "七": "qi1",
-    "妻": "qi1",
-    "西": "xi1",
-    "知": "zhi1",
-    "吃": "chi1",
-    "诗": "shi1",
-    "日": "ri4",
-    "资": "zi1",
-    "次": "ci4",
-    "思": "si1",
-}
+# 带调拼音标注项：无声调拼音（ü 可写作 v/u:）+ 1 位调号（讯飞口径 0-9，
+# 其中 0/5-9 均代表轻声），如 na4、nv3、zhi1
+_ANNOTATED_PINYIN = re.compile(r"[a-zv:ü]+[0-9]", re.IGNORECASE)
 
-# 单韵母裸符号 → 语料库标准音节文件名词干（一声）
-_BARE_VOWEL_TO_SYLLABLE: dict[str, tuple[str, str, int]] = {
-    "a": ("啊", "a1", 1),
-    "ā": ("啊", "a1", 1),
-    "o": ("噢", "o1", 1),
-    "ō": ("噢", "o1", 1),
-    "e": ("鹅", "e1", 1),
-    "ē": ("鹅", "e1", 1),
-    "é": ("鹅", "e2", 2),
-    "i": ("衣", "yi1", 1),
-    "ī": ("衣", "yi1", 1),
-    "u": ("乌", "wu1", 1),
-    "ū": ("乌", "wu1", 1),
-    "ü": ("迂", "yu1", 1),
-    "ǖ": ("迂", "yu1", 1),
-    "v": ("迂", "yu1", 1),
-}
+_PINYIN_SEPARATORS = re.compile(r"[|，,\s]+")
 
 
-def expected_syllables(text: str) -> list[dict]:
-    """评测文本 → 音节序列（文本/带调拼音/无声调拼音/声调/语料库词干）。
+def annotated_syllables(text: str, pinyin: str) -> list[dict]:
+    """评测文本 + 带调拼音标注 → 音节序列（文本/带调拼音/无声调拼音/声调）。
 
-    1. 自动剔除括号内注释（如「啊（平稳延长）」→「啊」）；
-    2. 含汉字时逐字转拼音（优先查教学定音表 `_CHAR_PINYIN_OVERRIDES`，再退回 pypinyin）；
-    3. 不含汉字但为单韵母符号（如听辨题 stimulusText='a'/'ü'）时映射为对应一声标准音节。
+    拼音以竖线、逗号或空白分隔，个数必须与文本汉字个数一致，每项必须带
+    1 位调号，否则抛 ValueError（调用方用于内容校验，不静默兜底）。
     """
-    from pypinyin import Style, pinyin
-
-    cleaned = re.sub(r"（[^）]*）|\([^)]*\)", "", text or "").strip()
+    chars = [ch for ch in (text or "") if "\u4e00" <= ch <= "\u9fff"]
+    if not chars:
+        raise ValueError("评测文本不含汉字")
+    pys = [p for p in _PINYIN_SEPARATORS.split((pinyin or "").strip()) if p]
+    if len(pys) != len(chars):
+        raise ValueError(f"拼音标注数（{len(pys)}）与汉字数（{len(chars)}）不一致")
     out: list[dict] = []
-    for ch in cleaned:
-        if not ("一" <= ch <= "鿿"):
-            continue
-        py = _CHAR_PINYIN_OVERRIDES.get(ch)
-        if not py:
-            py = pinyin(ch, style=Style.TONE3, heteronym=False)[0][0]
-        tone = None
-        for c in py:
-            if c.isdigit():
-                tone = int(c)
-                break
-        if tone is None:
-            tone = 1
-            py = f"{py}1"
-        plain = "".join(c for c in py if not c.isdigit())
-        stem = corpus_stem_of(plain, tone)
-        out.append({"text": ch, "pinyin": py, "plain": plain, "tone": tone, "stem": stem})
-
-    if not out and cleaned in _BARE_VOWEL_TO_SYLLABLE:
-        ch, py, tone = _BARE_VOWEL_TO_SYLLABLE[cleaned]
-        plain = "".join(c for c in py if not c.isdigit())
-        out.append({
-            "text": ch, "pinyin": py, "plain": plain,
-            "tone": tone, "stem": corpus_stem_of(plain, tone),
-        })
+    for ch, py in zip(chars, pys):
+        if not _ANNOTATED_PINYIN.fullmatch(py):
+            raise ValueError(f"拼音标注格式非法：{py!r}（应为无声调拼音+1位调号，如 na4）")
+        py = py.lower()
+        tone = int(py[-1])
+        out.append({"text": ch, "pinyin": py, "plain": py[:-1], "tone": tone})
     return out
-
-
-def corpus_stem_of(plain: str, tone: int | None = 1) -> str:
-    """无声调拼音 + 声调号 → 语料库文件名词干（如 'ü'/'yu'→'yu1', 'nü'→'nv3'）。"""
-    t = tone if tone in (1, 2, 3, 4) else 1
-    p = plain.strip().lower().replace("u:", "v")
-    if p in ("i",):
-        p = "yi"
-    elif p in ("u",):
-        p = "wu"
-    elif p in ("ü", "v"):
-        p = "yu"
-    else:
-        # n/l 后接 ü 在语料库中记为 nv / lv / nve / lve
-        p = p.replace("ü", "v")
-    return f"{p}{t}"
 
 
 def split_pinyin(s: str) -> tuple[str, str]:

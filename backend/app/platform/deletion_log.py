@@ -10,7 +10,7 @@ from app.db import now
 
 
 class DeletionLog:
-    """kind: file | feature_cache | score_cache。"""
+    """kind: file | feature_cache（评分缓存行在删除时已原地物理删除，无需日志）。"""
 
     def __init__(self, path=None):  # noqa: ANN001
         self.path = path or config.DELETION_LOG_PATH

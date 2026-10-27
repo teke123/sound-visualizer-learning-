@@ -10,7 +10,10 @@ import { quasar, transformAssetUrls } from '@quasar/vite-plugin'
 export default defineConfig({
   plugins: [
     vue({ template: { transformAssetUrls } }),
-    quasar(),
+    // sassVariables：注入 src/quasar-variables.sass 品牌主题（primary 等品牌色）
+    quasar({
+      sassVariables: fileURLToPath(new URL('./src/quasar-variables.sass', import.meta.url)),
+    }),
     vueDevTools(),
   ],
   /**
@@ -29,7 +32,7 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     proxy: {
-      // 开发态将 /api 代理到本地后端（docs/architecture/04 第 1 节）；
+      // 开发态将 /api 代理到本地后端；
       // 后端未就绪时可用 `npm run dev:mock` 走 MSW 模拟（不经代理）。
       '/api': {
         target: 'http://127.0.0.1:8000',

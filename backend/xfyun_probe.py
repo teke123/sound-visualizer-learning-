@@ -17,6 +17,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import sys
 import time
 import wave
@@ -26,7 +27,6 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from app import config  # noqa: E402
 from app.acoustics.transcode import normalize_to_wav  # noqa: E402
-from app.pinyin_utils import expected_syllables  # noqa: E402
 from app.scoring.provider import ProviderError  # noqa: E402
 from app.scoring.provider_xfyun import evaluate_raw  # noqa: E402
 
@@ -56,9 +56,11 @@ def _write_pcm(path: Path, pcm: bytes) -> None:
         w.writeframes(pcm)
 
 
-def prepare_audio(wavs: list[str] | None, text: str, workdir: Path, tag: str) -> tuple[Path, dict]:
+def prepare_audio(wavs: list[str] | None, text: str, workdir: Path, tag: str,
+                  pinyin: str | None = None) -> tuple[Path, dict]:
     """--wav 可多段：逐个转码规范化后拼接（段间 120ms 静音，首尾留白）；
-    无 --wav 时用声道模型合成。返回 (WAV 路径, 音频信息)。"""
+    无 --wav 时按拼音标注逐项定位语料库 MV1 录音再拼接。
+    返回 (WAV 路径, 音频信息)。"""
     workdir.mkdir(parents=True, exist_ok=True)
     if wavs:
         info: dict = {"sources": []}
@@ -79,8 +81,10 @@ def prepare_audio(wavs: list[str] | None, text: str, workdir: Path, tag: str) ->
     else:
         if RECORDINGS_DIR is None or not RECORDINGS_DIR.is_dir():
             raise SystemExit("未指定 --wav 且未配置 CORPUS_DIR 语料库目录")
-        syls = expected_syllables(text)
-        auto_wavs = [str(RECORDINGS_DIR / "MV1" / f"{s['stem']}_MV1.wav") for s in syls]
+        stems = [p for p in re.split(r"[|，,\s]+", (pinyin or "").strip()) if p]
+        if not stems:
+            raise SystemExit("未指定 --wav 时需 --pinyin（按拼音标注定位语料库录音）")
+        auto_wavs = [str(RECORDINGS_DIR / "MV1" / f"{stem}_MV1.wav") for stem in stems]
         return prepare_audio(auto_wavs, text, workdir, tag)
     info["wavPath"] = str(out)
     info["pcmBytes"] = len(pcm)
@@ -126,7 +130,7 @@ def run_case(name: str, *, text: str, category: str, wavs: list[str] | None,
     print(f"\n=== 用例 {name}: text={text!r} category={category} "
           f"pinyin={pinyin or '-'} runs={runs} ===")
     workdir = out_dir / "audio"
-    wav_path, audio_info = prepare_audio(wavs, text, workdir, name)
+    wav_path, audio_info = prepare_audio(wavs, text, workdir, name, pinyin=pinyin)
     print(f"音频: {audio_info['kind']} {audio_info['durationSec']}s "
           f"pcm={audio_info['pcmBytes']}B sha={audio_info['pcmSha256']}")
 
@@ -150,8 +154,7 @@ def run_case(name: str, *, text: str, category: str, wavs: list[str] | None,
     prov_out = {
         "providerVersion": prov.provider_version,
         "overallScore": prov.overall_score,
-        "initialScore": prov.initial_score, "finalScore": prov.final_score,
-        "toneScore": prov.tone_score, "scores": prov.scores,
+        "scores": prov.scores,
         "reading": prov.reading,
         "syllables": [
             {"text": s.text, "pinyin": s.pinyin, "t0": s.t0, "t1": s.t1,

@@ -18,6 +18,7 @@ class RegisterBody(BaseModel):
     username: str
     password: str
     dialectBackground: str | None = None
+    gender: str | None = None
 
 
 @router.post("/register", response_model=Envelope[RegisterResponse])
@@ -26,7 +27,8 @@ async def register(request: Request, body: RegisterBody,
     actor.rate_limit("register")
     result = identity_uc.register_user(actor.db, username=body.username,
                                        password=body.password,
-                                       dialect_background=body.dialectBackground)
+                                       dialect_background=body.dialectBackground,
+                                       gender=body.gender)
     return envelope(request, result)
 
 

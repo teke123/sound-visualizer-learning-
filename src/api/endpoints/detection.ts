@@ -1,4 +1,4 @@
-/** acoustics / scoring / detection 模块端点：上传、标定、录音（docs/decision-map-backend.md） */
+/** acoustics / scoring / detection 模块端点：上传、标定、录音 */
 import { apiRequest } from '../client'
 import type {
   AudioPurpose,

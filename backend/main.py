@@ -54,7 +54,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="看得见的声音 API",
         version="1.0.0",
-        description="普通话发音学习平台后端（契约见 docs/decision-map-backend.md）",
+        description="普通话发音学习平台后端（契约见 /openapi.json）",
         lifespan=lifespan,
     )
     register_exception_handlers(app)

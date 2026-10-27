@@ -1,19 +1,17 @@
 <script setup lang="ts">
 /**
  * ArchiveList：本人存档列表（FR-1102 / FR-1103）：按关卡分组，
- * 播放、删除（二次确认）、同关选两条比较；跨版本提示由比较页承接。
+ * 播放、删除（二次确认）。
  */
 import { computed, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { QBadge, QBtn } from 'quasar'
 import { audioFileUrl, type ArchiveRecordingSummary } from '@/api'
 import { usePlayerStore } from '@/stores/player'
 import { useArchive } from '@/features/archive'
 import { errorCopy } from '@/copy/usePageCopy'
 import { formatDateTime } from '@/utils'
 import DangerConfirmDialog from './DangerConfirmDialog.vue'
-import ComparePicker from './ComparePicker.vue'
 
-const router = useRouter()
 const archive = useArchive()
 const player = usePlayerStore()
 
@@ -28,12 +26,14 @@ const groups = computed(() =>
   })),
 )
 
-function openCompare(a: string, b: string) {
-  void router.push({ path: '/archive/compare', query: { a, b } })
-}
-
 function play(item: ArchiveRecordingSummary) {
   void player.play({ key: `audio:${item.audioId}`, url: audioFileUrl(item.audioId), label: '存演回放' })
+}
+
+/** 紧凑分数：声母/韵母/声调为主，综合分次之（与 ScoreCard 同口径） */
+function scoreText(score: NonNullable<ArchiveRecordingSummary['score']>): string {
+  const part = (v: number | null | undefined) => (typeof v === 'number' ? Math.round(v) : '—')
+  return `声母${part(score.initial)} 韵母${part(score.final)} 声调${part(score.tone)} · 综合${Math.round(score.overall)}`
 }
 </script>
 
@@ -46,7 +46,15 @@ function play(item: ArchiveRecordingSummary) {
     <p v-else-if="archive.error.value" class="al-error">{{ errorCopy(archive.error.value).title }}</p>
 
     <div v-if="groups.length > 0" class="al-toolbar">
-      <button type="button" class="al-clear" @click="clearing = true">清空全部档案</button>
+      <QBtn
+        outline
+        no-caps
+        color="red-3"
+        text-color="red-9"
+        class="al-clear"
+        label="清空全部档案"
+        @click="clearing = true"
+      />
     </div>
 
     <section v-for="group in groups" :key="group.levelId" class="al-group">
@@ -58,33 +66,41 @@ function play(item: ArchiveRecordingSummary) {
         <li v-for="item in group.items" :key="item.recordingId" class="al-item">
           <div class="al-main">
             <span class="al-date">{{ formatDateTime(item.createdAt ?? undefined) }}</span>
-            <span :class="['al-verdict', item.verdict]">{{ item.verdict === 'pass' ? '录音质量良好' : '录音质量欠佳' }}</span>
-            <span v-if="typeof item.score === 'number'" class="al-score">{{ Math.round(item.score) }} 分</span>
+            <QBadge :class="['al-verdict', item.verdict]">{{ item.verdict === 'pass' ? '录音质量良好' : '录音质量欠佳' }}</QBadge>
+            <span v-if="item.score" class="al-score">{{ scoreText(item.score) }}</span>
           </div>
           <div class="al-actions">
-            <button type="button" class="al-btn" @click="play(item)">
+            <QBtn outline no-caps color="blue-grey-4" text-color="blue-grey-9" class="al-action" @click="play(item)">
               {{ player.isCurrent(`audio:${item.audioId}`) ? '⏸ 暂停' : '▶ 播放' }}
-            </button>
+            </QBtn>
             <RouterLink class="al-btn" :to="`/result/${item.recordingId}`">查看</RouterLink>
-            <button type="button" class="al-btn danger" @click="deleting = item">删除</button>
+            <QBtn
+              outline
+              no-caps
+              color="red-3"
+              text-color="red-9"
+              class="al-action"
+              label="删除"
+              @click="deleting = item"
+            />
           </div>
         </li>
       </ul>
-      <div v-if="group.items.length >= 2" class="al-compare-row">
-        <ComparePicker :items="group.items" @pick="openCompare" />
-      </div>
     </section>
 
     <!-- 键集分页：超过一页（默认 20 条）时加载更多，避免列表被静默截断 -->
     <div v-if="archive.hasMore.value" class="al-more-row">
-      <button
-        type="button"
+      <QBtn
+        outline
+        no-caps
+        color="blue-grey-3"
+        text-color="blue-grey-9"
         class="al-more"
-        :disabled="archive.loadingMore.value"
+        :disable="archive.loadingMore.value"
         @click="archive.loadMore()"
       >
         {{ archive.loadingMore.value ? '加载中…' : '加载更多记录' }}
-      </button>
+      </QBtn>
       <span v-if="archive.loadMoreError.value" class="al-error">
         加载更多失败，请再试一次。
       </span>
@@ -121,15 +137,6 @@ function play(item: ArchiveRecordingSummary) {
   display: flex
   justify-content: flex-end
   margin-bottom: 6px
-
-.al-clear
-  min-height: 40px
-  padding: 2px 14px
-  border: 1px solid #ef9a9a
-  color: #c62828
-  background: #fff
-  border-radius: 8px
-  cursor: pointer
 
 .al-group
   margin-top: 12px
@@ -179,8 +186,6 @@ function play(item: ArchiveRecordingSummary) {
 
 .al-verdict
   font-size: 12px
-  border-radius: 4px
-  padding: 1px 8px
   &.pass
     background: #e8f5e9
     color: #2e7d32
@@ -199,6 +204,7 @@ function play(item: ArchiveRecordingSummary) {
   display: flex
   gap: 8px
 
+/* RouterLink「查看」保留手写按钮观感（RouterLink 不换成 QBtn），与相邻 QBtn outline 视觉对齐 */
 .al-btn
   min-height: 40px
   padding: 2px 14px
@@ -210,28 +216,19 @@ function play(item: ArchiveRecordingSummary) {
   text-decoration: none
   display: inline-flex
   align-items: center
-  &.danger
-    border-color: #ef9a9a
-    color: #c62828
 
-.al-compare-row
-  margin-top: 10px
+/* QBtn 恢复原版 .al-btn/.al-clear 的 8px 小圆角与 40px 高度 */
+.al-action, .al-clear
+  border-radius: 8px
+  min-height: 40px
+
+/* 原 .al-more 为 #b0bec5 描边胶囊（半径走全局 999px），仅补回 40px 高度 */
+.al-more
+  min-height: 40px
 
 .al-more-row
   margin-top: 14px
   display: flex
   align-items: center
   gap: 12px
-
-.al-more
-  min-height: 40px
-  padding: 2px 18px
-  border: 1px solid #b0bec5
-  border-radius: 999px
-  background: #fff
-  color: #37474f
-  cursor: pointer
-  &:disabled
-    color: #90a4ae
-    cursor: default
 </style>

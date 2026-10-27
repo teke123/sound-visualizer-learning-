@@ -21,6 +21,9 @@ class UserRow(Base):
     # 方言区/母语背景（FR-107，可选）：取值见 identity.usecases.DIALECT_CODES；
     # 用于针对性提示（FR-1007）与后续分组统计，注销时随账号一起失效
     dialect_background: Mapped[str | None] = mapped_column(String(32))
+    # 性别（FR-107，可选）：取值见 identity.usecases.GENDER_CODES；
+    # 用于音高参考范围与后续分组统计，注销时随账号一起失效
+    gender: Mapped[str | None] = mapped_column(String(16))
 
 
 class AuthSessionRow(Base):

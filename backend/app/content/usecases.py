@@ -14,23 +14,27 @@ from app.content.models import (
 )
 from app.db import JSONText, now
 from app.platform.envelope import ApiError
-from app.pinyin_utils import expected_syllables, split_pinyin
+from app.pinyin_utils import annotated_syllables, main_vowel, split_pinyin
 
 logger = logging.getLogger("svs.content")
 
 LAYER_LABEL = {"vowel": "单韵母", "initial": "声母", "syllable": "拼读"}
 
-SAGITTAL_ENUMS = {
-    "lips_contact": {"none", "bilabial", "labiodental"},
-    "tip_place": {"rest", "dental", "alveolar", "postalveolar", "retroflex"},
-    "tip_stricture": {"open", "approximant", "fricative", "closure"},
-    "body_stricture": {"open", "approximant", "fricative", "closure"},
-    "velum": {"raised", "lowered"},
-    "airflow": {"none", "oral", "nasal", "burst", "aspirated_burst", "friction", "affricate"},
-}
-
 
 # ---------------- 读模型 ----------------
+
+PHONOLOGY_FIELDS = ("ipa", "kind", "initial", "final", "tones", "place", "manner",
+                    "aspiration", "voicing", "hu", "finalStructure")
+
+
+def _phonology_of(content: dict) -> dict | None:
+    """关卡内容 phonology 段透传（可选；未填写返回 None，前端按 targetSound/pinyin 兜底）。"""
+    raw = content.get("phonology")
+    if not isinstance(raw, dict):
+        return None
+    out = {k: raw.get(k) for k in PHONOLOGY_FIELDS if raw.get(k) is not None}
+    return out or None
+
 
 def availability_of(level: LevelRow) -> str:
     return "open" if level.published else "closed"
@@ -46,8 +50,6 @@ def level_summary(db: Session, level: LevelRow) -> dict:
     demos = content.get("demos") or []
     demo_media = next((d["mediaId"] for d in demos
                        if d.get("speed") == "normal" and d.get("mediaId")), None)
-    quizzes = content.get("quizzes") or []
-    practice = content.get("practice") or []
     return {
         "id": level.id,
         "order": level.order,
@@ -57,12 +59,9 @@ def level_summary(db: Session, level: LevelRow) -> dict:
         "pinyin": content.get("pinyin") or "",
         "representativeChar": content.get("representativeChar") or "",
         "title": content.get("title") or "",
+        "phonology": _phonology_of(content),
         "demoMediaId": demo_media,
         "availability": availability_of(level),
-        "completionKeys": {
-            "quizIds": [q["id"] for q in quizzes if q.get("id")],
-            "practiceStepIds": [p["id"] for p in practice if p.get("id")],
-        },
     }
 
 
@@ -115,21 +114,14 @@ def level_sections(content: dict) -> dict:
         }
         for q in (content.get("quizzes") or [])
     ]
-    practice = [
-        {"id": p["id"], "title": p.get("title", ""), "instruction": p.get("instruction", ""),
-         "repeat": p.get("repeat"), "durationSec": p.get("durationSec"),
-         "bodyCue": p.get("bodyCue", ""), "mediaId": p.get("mediaId")}
-        for p in (content.get("practice") or [])
-    ]
+    practice = [p for p in (content.get("practice") or []) if isinstance(p, str)]
     articulation_raw = content.get("articulation") or {}
     articulation = {
         "media": [
             {"mediaId": m.get("mediaId"), "kind": m.get("kind", "image"),
-             "altText": m.get("altText", "")}
+             "altText": m.get("altText", ""), "component": m.get("component")}
             for m in (articulation_raw.get("media") or []) if m.get("mediaId")
         ],
-        "description": articulation_raw.get("description", ""),
-        "sagittal": articulation_raw.get("sagittal") or {"keyframes": []},
         "model3dMediaId": articulation_raw.get("model3dMediaId"),
     }
     detection_raw = content.get("detection") or {}
@@ -137,7 +129,6 @@ def level_sections(content: dict) -> dict:
         "promptText": detection_raw.get("promptText", ""),
         "sampleMediaId": detection_raw.get("sampleMediaId"),
         "allowedMetrics": detection_raw.get("allowedMetrics", []),
-        "available": True,
     }
     return {
         "articulation": articulation,
@@ -164,14 +155,21 @@ def level_detail(db: Session, level_id: str) -> dict:
         "representativeChar": content.get("representativeChar"),
         "title": content.get("title"),
         "tags": content.get("tags") or [],
+        "phonology": _phonology_of(content),
         "nav": _nav(db, level, content),
-        "misconceptions": content.get("misconceptions") or [],
         "professional": content.get("professional") or {},
         **level_sections(content),
     }
 
 
 # ---------------- 搜索（pypinyin 汉字拆声母/韵母映射） ----------------
+
+def _plain_pinyin(s: str) -> str:
+    """小写并去拼音声调符号（má → ma）：带调目标音与无声调查询词可互相命中。"""
+    import unicodedata
+    decomposed = unicodedata.normalize("NFD", (s or "").lower())
+    return "".join(ch for ch in decomposed if not unicodedata.combining(ch))
+
 
 def search_levels(db: Session, query: str) -> dict:
     query = (query or "").strip()
@@ -187,19 +185,19 @@ def search_levels(db: Session, query: str) -> dict:
             c.get("representativeChar"), " ".join(c.get("tags") or []),
         ]))
 
-    low = query.lower()
+    low = _plain_pinyin(query)
     results = []
     for lv in levels:
         c = contents[lv.id]
-        hay = text_of(lv.id).lower()
+        hay = _plain_pinyin(text_of(lv.id))
         score = 0
-        if c.get("targetSound", "").lower() == low:
+        if _plain_pinyin(c.get("targetSound") or "") == low:
             score = 100
-        elif c.get("pinyin", "").lower() == low:
+        elif _plain_pinyin(c.get("pinyin") or "") == low:
             score = 95
         elif c.get("representativeChar") == query:
             score = 90
-        elif low in (c.get("pinyin") or "").lower() or (c.get("pinyin") or "").lower() in low:
+        elif low in _plain_pinyin(c.get("pinyin") or "") or _plain_pinyin(c.get("pinyin") or "") in low:
             score = 70
         elif any(t.lower() == low for t in (c.get("tags") or [])):
             score = 65
@@ -217,7 +215,7 @@ def search_levels(db: Session, query: str) -> dict:
         for lv in levels:
             c = contents[lv.id]
             ts = (c.get("targetSound") or "")
-            if ts and ts.lower() in low and lv.id not in seen:
+            if ts and _plain_pinyin(ts) in low and lv.id not in seen:
                 near.append(level_summary(db, lv))
                 seen.add(lv.id)
             if len(near) >= 3:
@@ -232,7 +230,7 @@ def _pinyin_match(query: str, content: dict) -> int:
     """汉字查询 → 拼音声母/韵母映射到关卡（pypinyin）。"""
     from pypinyin import Style, pinyin
 
-    target = (content.get("targetSound") or "").lower()
+    target = _plain_pinyin(content.get("targetSound") or "")
     if not target:
         return 0
     for ch in query:
@@ -253,6 +251,39 @@ def _pinyin_match(query: str, content: dict) -> int:
 def article_categories(db: Session) -> list[dict]:
     rows = db.query(CategoryRow).order_by(CategoryRow.sort).all()
     return [{"id": r.id, "name": r.name} for r in rows]
+
+
+def create_category(db: Session, *, name: str, sort: int = 0) -> dict:
+    if db.query(CategoryRow).filter(CategoryRow.name == name).count():
+        raise ApiError(409, "INVALID_STATE", "分类已存在")
+    db.add(CategoryRow(name=name, sort=sort, created_at=now()))
+    db.commit()
+    return {"created": True}
+
+
+def rename_category(db: Session, category_id: int, *, name: str,
+                    sort: int = 0) -> dict:
+    row = db.get(CategoryRow, category_id)
+    if row is None:
+        raise ApiError(404, "NOT_FOUND", "分类不存在")
+    row.name = name
+    row.sort = sort
+    db.commit()
+    return {"id": row.id, "name": row.name}
+
+
+def delete_category(db: Session, category_id: int) -> dict:
+    row = db.get(CategoryRow, category_id)
+    if row is None:
+        raise ApiError(404, "NOT_FOUND", "分类不存在")
+    used = sum(
+        1 for a in db.query(ArticleRow).all()
+        if (JSONText.load(a.content, {}) or {}).get("category") == row.name)
+    if used:
+        raise ApiError(409, "INVALID_STATE", f"仍有 {used} 篇文章使用该分类，请先改分类")
+    db.delete(row)
+    db.commit()
+    return {"deleted": True}
 
 
 def articles_list(db: Session, category: str | None = None) -> dict:
@@ -307,75 +338,15 @@ def media_publicly_readable(db: Session, media_id: str) -> MediaAssetRow | None:
 
 # ---------------- 内容完整性检查（FR-1203/1204） ----------------
 
-def validate_sagittal_keyframes(frames: list[dict]) -> list[str]:
-    errors: list[str] = []
-    if not frames:
-        return ["声道剖面至少需要一帧"]
-    for i, fr in enumerate(frames):
-        p = f"剖面第{i + 1}帧"
-        for k in ("jaw",):
-            v = fr.get(k)
-            if not isinstance(v, (int, float)) or not 0 <= v <= 1:
-                errors.append(f"{p} jaw 需在 0–1")
-        lips = fr.get("lips") or {}
-        for k in ("aperture", "rounding"):
-            v = lips.get(k)
-            if not isinstance(v, (int, float)) or not 0 <= v <= 1:
-                errors.append(f"{p} lips.{k} 需在 0–1")
-        if lips.get("contact") not in SAGITTAL_ENUMS["lips_contact"]:
-            errors.append(f"{p} lips.contact 取值非法")
-        tip = fr.get("tongueTip") or {}
-        if tip.get("place") not in SAGITTAL_ENUMS["tip_place"]:
-            errors.append(f"{p} tongueTip.place 取值非法")
-        if tip.get("stricture") not in SAGITTAL_ENUMS["tip_stricture"]:
-            errors.append(f"{p} tongueTip.stricture 取值非法")
-        body = fr.get("tongueBody") or {}
-        for k in ("height", "backness"):
-            v = body.get(k)
-            if not isinstance(v, (int, float)) or not 0 <= v <= 1:
-                errors.append(f"{p} tongueBody.{k} 需在 0–1")
-        if body.get("stricture") not in SAGITTAL_ENUMS["body_stricture"]:
-            errors.append(f"{p} tongueBody.stricture 取值非法")
-        if fr.get("velum") not in SAGITTAL_ENUMS["velum"]:
-            errors.append(f"{p} velum 取值非法")
-        if fr.get("airflow") not in SAGITTAL_ENUMS["airflow"]:
-            errors.append(f"{p} airflow 取值非法")
-        if not isinstance(fr.get("voicing"), bool):
-            errors.append(f"{p} voicing 需为布尔")
-        if not isinstance(fr.get("holdMs"), int) or fr["holdMs"] < 0:
-            errors.append(f"{p} holdMs 需为非负整数")
-    return errors
-
-
 def precheck_level(db: Session, content: dict) -> list[str]:
     """开放关卡的基本内容完整性检查：逐项返回缺失/非法。"""
     missing: list[str] = []
     if not content.get("targetSound"):
         missing.append("缺少目标音")
-    quizzes = content.get("quizzes") or []
-    if not quizzes:
-        missing.append("缺少听辨题")
-    qids = [q.get("id") for q in quizzes]
-    if len(qids) != len(set(qids)):
-        missing.append("听辨题 id 重复")
-    for q in quizzes:
-        if len(q.get("options") or []) < 2:
-            missing.append(f"听辨题 {q.get('id')} 选项不足 2 个")
-        if not isinstance(q.get("answerIndex"), int) or not 0 <= q["answerIndex"] < len(q.get("options") or []):
-            missing.append(f"听辨题 {q.get('id')} answerIndex 非法")
-        if not q.get("stimulusMediaId"):
-            missing.append(f"听辨题 {q.get('id')} 缺少题干音频")
     practice = content.get("practice") or []
-    if not practice:
-        missing.append("缺少练习步骤")
-    pids = [p.get("id") for p in practice]
-    if len(pids) != len(set(pids)):
-        missing.append("练习步骤 id 重复")
+    if not practice or not all(isinstance(p, str) and p for p in practice):
+        missing.append("缺少练习文案")
     art = content.get("articulation") or {}
-    if not art.get("description"):
-        missing.append("缺少构形说明")
-    frames = (art.get("sagittal") or {}).get("keyframes") or []
-    missing.extend(validate_sagittal_keyframes(frames))
     for m in art.get("media") or []:
         if m.get("mediaId") and not m.get("altText"):
             missing.append("构形媒体缺少替代文本")
@@ -387,15 +358,20 @@ def precheck_level(db: Session, content: dict) -> list[str]:
         missing.append("缺少朗读提示词")
     if not det.get("evaluationText"):
         missing.append("缺少评测文本")
+    if not det.get("evaluationPinyin"):
+        missing.append("缺少评测拼音标注")
+    elif det.get("evaluationText"):
+        try:
+            annotated_syllables(det["evaluationText"], det["evaluationPinyin"])
+        except ValueError as e:
+            missing.append(f"评测拼音标注无效：{e}")
     if not det.get("sampleMediaId"):
         missing.append("缺少参考示范音频")
     if not det.get("fourStepTemplates"):
         missing.append("缺少四步反馈模板")
-    if not (content.get("misconceptions") or []):
-        missing.append("缺少误区说明")
     prof = content.get("professional") or {}
     if not prof.get("description"):
-        missing.append("缺少专业折叠说明")
+        missing.append("缺少专业与声学说明")
     # 引用的媒体必须存在且未删除
     all_media = _collect_media_ids(content)
     for mid in all_media:
@@ -468,9 +444,9 @@ def _split_voiced_equal(voiced: list[list[float]], n: int) -> list[tuple[float, 
 
 def compute_standard_curve(db: Session, content: dict) -> dict | None:
     """标准示范曲线：与用户录音同一条 F0 管线（filtered AC + 四步清洗 +
-    degree 1-5 五度坐标，docs/f0展示修改测试版1.md §5.1），音域用参考
+    degree 1-5 五度坐标），音域用参考
     发音人自身固定音域。音节边界优先复用同一媒体的登记时间戳，缺省按累计有声时长等分，全程
-    不调评分 Provider——seed 30 关与后台保存关卡都不消耗评测配额。
+    不调评分 Provider——seed 关卡与后台保存关卡都不消耗评测配额。
     提取失败（如清辅音为主）时返回 None，该关结果页曲线对比降级为不可用，
     不阻断内容保存。"""
     det = content.get("detection") or {}
@@ -494,7 +470,12 @@ def compute_standard_curve(db: Session, content: dict) -> dict | None:
         logger.warning("标准曲线计算失败：media=%s speaker=%s", media_id, speaker_id,
                        exc_info=True)
         return None
-    n = len(expected_syllables(det.get("evaluationText", "")))
+    try:   # 音节数以评测拼音标注为准（读音与声调同源，不做文本侧推断）
+        n = len(annotated_syllables(det.get("evaluationText", ""),
+                                    det.get("evaluationPinyin", "")))
+    except ValueError:
+        logger.warning("标准曲线计算跳过：评测拼音缺失或无效：media=%s", media_id)
+        return None
     # 保留已登记/历史示范的音节时间戳；无时间戳时使用本地累计时长回退。
     previous_curve = content.get("standardCurve") or {}
     previous = previous_curve.get("segments", []) if previous_curve.get("sampleMediaId") == media_id else []
@@ -609,3 +590,25 @@ def get_active_calibration_text(db: Session) -> CalibrationTextRow | None:
     return (db.query(CalibrationTextRow)
             .filter(CalibrationTextRow.active.is_(True))
             .order_by(CalibrationTextRow.id.desc()).first())
+
+
+def set_calibration_text(db: Session, *, text_version: str, text: str,
+                         syllables: list[dict]) -> dict:
+    """标定文本配置：须覆盖六个单韵母（FR-1403）；每字带拼音标注。"""
+    try:
+        entries = annotated_syllables("".join(s["text"] for s in syllables),
+                                      "|".join(s["pinyin"] for s in syllables))
+    except ValueError as e:
+        raise ApiError(422, "VALIDATION_ERROR", f"标定文本拼音标注无效：{e}")
+    found = {v for v in (main_vowel(e["plain"]) for e in entries) if v}
+    missing = {"a", "o", "e", "i", "u", "ü"} - found
+    if missing:
+        raise ApiError(422, "VALIDATION_ERROR",
+                       "标定文本须覆盖六个单韵母（缺 " + "、".join(sorted(missing)) + "）")
+    for row in db.query(CalibrationTextRow).all():
+        row.active = False
+    db.add(CalibrationTextRow(text_version=text_version, text=text,
+                              syllables=JSONText.dump(syllables),
+                              active=True, updated_at=now()))
+    db.commit()
+    return {"textVersion": text_version}

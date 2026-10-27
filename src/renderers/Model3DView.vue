@@ -3,12 +3,14 @@
  * Model3DView：三维构形渲染器（FR-603 / FD-07）。
  * three.js 仅在本组件挂载时动态 import（按需代码分割，不拖慢首屏），
  * 经 GLTFLoader 加载 model3dMediaId 对应的 glTF/GLB 模型；
- * 支持拖拽旋转 / 滚轮缩放；遵循 prefers-reduced-motion（不自动旋转）。
- * 纯展示：不调 api、不读 store，模型地址由 props.src 提供。
+ * 模型自带动画轨道（如 ma 发音动作的形态/变换动画）时经 AnimationMixer 循环播放，
+ * 全部轨道同 mixer 并播；遵循 prefers-reduced-motion（不自动播放、不自动旋转）。
+ * 支持拖拽旋转 / 滚轮缩放。纯展示：不调 api、不读 store，模型地址由 props.src 提供。
  */
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { QBtn } from 'quasar'
 import { usePreferredReducedMotion } from '@vueuse/core'
-import type { Mesh, Object3D, PerspectiveCamera, Scene, WebGLRenderer } from 'three'
+import type { AnimationMixer, Clock, Mesh, Object3D, PerspectiveCamera, Scene, WebGLRenderer } from 'three'
 import type { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import type { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 
@@ -22,6 +24,8 @@ const props = defineProps<{
 const reducedMotion = usePreferredReducedMotion()
 const status = ref<'loading' | 'ready' | 'error'>('loading')
 const errorMessage = ref('')
+const hasAnimation = ref(false)
+const animationPlaying = ref(true)
 const container = ref<HTMLDivElement | null>(null)
 
 // three 资源句柄：挂载并懒加载完成后填充，卸载时全部释放
@@ -32,6 +36,8 @@ let camera: PerspectiveCamera | null = null
 let controls: OrbitControls | null = null
 let loader: GLTFLoader | null = null
 let model: Object3D | null = null
+let mixer: AnimationMixer | null = null
+let clock: Clock | null = null
 let resizeObserver: ResizeObserver | null = null
 let rafHandle = 0
 let disposed = false
@@ -81,6 +87,7 @@ onMounted(async () => {
     })
 
     loader = new gltfModule.GLTFLoader()
+    clock = new three.Clock()
     loadModel()
 
     resizeObserver = new ResizeObserver(fitCanvas)
@@ -106,6 +113,7 @@ function fitCanvas() {
 function animate() {
   rafHandle = requestAnimationFrame(animate)
   controls?.update()
+  if (animationPlaying.value && mixer && clock) mixer.update(clock.getDelta())
   if (renderer && scene && camera) renderer.render(scene, camera)
 }
 
@@ -129,6 +137,16 @@ function loadModel() {
       next.position.set(-center.x * scale, -center.y * scale, -center.z * scale)
       scene.add(next)
       model = next
+      // Blender 多对象导出会拆成多条轨道：全部挂到同一 mixer 并播即可同步演出
+      if (gltf.animations.length > 0) {
+        mixer = new THREE.AnimationMixer(next)
+        for (const clip of gltf.animations) mixer.clipAction(clip).play()
+        hasAnimation.value = true
+        animationPlaying.value = !reducedMotion.value
+      } else {
+        mixer = null
+        hasAnimation.value = false
+      }
       status.value = 'ready'
     },
     undefined,
@@ -142,6 +160,9 @@ function loadModel() {
 }
 
 function disposeModel() {
+  mixer?.stopAllAction()
+  mixer = null
+  hasAnimation.value = false
   if (!model) return
   model.traverse((obj) => {
     const mesh = obj as Mesh
@@ -185,7 +206,24 @@ onBeforeUnmount(() => {
     <figcaption class="model3d-caption">
       <span v-if="status === 'loading'">三维模型加载中…</span>
       <span v-else-if="status === 'error'" class="error">{{ errorMessage }}</span>
-      <span v-else>拖拽旋转 · 滚轮缩放</span>
+      <template v-else>
+        <QBtn
+          v-if="hasAnimation"
+          outline
+          no-caps
+          dense
+          color="primary"
+          text-color="teal-9"
+          size="12px"
+          class="anim-toggle"
+          :icon="animationPlaying ? 'pause' : 'play_arrow'"
+          :aria-label="animationPlaying ? '暂停发音动画' : '播放发音动画'"
+          @click="animationPlaying = !animationPlaying"
+        >
+          {{ animationPlaying ? '暂停动画' : '播放动画' }}
+        </QBtn>
+        <span>拖拽旋转 · 滚轮缩放</span>
+      </template>
     </figcaption>
   </figure>
 </template>
@@ -211,6 +249,14 @@ onBeforeUnmount(() => {
   color: #78909c
   margin-top: 6px
   text-align: center
+  display: flex
+  justify-content: center
+  align-items: center
+  gap: 10px
+  flex-wrap: wrap
   .error
     color: #c62828
+
+.anim-toggle
+  min-height: 28px
 </style>

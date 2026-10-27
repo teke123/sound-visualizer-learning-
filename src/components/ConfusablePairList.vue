@@ -1,9 +1,10 @@
 <script setup lang="ts">
 /**
- * ConfusablePairList：易混关并排入口（FR-403 / FD-05）。
+ * ConfusablePairList：音素对比并排入口（FR-403 / FD-05）。
  * 仅显示双方都已开放的比较；点击打开 ComparePanel（?compare=，可分享）。
  */
 import { computed } from 'vue'
+import { QBtn } from 'quasar'
 import type { ConfusablePair, LevelSummary } from '@/api'
 
 const props = defineProps<{
@@ -27,10 +28,9 @@ const visiblePairs = computed<PairView[]>(() =>
 </script>
 
 <template>
-  <section class="confusable-pairs" aria-label="易混关比较">
-    <h2>易混音并排看</h2>
-    <p class="pair-hint">两个容易混淆的音放在一起听、一起看，更容易分辨。</p>
-    <div v-if="visiblePairs.length === 0" class="pair-empty">暂无可比较的易混关（需双方都已开放）</div>
+  <section class="confusable-pairs" aria-label="音素对比">
+    <h2>音素对比</h2>
+    <div v-if="visiblePairs.length === 0" class="pair-empty">暂无可比较的音素对（需双方都已开放）</div>
     <ul v-else class="pair-list">
       <li v-for="item in visiblePairs" :key="item.pair.a" class="pair-item">
         <div class="pair-sounds">
@@ -39,7 +39,15 @@ const visiblePairs = computed<PairView[]>(() =>
           <span class="pair-sound">{{ item.b!.targetSound }}</span>
         </div>
         <div class="pair-names">{{ item.a!.title }} · {{ item.b!.title }}</div>
-        <button type="button" class="pair-btn" @click="emit('compare', item.pair)">并排比较</button>
+        <QBtn
+          outline
+          no-caps
+          color="primary"
+          text-color="teal-9"
+          class="pair-btn"
+          label="并排比较"
+          @click="emit('compare', item.pair)"
+        />
       </li>
     </ul>
   </section>
@@ -49,12 +57,7 @@ const visiblePairs = computed<PairView[]>(() =>
 .confusable-pairs
   h2
     font-size: 17px
-    margin: 0 0 4px
-
-.pair-hint
-  font-size: 13px
-  color: #90a4ae
-  margin: 0 0 12px
+    margin: 0 0 12px
 
 .pair-empty
   color: #90a4ae
@@ -96,12 +99,9 @@ const visiblePairs = computed<PairView[]>(() =>
   font-size: 12px
   color: #78909c
 
+/* 「并排比较」原 #e1f5fe/#0288d1 蓝软底，按用户指定统一为浅青填充：青细描边 + 浅青底 + 深青字（原 40px 高补回）；
+   Quasar outline 底色为 transparent !important，覆盖需同为 important */
 .pair-btn
   min-height: 40px
-  padding: 2px 16px
-  border-radius: 999px
-  border: 1px solid #0288d1
-  background: #e1f5fe
-  color: #01579b
-  cursor: pointer
+  background: #e0f2f1 !important
 </style>

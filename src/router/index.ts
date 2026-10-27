@@ -39,9 +39,8 @@ const routes: RouteRecordRaw[] = [
   // P09 结果
   { path: '/result/:id', name: 'result', component: () => import('@/pages/ResultPage.vue'), meta: { pageCode: 'P09', title: '检测结果' } },
 
-  // P10 声音档案 + 同关比较
+  // P10 声音档案
   { path: '/archive', name: 'archive', component: () => import('@/pages/ArchivePage.vue'), meta: { pageCode: 'P10', title: '声音档案' } },
-  { path: '/archive/compare', name: 'archive-compare', component: () => import('@/pages/ArchiveComparePage.vue'), meta: { pageCode: 'P10', title: '同关比较' } },
 
   // P11 账号：已登录访问 login/register 转到 /account
   { path: '/account', name: 'account', component: () => import('@/pages/AccountPage.vue'), meta: { pageCode: 'P11', title: '账号' } },

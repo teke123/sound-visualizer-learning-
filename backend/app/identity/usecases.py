@@ -26,6 +26,9 @@ DIALECT_CODES = frozenset({
     "hakka", "english", "japanese", "korean", "other",
 })
 
+# 性别代码集（FR-107）：稳定代码便于音高参考与分组统计；标签文案由前端维护
+GENDER_CODES = frozenset({"male", "female", "other"})
+
 
 def _validated_dialect(value: str | None) -> str | None:
     if value in (None, ""):
@@ -36,14 +39,24 @@ def _validated_dialect(value: str | None) -> str | None:
     return value
 
 
+def _validated_gender(value: str | None) -> str | None:
+    if value in (None, ""):
+        return None
+    if value not in GENDER_CODES:
+        raise ApiError(422, "VALIDATION_ERROR", "性别取值不在支持列表内")
+    return value
+
+
 def register_user(db: Session, *, username: str, password: str,
-                  dialect_background: str | None = None) -> dict:
+                  dialect_background: str | None = None,
+                  gender: str | None = None) -> dict:
     if not USERNAME_RE.match(username or ""):
         raise ApiError(422, "VALIDATION_ERROR",
                        "用户名须为 3–32 位字母、数字、下划线或中文")
     if not password or len(password) < 8:
         raise ApiError(422, "VALIDATION_ERROR", "密码至少 8 位")
     dialect = _validated_dialect(dialect_background)
+    gender_code = _validated_gender(gender)
     lower = username.lower()
     if db.query(UserRow).filter(UserRow.username_lower == lower,
                                 UserRow.deleted_at.is_(None)).count():
@@ -51,21 +64,25 @@ def register_user(db: Session, *, username: str, password: str,
     user = UserRow(
         id=new_id("u_"), username=username, username_lower=lower,
         password_hash=_ph.hash(password), created_at=now(),
-        dialect_background=dialect,
+        dialect_background=dialect, gender=gender_code,
     )
     db.add(user)
     db.commit()
     return {"accountId": user.id, "username": user.username,
-            "dialectBackground": user.dialect_background}
+            "dialectBackground": user.dialect_background,
+            "gender": user.gender}
 
 
 def update_profile(db: Session, *, user: UserRow,
-                   dialect_background: str | None) -> dict:
-    """设置/修改/清除方言区背景（FR-106 / FR-107）；传 null 或空串即清除。"""
+                   dialect_background: str | None,
+                   gender: str | None) -> dict:
+    """设置/修改/清除方言区背景与性别（FR-106 / FR-107）；传 null 或空串即清除。"""
     user.dialect_background = _validated_dialect(dialect_background)
+    user.gender = _validated_gender(gender)
     db.commit()
     return {"accountId": user.id, "username": user.username,
-            "dialectBackground": user.dialect_background}
+            "dialectBackground": user.dialect_background,
+            "gender": user.gender}
 
 
 def verify_login(db: Session, *, username: str, password: str) -> UserRow:
@@ -127,4 +144,5 @@ def delete_account(db: Session, *, user: UserRow, password: str) -> None:
     user.username_lower = user.username
     user.password_hash = ""
     user.dialect_background = None
+    user.gender = None
     db.commit()

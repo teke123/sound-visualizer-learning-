@@ -4,7 +4,6 @@
 import type {
   AssessmentResult,
   AudioPurpose,
-  LearningEvent,
   RecordingDTO,
   VotSpan,
 } from '@/api'
@@ -15,6 +14,8 @@ export interface MockUser {
   password: string
   /** 方言区/母语背景（FR-107，可选） */
   dialectBackground?: string | null
+  /** 性别（FR-107，可选） */
+  gender?: string | null
 }
 
 export interface MockSession {
@@ -40,7 +41,6 @@ export const state = {
   uploads: new Map<string, { purpose: AudioPurpose; durationSec: number }>(),
   recordings: new Map<string, MockRecording>(),
   submissions: new Map<string, string>(),
-  learningEvents: [] as LearningEvent[],
   submissionCounter: 0,
 }
 
@@ -183,8 +183,18 @@ function buildVot(levelId: string): AssessmentResult['vot'] {
 
 export function buildResult(levelId: string, audioId: string, qualityTips: boolean): AssessmentResult {
   const level = LEVEL_DETAILS[levelId]
-  const scoreBase = 62 + (hashOf(audioId) % 34)
-  const score = Math.min(98, scoreBase)
+  // 分数拆分：声母/韵母/声调为音节三项判定通过率（主），综合分为次（与后端同口径）
+  const overall = Math.min(98, 62 + (hashOf(audioId) % 34))
+  const sub = (salt: string, delta: number) => {
+    const v = overall + delta - (hashOf(`${audioId}:${salt}`) % 7)
+    return Math.round(Math.max(0, Math.min(100, v)) * 10) / 10
+  }
+  const score = {
+    overall: Math.round(overall * 10) / 10,
+    initial: sub('initial', 3),
+    final: sub('final', 0),
+    tone: sub('tone', -2),
+  }
   if (qualityTips) {
     // 质量字段仅作友好提示（FR-1301）：照常给出分数、现象与声学图像
     return {
@@ -216,7 +226,7 @@ export function buildResult(levelId: string, audioId: string, qualityTips: boole
           phenomenon: '音高走势偏平',
           possibleCause: '可能跟呼吸支撑和声带松紧有关',
           cue: '读之前先吸一口气，让声音自然起伏，不要压着说。',
-          practice: { levelId, stepRef: `${levelId}-s2` },
+          practice: `把「${level?.representativeChar ?? level?.targetSound ?? ''}」慢慢连读三遍，每一遍都留意声音有没有自然起伏。`,
           wordingSource: 'rule_template',
         },
       ],
@@ -254,7 +264,7 @@ export function buildResult(levelId: string, audioId: string, qualityTips: boole
         phenomenon: '音高走势偏平',
         possibleCause: '可能跟呼吸支撑和声带松紧有关',
         cue: '读之前先吸一口气，让声音自然起伏，不要压着说。',
-        practice: { levelId, stepRef: `${levelId}-s2` },
+        practice: `把「${level?.representativeChar ?? level?.targetSound ?? ''}」慢慢连读三遍，每一遍都留意声音有没有自然起伏。`,
         wordingSource: 'rule_template',
       },
     ],
@@ -264,43 +274,19 @@ export function buildResult(levelId: string, audioId: string, qualityTips: boole
   }
 }
 
-/* ------------------------------ 进度派生（D-24） ------------------------------ */
+/* ------------------------------ 进度派生 ------------------------------ */
 
+/** 完成度口径（与服务端一致）：该账号在这一关至少有一条检测录音即完成；听辨与练习不计入 */
 export function deriveProgress(): {
-  levels: Array<{ levelId: string; completed: boolean; quiz: { passed: number; total: number }; practice: { done: number; total: number } }>
+  levels: Array<{ levelId: string; completed: boolean }>
   nextLevelId?: string
 } {
-  const passed = new Map<string, Set<string>>()
-  const done = new Map<string, Set<string>>()
-  for (const event of state.learningEvents) {
-    const summary = LEVEL_SUMMARIES.find((item) => item.id === event.levelId)
-    if (!summary) continue
-    if (event.kind === 'listen_quiz') {
-      const set = passed.get(event.levelId) ?? new Set<string>()
-      set.add(event.detail.questionId)
-      passed.set(event.levelId, set)
-    } else {
-      const set = done.get(event.levelId) ?? new Set<string>()
-      set.add(event.detail.stepId)
-      done.set(event.levelId, set)
-    }
-  }
-  const levels = LEVEL_SUMMARIES.map((summary) => {
-    const quizPassed = passed.get(summary.id) ?? new Set<string>()
-    const practiceDone = done.get(summary.id) ?? new Set<string>()
-    const quizOk = summary.completionKeys.quizIds.every((id) => quizPassed.has(id))
-    const practiceOk = summary.completionKeys.practiceStepIds.every((id) => practiceDone.has(id))
-    return {
-      levelId: summary.id,
-      completed: quizOk && practiceOk,
-      quiz: { passed: quizPassed.size, total: summary.completionKeys.quizIds.length },
-      practice: { done: practiceDone.size, total: summary.completionKeys.practiceStepIds.length },
-    }
-  })
+  const recordedLevels = new Set([...state.recordings.values()].map((item) => item.recording.levelId))
+  const levels = LEVEL_SUMMARIES.map((summary) => ({
+    levelId: summary.id,
+    completed: recordedLevels.has(summary.id),
+  }))
   const ordered = [...LEVEL_SUMMARIES].sort((a, b) => a.order - b.order)
-  const next = ordered.find((item) => {
-    const entry = levels.find((l) => l.levelId === item.id)
-    return !entry?.completed
-  })
+  const next = ordered.find((item) => !recordedLevels.has(item.id))
   return { levels, nextLevelId: next?.id ?? ordered[0]?.id }
 }

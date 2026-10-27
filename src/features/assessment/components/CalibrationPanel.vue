@@ -1,0 +1,309 @@
+<script setup lang="ts">
+/**
+ * CalibrationPanel：音域标定对话框（FR-1006 / D-20，可跳过）。
+ * 录音区引导标定与 P11 主动重新标定共用；
+ * 流程：读取标定文本 → 录音（40 秒）→ 上传 purpose=calibration → POST 标定。
+ * 未标定可直接「跳过标定，直接录音」，不影响评分与结果展示。
+ */
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { QBtn, QCard, QCardSection, QDialog } from 'quasar'
+import { ApiError } from '@/api'
+import { useCalibration } from '@/features/calibration'
+import { errorCopy } from '@/copy/usePageCopy'
+import { usePlayerStore } from '@/stores/player'
+
+const props = defineProps<{
+  open: boolean
+  /** 标定成功回调（检测流程自动重提交 / P11 刷新状态） */
+}>()
+
+const emit = defineEmits<{
+  (e: 'done'): void
+  (e: 'cancel'): void
+  /** 直接关闭（× / 去登录）：不进入后续录音流程 */
+  (e: 'dismiss'): void
+}>()
+
+const router = useRouter()
+const calibration = useCalibration()
+const player = usePlayerStore()
+const wasOpen = ref(false)
+
+/** 未登录导致的失败：改指引导登录，而非原地重试 */
+const authFailed = computed(() => {
+  const err = calibration.error.value
+  return err instanceof ApiError && (err.code === 'AUTH_REQUIRED' || err.status === 401)
+})
+
+function gotoLogin() {
+  emit('dismiss')
+  void router.push('/account/login')
+}
+
+onMounted(() => {
+  if (props.open) void calibration.loadText()
+})
+
+watch(
+  () => props.open,
+  (open) => {
+    if (open && !wasOpen.value) void calibration.loadText()
+    if (!open) calibration.reset()
+    wasOpen.value = open
+  },
+)
+
+// 录音结束（手动停止或 40 秒上限）只能从 recorder 状态感知：
+// 监听 phase 本身永远不会触发（phase 正是要靠这里推进）
+watch(
+  () => calibration.recorder.status,
+  (status) => {
+    if (status === 'recorded') calibration.onStop()
+  },
+)
+
+async function submit() {
+  const ok = await calibration.submit()
+  if (ok) emit('done')
+}
+</script>
+
+<template>
+  <QDialog
+    :model-value="open"
+    :persistent="true"
+    @update:model-value="(value: boolean) => !value && emit('cancel')"
+  >
+    <QCard
+      flat
+      bordered
+      class="calibration-panel"
+      style="width: min(560px, 94vw)"
+      role="dialog"
+      aria-label="音域标定"
+    >
+      <QCardSection class="cal-content">
+        <header class="cal-head">
+          <div class="cal-head-text">
+            <h2>先做一次音域标定</h2>
+            <p>用于根据用户本人的音高和音质进行归一化处理</p>
+          </div>
+          <QBtn flat round dense class="cal-close" icon="close" aria-label="关闭" @click="emit('dismiss')" />
+        </header>
+
+        <!-- 读取标定文本 -->
+        <p v-if="calibration.phase.value === 'loading-text'" class="cal-loading">正在读取标定文本…</p>
+
+        <!-- 朗读 + 录音 -->
+        <template v-if="calibration.info.value && calibration.phase.value !== 'success'">
+          <div class="cal-text">
+            <h3>请朗读下面这段文字</h3>
+            <p class="cal-passage">{{ calibration.info.value.text }}</p>
+            <p class="cal-note">用平常说话的音高自然朗读，不用刻意高或低。</p>
+          </div>
+
+          <div v-if="calibration.failAdvice.value" class="cal-fail">
+            <p class="cal-fail-title">这次标定没有成功</p>
+            <p>{{ calibration.failAdvice.value }}</p>
+            <QBtn outline no-caps color="blue-grey-4" text-color="blue-grey-9" class="cal-btn" label="再试一次" @click="calibration.startRecording()" />
+          </div>
+
+          <div v-else-if="calibration.phase.value === 'intro'" class="cal-actions">
+            <QBtn
+              unelevated
+              no-caps
+              color="primary"
+              class="cal-btn primary"
+              label="● 开始朗读录音"
+              @click="calibration.startRecording()"
+            />
+          </div>
+
+          <div v-else-if="calibration.phase.value === 'recording'" class="cal-recording">
+            <p class="cal-recording-hint">录音中…读完后点「停止」（最长 40 秒）</p>
+            <span class="cal-timer">{{ (calibration.recorder.elapsedMs / 1000).toFixed(1) }}s</span>
+            <QBtn unelevated no-caps color="blue-grey-8" class="cal-btn stop" label="■ 停止" @click="calibration.recorder.stop()" />
+          </div>
+
+          <div
+            v-else-if="calibration.phase.value === 'recorded' || calibration.phase.value === 'uploading' || calibration.phase.value === 'submitting'"
+            class="cal-recorded"
+          >
+            <QBtn
+              v-if="calibration.recorder.blobUrl"
+              outline
+              no-caps
+              color="blue-grey-4"
+              text-color="blue-grey-9"
+              class="cal-btn"
+              :label="player.isCurrent('cal-preview') ? '⏸ 暂停试听' : '▶ 试听'"
+              @click="player.play({ key: 'cal-preview', url: calibration.recorder.blobUrl! })"
+            />
+            <QBtn
+              outline
+              no-caps
+              color="blue-grey-4"
+              text-color="blue-grey-9"
+              class="cal-btn"
+              label="重录"
+              :disable="calibration.busy.value"
+              @click="calibration.discard()"
+            />
+            <QBtn
+              unelevated
+              no-caps
+              color="primary"
+              class="cal-btn primary"
+              :label="calibration.busy.value ? '处理中…' : '提交标定'"
+              :disable="calibration.busy.value"
+              @click="submit"
+            />
+          </div>
+        </template>
+
+        <!-- 成功 -->
+        <div v-if="calibration.phase.value === 'success'" class="cal-success">
+          <p>
+            标定完成{{ calibration.result.value ? `，你的音域约 ${Math.round(calibration.result.value.pitchRange.fLo)}–${Math.round(calibration.result.value.pitchRange.fHi)} Hz` : '' }}。
+          </p>
+          <QBtn unelevated no-caps color="primary" class="cal-btn primary" label="继续" @click="emit('done')" />
+        </div>
+
+        <!-- 失败：未登录 → 去登录；其他 → 重试 -->
+        <div v-if="calibration.phase.value === 'failed' && calibration.error.value" class="cal-fail">
+          <p class="cal-fail-title">{{ errorCopy(calibration.error.value).title }}</p>
+          <p>{{ errorCopy(calibration.error.value).hint }}</p>
+          <QBtn v-if="authFailed" outline no-caps color="blue-grey-4" text-color="blue-grey-9" class="cal-btn" label="去登录" @click="gotoLogin" />
+          <QBtn v-else outline no-caps color="blue-grey-4" text-color="blue-grey-9" class="cal-btn" label="重试" @click="calibration.loadText()" />
+        </div>
+
+        <footer class="cal-foot">
+          <QBtn
+            flat
+            no-caps
+            color="grey-6"
+            :label="calibration.phase.value === 'success' ? '关闭' : '跳过标定，直接录音'"
+            @click="emit('cancel')"
+          />
+        </footer>
+      </QCardSection>
+    </QCard>
+  </QDialog>
+</template>
+
+<style scoped lang="sass">
+.calibration-panel
+  max-height: 88vh
+  overflow: auto
+
+.cal-content
+  display: flex
+  flex-direction: column
+  gap: 14px
+
+.cal-head
+  display: flex
+  align-items: flex-start
+  justify-content: space-between
+  gap: 10px
+
+  h2
+    margin: 0 0 4px
+    font-size: 18px
+  p
+    margin: 0
+    font-size: 13px
+    color: #78909c
+
+.cal-close
+  flex-shrink: 0
+
+.cal-loading
+  color: #90a4ae
+  text-align: center
+
+.cal-text
+  background: #e0f2f1
+  border-radius: 10px
+  padding: 14px
+  h3
+    margin: 0 0 8px
+    font-size: 15px
+    color: #00695c
+
+.cal-passage
+  font-size: 18px
+  line-height: 2
+  margin: 0 0 8px
+  color: #004d40
+
+.cal-note
+  margin: 0
+  font-size: 13px
+  color: #00796b
+
+.cal-actions, .cal-recorded, .cal-recording
+  display: flex
+  gap: 10px
+  align-items: center
+  justify-content: center
+  flex-wrap: wrap
+
+/* 原 .cal-btn 胶囊基础尺寸（48px 触达 / 110px 最小宽 / 15px 字号）；
+   .primary 实底青（#00897b）字重 700 同原版 .cal-btn.primary */
+.cal-btn
+  min-height: 48px
+  min-width: 110px
+  font-size: 15px
+  &.primary
+    font-weight: 700
+
+.cal-recording
+  flex-direction: column
+
+.cal-recording-hint
+  margin: 0
+  color: #d32f2f
+  font-size: 14px
+
+.cal-timer
+  font-variant-numeric: tabular-nums
+  font-size: 24px
+  font-weight: 700
+  color: #d32f2f
+
+.cal-fail
+  background: #fff3e0
+  border: 1px solid #ffb74d
+  border-radius: 10px
+  padding: 12px 16px
+  display: flex
+  flex-direction: column
+  gap: 8px
+  align-items: flex-start
+  p
+    margin: 0
+    font-size: 14px
+    color: #5d4037
+
+.cal-fail-title
+  font-weight: 700
+  color: #bf360c
+
+.cal-success
+  background: #e8f5e9
+  border: 1px solid #a5d6a7
+  border-radius: 10px
+  padding: 16px
+  display: flex
+  flex-direction: column
+  gap: 10px
+  align-items: flex-start
+  p
+    margin: 0
+    color: #1b5e20
+
+.cal-foot
+  text-align: center
+</style>

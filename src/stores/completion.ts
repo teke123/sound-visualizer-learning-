@@ -1,25 +1,15 @@
 /**
- * D-24 完成度判定（纯函数，前端本地与服务端同一规则）：
- * 本关当前公开版本的全部听辨题各至少答对一次，
- * 且全部练习步骤各至少标记完成一次；录音不计入。
+ * 完成度派生规则（前端本地展示用，与服务端同一规则）：
+ * 关卡完成 = 该账号在本关至少提交过一次录音检测。
  */
-import type { CompletionKeys, LevelSummary } from '@/api'
-
-export function isLevelCompleted(
-  keys: CompletionKeys,
-  quizPassed: ReadonlySet<string>,
-  practiceDone: ReadonlySet<string>,
-): boolean {
-  return keys.quizIds.every((id) => quizPassed.has(id)) && keys.practiceStepIds.every((id) => practiceDone.has(id))
-}
 
 /**
  * nextLevelId = 公开顺序中第一个未完成的已开放关；
  * 全部完成或无进度时回落 L01；L01 未开放时回落第一已开放关（FR-205 / FD-02）。
  */
 export function computeNextLevelId(
-  published: LevelSummary[],
-  completed: (level: LevelSummary) => boolean,
+  published: { id: string; order: number }[],
+  completed: (level: { id: string }) => boolean,
 ): string | null {
   const ordered = [...published].sort((a, b) => a.order - b.order)
   const next = ordered.find((level) => !completed(level))

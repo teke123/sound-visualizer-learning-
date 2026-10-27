@@ -1,4 +1,4 @@
-/** identity 模块端点：context、注册登录、个人资料、注销（docs/decision-map-backend.md） */
+/** identity 模块端点：context、注册登录、个人资料、注销 */
 import { apiRequest } from '../client'
 import type {
   AuthLoginResponse,
@@ -14,11 +14,11 @@ export const identityApi = {
   context() {
     return apiRequest<MeContext>('/me/context')
   },
-  register(payload: { username: string; password: string; dialectBackground?: string | null }) {
+  register(payload: { username: string; password: string; dialectBackground?: string | null; gender?: string | null }) {
     return apiRequest<RegisterResponse>('/auth/register', { method: 'POST', body: payload })
   },
-  /** 设置/修改/清除方言区背景（FR-107）；null 或空串即清除 */
-  updateProfile(payload: { dialectBackground: string | null }) {
+  /** 设置/修改/清除方言区背景与性别（FR-107）；全量覆盖，null 或空串即清除 */
+  updateProfile(payload: { dialectBackground: string | null; gender: string | null }) {
     return apiRequest<ProfileResponse>('/me/profile', { method: 'PATCH', body: payload })
   },
   /** 成功响应直接携带替换后的 context */
@@ -32,7 +32,7 @@ export const identityApi = {
   deleteAccount(payload: { password: string }) {
     return apiRequest<DeletedResponse>('/me/account', { method: 'DELETE', body: payload })
   },
-  /** 登录账号进度；按 D-24 派生 */
+  /** 登录账号进度；关卡完成 = 本关至少提交过一次录音检测 */
   progress() {
     return apiRequest<MeProgress>('/me/progress')
   },

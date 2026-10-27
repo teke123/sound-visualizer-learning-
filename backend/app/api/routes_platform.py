@@ -33,6 +33,8 @@ async def me_context(request: Request, actor: Actor = Depends(get_actor)):
         data["username"] = actor.user.username
         if actor.user.dialect_background:
             data["dialectBackground"] = actor.user.dialect_background
+        if actor.user.gender:
+            data["gender"] = actor.user.gender
     effective = (scoring_uc.get_personal_range(db, user_id=actor.user.id)
                  if actor.user is not None else None)
     if effective is None:
@@ -97,8 +99,8 @@ async def media_file(request: Request, media_id: str,
 async def media_f0_hum(request: Request, media_id: str,
                        flo: str | None = None, fhi: str | None = None,
                        db: Session = Depends(db_session)):
-    """标准示范音高哼鸣；带 flo/fhi 时按该音域映射（「按我的音域听标准」，
-    docs/f0展示修改测试版1.md §5.2）。与媒体文件同访问级别（公开内容）。"""
+    """标准示范音高哼鸣；带 flo/fhi 时按该音域映射（「按我的音域听标准」）。
+    与媒体文件同访问级别（公开内容）。"""
     from app.acoustics import usecases as acoustics_uc
     from app.platform.envelope import ApiError
 
