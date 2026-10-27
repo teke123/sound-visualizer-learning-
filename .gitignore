@@ -15,7 +15,10 @@ coverage/
 *.local
 .venv/
 
-docs/
+# docs：只忽略本地大文件资料与外部研究资料；SRS 需求文档（docs/srs/）与 md 方案文档正常入库
+docs/*.pdf
+docs/*.svg
+docs/research/
 
 
 # OS junk
