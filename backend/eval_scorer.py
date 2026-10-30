@@ -97,6 +97,22 @@ def _parse_llm_json(text: str) -> dict:
         return {"overview": "LLM 返回 JSON 解析失败", "steps": []}
 
 
+_TYPE_TO_SEVERITY = {"suggestion": 0, "warning": 1, "error": 2}
+
+
+def _normalize_severity(raw, ftype) -> int:
+    """把 severity 归一化为契约要求的整数 0/1/2（兼容 LLM 输出字符串的情况）"""
+    if isinstance(raw, int) and raw in (0, 1, 2):
+        return raw
+    if isinstance(raw, str) and raw.strip().isdigit():
+        v = int(raw.strip())
+        if v in (0, 1, 2):
+            return v
+    if isinstance(raw, str) and raw.strip() in _TYPE_TO_SEVERITY:
+        return _TYPE_TO_SEVERITY[raw.strip()]
+    return _TYPE_TO_SEVERITY.get(str(ftype).strip(), 1)
+
+
 def generate_feedback_llm(diagnosis: dict) -> dict:
     """反馈生成器（LLM 版）：调用本地大模型（qwen2.5）生成四步反馈。
 
@@ -123,7 +139,7 @@ def generate_feedback_llm(diagnosis: dict) -> dict:
         steps.append({
             "category": s.get("category", ""),
             "type": s.get("type", ""),
-            "severity": s.get("severity", ""),
+            "severity": _normalize_severity(s.get("severity"), s.get("type")),
             "phenomenon": s.get("phenomenon", ""),
             "link": s.get("link", ""),
             "hint": s.get("hint", ""),
