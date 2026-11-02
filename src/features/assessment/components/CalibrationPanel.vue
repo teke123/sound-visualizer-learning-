@@ -96,20 +96,16 @@ async function submit() {
         <p v-if="calibration.phase.value === 'loading-text'" class="cal-loading">正在读取标定文本…</p>
 
         <!-- 朗读 + 录音 -->
-        <template v-if="calibration.info.value && calibration.phase.value !== 'success'">
+        <template
+          v-if="calibration.info.value && calibration.phase.value !== 'success' && calibration.phase.value !== 'rejected'"
+        >
           <div class="cal-text">
             <h3>请朗读下面这段文字</h3>
             <p class="cal-passage">{{ calibration.info.value.text }}</p>
             <p class="cal-note">用平常说话的音高自然朗读，不用刻意高或低。</p>
           </div>
 
-          <div v-if="calibration.failAdvice.value" class="cal-fail">
-            <p class="cal-fail-title">这次标定没有成功</p>
-            <p>{{ calibration.failAdvice.value }}</p>
-            <QBtn outline no-caps color="blue-grey-4" text-color="blue-grey-9" class="cal-btn" label="再试一次" @click="calibration.startRecording()" />
-          </div>
-
-          <div v-else-if="calibration.phase.value === 'intro'" class="cal-actions">
+          <div v-if="calibration.phase.value === 'intro'" class="cal-actions">
             <QBtn
               unelevated
               no-caps
@@ -159,8 +155,37 @@ async function submit() {
               :disable="calibration.busy.value"
               @click="submit"
             />
+            <!-- 提交失败（网络/服务）：此前是静默回到本状态，不显示任何提示 -->
+            <p v-if="calibration.error.value" class="cal-submit-error">
+              提交没有成功：{{ errorCopy(calibration.error.value).title }}。{{
+                errorCopy(calibration.error.value).hint
+              }}录音已保留，可直接再次提交。
+            </p>
           </div>
         </template>
+
+        <!-- 质检未通过：明确的失败终态，逐项给出实测值与要求 -->
+        <div v-if="calibration.phase.value === 'rejected'" class="cal-fail cal-rejected">
+          <p class="cal-fail-title">这次标定没有成功</p>
+          <ul v-if="calibration.failChecks.value.length" class="cal-fail-list">
+            <li v-for="check in calibration.failChecks.value" :key="check.key">
+              <b>{{ check.label }}</b>
+              <span v-if="check.advice">：{{ check.advice }}</span>
+              <em v-if="check.measured || check.expect">
+                （实测 {{ check.measured ?? '—' }}，要求 {{ check.expect }}）
+              </em>
+            </li>
+          </ul>
+          <p v-else>{{ calibration.failAdvice.value }}</p>
+          <QBtn
+            unelevated
+            no-caps
+            color="primary"
+            class="cal-btn primary"
+            label="重新录制"
+            @click="calibration.startRecording()"
+          />
+        </div>
 
         <!-- 成功 -->
         <div v-if="calibration.phase.value === 'success'" class="cal-success">
@@ -290,6 +315,38 @@ async function submit() {
 .cal-fail-title
   font-weight: 700
   color: #bf360c
+
+/* 失败终态：逐项明细 */
+.cal-fail-list
+  margin: 0
+  padding-left: 18px
+  display: flex
+  flex-direction: column
+  gap: 6px
+  li
+    margin: 0
+    font-size: 13px
+    line-height: 1.6
+    b
+      font-weight: 700
+    em
+      display: block
+      font-style: normal
+      font-size: 12px
+      color: #8d6e63
+
+/* 提交失败提示：夹在按钮行里，独占一行 */
+.cal-submit-error
+  flex-basis: 100%
+  margin: 4px 0 0
+  padding: 8px 12px
+  border-radius: 8px
+  background: #fff3e0
+  border: 1px solid #ffb74d
+  color: #bf360c
+  font-size: 13px
+  line-height: 1.6
+  text-align: left
 
 .cal-success
   background: #e8f5e9
