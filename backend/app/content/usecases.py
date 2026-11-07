@@ -375,8 +375,10 @@ def precheck_level(db: Session, content: dict) -> list[str]:
     # 引用的媒体必须存在且未删除
     all_media = _collect_media_ids(content)
     for mid in all_media:
-        if mid and db.get(MediaAssetRow, mid) is None:
-            missing.append(f"媒体不存在：{mid}")
+        if mid:
+            asset = db.get(MediaAssetRow, mid)
+            if asset is None or asset.deleted_at is not None:
+                missing.append(f"媒体不存在：{mid}")
     return missing
 
 
@@ -541,6 +543,12 @@ def set_level_published(db: Session, level_id: str, published: bool) -> dict:
     level = db.get(LevelRow, level_id)
     if level is None:
         raise ApiError(404, "NOT_FOUND", "关卡不存在")
+    if published:
+        missing = precheck_level(db, JSONText.load(level.content, {}))
+        if missing:
+            raise ApiError(422, "VALIDATION_ERROR",
+                           "关卡内容不完整：" + "；".join(missing),
+                           data={"missing": missing})
     level.published = bool(published)
     level.updated_at = now()
     db.commit()

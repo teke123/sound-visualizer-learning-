@@ -160,6 +160,59 @@ def main() -> int:
                       for e in pending),
               str(pending))
 
+        # ---- 关卡开放完整性检查 ----
+        original_updated_at = lv.updated_at
+        missing = content_uc.precheck_level(db, {})
+        expect_api_error("不完整关卡开放 → 422，列出全部缺失项",
+                         lambda: content_uc.set_level_published(db, lv.id, True),
+                         422, "VALIDATION_ERROR", "；".join(missing))
+        db.refresh(lv)
+        check("拒绝开放不修改状态或更新时间",
+              not lv.published and lv.updated_at == original_updated_at)
+        lv.published = True
+        db.commit()
+        check("不完整关卡允许关闭",
+              content_uc.set_level_published(db, lv.id, False)
+              == {"levelId": lv.id, "published": False})
+        valid_content = {
+            "targetSound": "a", "practice": ["啊"],
+            "demos": [{"speed": "normal", "mediaId": mp3_id}],
+            "detection": {"promptText": "妈", "evaluationText": "妈",
+                          "evaluationPinyin": "ma1",
+                          "sampleMediaId": mp3_id, "fourStepTemplates": ["反馈"]},
+            "professional": {"description": "发音说明"},
+        }
+        lv.content = JSONText.dump(valid_content)
+        db.commit()
+        check("完整关卡允许开放",
+              content_uc.set_level_published(db, lv.id, True)
+              == {"levelId": lv.id, "published": True})
+        db.refresh(lv)
+        check("开放状态已持久化", lv.published)
+        asset = db.get(MediaAssetRow, mp3_id)
+        asset.deleted_at = now()
+        db.commit()
+        missing = content_uc.precheck_level(db, valid_content)
+        check("预检查拒绝软删媒体", missing == [f"媒体不存在：{mp3_id}"])
+        original_updated_at = lv.updated_at
+        try:
+            content_uc.set_level_published(db, lv.id, True)
+        except ApiError as e:
+            check("软删媒体阻止开放并返回结构化缺失列表",
+                  e.status == 422 and e.code == "VALIDATION_ERROR"
+                  and e.data == {"missing": missing}
+                  and e.message == "关卡内容不完整：" + "；".join(missing))
+        else:
+            check("软删媒体阻止开放并返回结构化缺失列表", False)
+        db.refresh(lv)
+        check("重复开放失败保留原状态和时间",
+              lv.published and lv.updated_at == original_updated_at)
+        asset.deleted_at = None
+        db.commit()
+        expect_api_error("开放不存在关卡 → 404",
+                         lambda: content_uc.set_level_published(db, "L_missing", True),
+                         404, "NOT_FOUND")
+
         # ---- 标定文本 ----
         syls = [{"text": "妈", "pinyin": "ma1"}, {"text": "坡", "pinyin": "po1"},
                 {"text": "车", "pinyin": "che1"}, {"text": "米", "pinyin": "mi3"},

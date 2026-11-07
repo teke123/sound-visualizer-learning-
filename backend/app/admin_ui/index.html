@@ -34,6 +34,12 @@
   .tag.pend { background:#fef3c7; color:#92400e; }
   #login { max-width:360px; margin:80px auto; }
   .muted { color:var(--sub); font-size:12px; }
+  .form-field { display:block; margin:12px 0; }
+  .form-field textarea { min-height:110px; }
+  #art-markdown { min-height:300px; font-family:Consolas,monospace; }
+  fieldset { border:1px solid var(--line); border-radius:6px; margin:14px 0; padding:12px; }
+  .list-row { display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-bottom:10px; }
+  .list-row label { flex:1; min-width:120px; }
   .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
   @media (max-width:800px){ .grid2 { grid-template-columns:1fr; } }
 </style>
@@ -126,89 +132,75 @@ async function renderLevels(){
     </td></tr>`).join('');
   m.innerHTML = `<div class="card"><h3>关卡（修改保存即生效；开放 / 未开放一个开关）</h3>
     <table><tr><th>ID</th><th>标题</th><th>目标音</th><th>状态</th><th>更新时间</th><th>操作</th></tr>${rows}</table>
+    ${j.data.levels.length?'':'<p class="muted">暂无关卡，请先导入关卡内容；导入后即可在此编辑和设置开放状态。</p>'}
     <p class="muted">编辑字段、保存后用户端立即读取最新内容。</p></div>
     <div class="card" id="editor" style="display:none"><h3 id="ed-title"></h3><div id="ed-body"></div></div>`;
 }
-async function editLevel(id){
-  const j = await api(`/api/admin/levels/${id}`); const d=j.data;
-  $('#editor').style.display='block';
-  $('#ed-title').textContent = `${id} 内容`;
-  $('#ed-body').innerHTML = `
-    <div class="row"><button class="btn" onclick="saveLevel('${id}')">保存</button>
-      <button class="btn" onclick="precheck('${id}')">完整性检查</button></div>
-    ${phonologyFormHtml()}
-    <textarea class="code" id="level-json">${esc(JSON.stringify(d.content,null,2))}</textarea>
-    <div id="ed-result"></div>`;
-  fillPhonologyForm(d.content&&d.content.phonology);
-  document.querySelectorAll('#ed-body .ph-ctl').forEach(el=>{
-    el.addEventListener('input',syncPhonologyToJson);
-    el.addEventListener('change',syncPhonologyToJson);
+let levelDraft, articleDraft;
+function field(id,label,value='',multiline=false){
+  return `<label class="form-field">${esc(label)}${multiline
+    ?`<textarea id="${id}" rows="4">${esc(value)}</textarea>`
+    :`<input id="${id}" value="${esc(value)}">`}</label>`;
+}
+function listForm(id,title,items,columns){
+  return `<fieldset id="${id}"><legend>${esc(title)}</legend><div class="list-items">${items.map(item=>listRow(item,columns)).join('')}</div>
+    <button type="button" class="btn" onclick="addListRow('${id}')">添加${esc(title)}</button></fieldset>`;
+}
+const listColumns={};
+const listOriginals=new WeakMap();
+function listRow(item,columns){
+  return `<div class="list-row">${columns.map(([key,label,options])=>options
+    ?`<label>${esc(label)}<select data-key="${key}">${options.map(v=>`<option value="${esc(v)}" ${item[key]===v?'selected':''}>${esc(v)}</option>`).join('')}</select></label>`
+    :`<label>${esc(label)}<input data-key="${key}" value="${esc(item[key]||'')}"></label>`).join('')}
+    <button type="button" class="btn danger" onclick="this.parentElement.remove()">移除</button></div>`;
+}
+function bindList(id,items,columns){
+  listColumns[id]=columns;
+  document.querySelectorAll(`#${id} .list-row`).forEach((row,i)=>listOriginals.set(row,items[i]));
+}
+function addListRow(id){ $('#'+id+' .list-items').insertAdjacentHTML('beforeend',listRow({},listColumns[id])); }
+function readList(id){
+  return [...document.querySelectorAll(`#${id} .list-row`)].map(row=>{
+    const item={...(listOriginals.get(row)||{})};
+    row.querySelectorAll('[data-key]').forEach(el=>item[el.dataset.key]=el.value.trim());
+    return item;
   });
 }
-function phonologyFormHtml(){
-  const L=t=>`<span class="muted">${t}</span>`;
-  const sel=(id,w,opts)=>`<select id="${id}" class="ph-ctl" style="max-width:${w}px">${opts.map(o=>`<option value="${o[0]}">${o[1]}</option>`).join('')}</select>`;
-  const txt=(id,ph,w)=>`<input id="${id}" class="ph-ctl" placeholder="${ph}" style="max-width:${w}px">`;
-  const tones=[1,2,3,4].map(t=>`<label style="display:inline-flex;align-items:center;gap:2px">
-    <input type="checkbox" class="ph-ctl" value="${t}" style="width:auto;margin:0">${t}</label>`).join('');
-  return `<div style="border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:10px">
-    <b>语音学定位（可选）</b>
-    <p class="muted" style="margin:4px 0 8px">留空时前端按目标音与拼音自动匹配，无需填写；零声母请在 JSON 中写 "initial": ""（表单会保留该值）。</p>
-    <div class="row">${L('类型')}${sel('ph-kind',140,[['','留空'],['initial','initial 声母'],['final','final 韵母'],['syllable','syllable 音节'],['tone','tone 声调']])}
-      ${L('声母')}${txt('ph-initial','如 zh、b',90)}
-      ${L('韵母')}${txt('ph-final','如 a、ang、-i',110)}
-      ${L('IPA')}${txt('ph-ipa','如 ʈʂ、ᴀ',90)}
-      ${L('声调')}<span id="ph-tones" class="row" style="gap:6px;margin:0">${tones}</span></div>
-    <div class="row">${L('部位')}${txt('ph-place','如 舌尖后',120)}
-      ${L('方式')}${txt('ph-manner','如 塞擦音',120)}
-      ${L('送气')}${sel('ph-asp',180,[['','留空'],['aspirated','aspirated 送气'],['unaspirated','unaspirated 不送气'],['none','none 无']])}
-      ${L('清浊')}${sel('ph-voi',170,[['','留空'],['voiceless','voiceless 清音'],['voiced','voiced 浊音']])}</div>
-    <div class="row">${L('四呼')}${sel('ph-hu',170,[['','留空'],['kaikou','kaikou 开口'],['qichi','qichi 齐齿'],['hekou','hekou 合口'],['cuokou','cuokou 撮口']])}
-      ${L('韵母结构')}${sel('ph-fs',200,[['','留空'],['simple','simple 单韵母'],['compound','compound 复韵母'],['front_nasal','front_nasal 前鼻韵'],['back_nasal','back_nasal 后鼻韵'],['special','special 特殊']])}</div>
-  </div>`;
-}
-function fillPhonologyForm(ph){
-  ph=ph||{};
-  $('#ph-kind').value=ph.kind||'';
-  $('#ph-initial').value=typeof ph.initial==='string'?ph.initial:'';
-  $('#ph-final').value=ph.final||'';
-  $('#ph-ipa').value=ph.ipa||'';
-  document.querySelectorAll('#ph-tones input').forEach(c=>c.checked=(ph.tones||[]).includes(+c.value));
-  $('#ph-place').value=ph.place||'';
-  $('#ph-manner').value=ph.manner||'';
-  $('#ph-asp').value=ph.aspiration||'';
-  $('#ph-voi').value=ph.voicing||'';
-  $('#ph-hu').value=ph.hu||'';
-  $('#ph-fs').value=ph.finalStructure||'';
-}
-function syncPhonologyToJson(){
-  const ta=$('#level-json'); if(!ta) return;
-  let c; try{ c=JSON.parse(ta.value); }catch(e){ return; }
-  if(!c||typeof c!=='object') return;
-  const prev=c.phonology||{}; const ph={};
-  if($('#ph-kind').value) ph.kind=$('#ph-kind').value;
-  const ini=$('#ph-initial').value.trim(); if(ini) ph.initial=ini;
-  const fin=$('#ph-final').value.trim(); if(fin) ph.final=fin;
-  const ipa=$('#ph-ipa').value.trim(); if(ipa) ph.ipa=ipa;
-  const tones=[...document.querySelectorAll('#ph-tones input:checked')].map(x=>+x.value).sort((a,b)=>a-b);
-  if(tones.length) ph.tones=tones;
-  const place=$('#ph-place').value.trim(); if(place) ph.place=place;
-  const manner=$('#ph-manner').value.trim(); if(manner) ph.manner=manner;
-  if($('#ph-asp').value) ph.aspiration=$('#ph-asp').value;
-  if($('#ph-voi').value) ph.voicing=$('#ph-voi').value;
-  if($('#ph-hu').value) ph.hu=$('#ph-hu').value;
-  if($('#ph-fs').value) ph.finalStructure=$('#ph-fs').value;
-  if(!ini && prev.initial==='' && Object.keys(ph).length) ph.initial='';
-  if(Object.keys(ph).length) c.phonology=ph; else delete c.phonology;
-  ta.value=JSON.stringify(c,null,2);
+const demoColumns=[['mediaId','媒体 ID'],['speed','语速',['normal','slow']],['voice','发音人']];
+const stepColumns=[['text','练习步骤']];
+async function editLevel(id){
+  const j=await api(`/api/admin/levels/${encodeURIComponent(id)}`); if(j.code!=='OK')return;
+  levelDraft=structuredClone(j.data.content); const c=levelDraft, det=c.detection||{};
+  $('#editor').style.display='block'; $('#ed-title').textContent=`${id} 内容`;
+  $('#ed-body').innerHTML=`<div class="row"><button class="btn" id="save-level">保存</button><button class="btn" id="check-level">检查已保存内容</button></div>
+    <div class="grid2">${field('lv-title','标题',c.title)}${field('lv-target','目标音',c.targetSound)}
+    ${field('lv-pinyin','拼音',c.pinyin)}${field('lv-char','代表字',c.representativeChar)}
+    ${field('lv-type','类型',c.type)}${field('lv-conf','易混音关卡 ID（用逗号分隔）',(c.confusables||[]).join(', '))}</div>
+    ${listForm('lv-practice','练习步骤',(c.practice||[]).map(text=>({text})),stepColumns)}
+    ${field('lv-prof','专业说明',c.professional?.description,true)}
+    <div class="grid2">${field('lv-prompt','朗读提示词',det.promptText)}${field('lv-eval','评测文本',det.evaluationText)}
+    ${field('lv-evalpy','评测拼音（如 ma1 ma5）',det.evaluationPinyin)}${field('lv-sample','参考示范音频媒体 ID',det.sampleMediaId)}
+    ${field('lv-speaker','参考发音人 ID',det.referenceSpeakerId)}</div>
+    ${listForm('lv-demos','示范音频',c.demos||[],demoColumns)}
+    <details><summary>声学与语音配置（JSON）</summary><p class="muted">保留语音学定位及评测参数；标准曲线由系统生成，不在此编辑。</p>
+    ${field('lv-acoustic','声学与语音配置',JSON.stringify({phonology:c.phonology||{},detection:Object.fromEntries(Object.entries(det).filter(([k])=>!['promptText','evaluationText','evaluationPinyin','sampleMediaId','referenceSpeakerId'].includes(k)))},null,2),true)}</details>
+    <div id="ed-result" role="status"></div>`;
+  bindList('lv-practice',(c.practice||[]).map(text=>({text})),stepColumns); bindList('lv-demos',c.demos||[],demoColumns);
+  $('#save-level').onclick=()=>saveLevel(id); $('#check-level').onclick=()=>precheck(id);
 }
 async function saveLevel(id){
-  let content; try{ content=JSON.parse($('#level-json').value); }catch(e){ alert('JSON 解析失败：'+e.message); return; }
-  const j = await api(`/api/admin/levels/${id}`,{method:'PUT',body:JSON.stringify({content})});
-  if(j.code==='OK') $('#ed-result').innerHTML=`<p class="muted">已保存，前端立即生效。</p>`;
+  let acoustic; try{ acoustic=JSON.parse($('#lv-acoustic').value); if(!acoustic||Array.isArray(acoustic)||typeof acoustic!=='object'||!acoustic.detection||Array.isArray(acoustic.detection)||typeof acoustic.detection!=='object'||!acoustic.phonology||Array.isArray(acoustic.phonology)||typeof acoustic.phonology!=='object')throw Error('应包含 phonology 和 detection 对象'); }
+  catch(e){ alert('声学配置 JSON 无效：'+e.message); return; }
+  const content=structuredClone(levelDraft);
+  Object.assign(content,{title:$('#lv-title').value.trim(),targetSound:$('#lv-target').value.trim(),pinyin:$('#lv-pinyin').value.trim(),representativeChar:$('#lv-char').value.trim(),type:$('#lv-type').value.trim(),confusables:$('#lv-conf').value.split(/[,，\s]+/).filter(Boolean),practice:readList('lv-practice').map(x=>x.text),demos:readList('lv-demos'),phonology:acoustic.phonology});
+  content.professional={...content.professional,description:$('#lv-prof').value.trim()};
+  content.detection={...acoustic.detection,promptText:$('#lv-prompt').value.trim(),evaluationText:$('#lv-eval').value.trim(),evaluationPinyin:$('#lv-evalpy').value.trim(),sampleMediaId:$('#lv-sample').value.trim()||null,referenceSpeakerId:$('#lv-speaker').value.trim()||null};
+  const j=await api(`/api/admin/levels/${encodeURIComponent(id)}`,{method:'PUT',body:JSON.stringify({content})});
+  if(j.code==='OK'){ levelDraft=content; $('#ed-result').textContent='已保存，前端立即生效。'; }
 }
 async function precheck(id){
-  const j=await api(`/api/admin/levels/${id}/precheck`);
+  const j=await api(`/api/admin/levels/${id}/precheck`,{method:'POST'});
+  if(j.code!=='OK')return;
   const d=j.data;
   $('#ed-result').innerHTML = d.ok ? '<p style="color:var(--ok)">内容完整。</p>'
     : `<p style="color:var(--warn)">缺失项：<br>${d.missing.map(esc).join('<br>')}</p>`;
@@ -242,19 +234,32 @@ async function renderArticles(){
 }
 async function createArticle(){
   const slug=$('#new-slug').value.trim(); if(!slug) return;
-  const j = await api('/api/admin/articles',{method:'POST',body:JSON.stringify({content:{slug,title:'新文章',category:'气',summary:'',markdown:'',demoMediaId:null,demoText:'',practice:[],references:[],relatedLevelIds:[]}})});
-  if(j.code==='OK') render();
+  const j = await api('/api/admin/articles',{method:'POST',body:JSON.stringify({content:{slug,title:'新文章',category:'',summary:'',markdown:'',demoMediaId:null,demoText:'',practice:[],references:[],relatedLevelIds:[]}})});
+  if(j.code==='OK'){ await renderArticles(); await editArticle(slug); }
 }
+const articlePracticeColumns=[['title','练习标题'],['instruction','练习说明']];
+const referenceColumns=[['title','资料标题'],['source','来源'],['license','授权说明']];
 async function editArticle(slug){
-  const j = await api(`/api/admin/articles/${slug}`); const d=j.data;
+  const [j,cats]=await Promise.all([api(`/api/admin/articles/${encodeURIComponent(slug)}`),api('/api/admin/categories')]);
+  if(j.code!=='OK'||cats.code!=='OK')return;
+  articleDraft=structuredClone(j.data.content); const c=articleDraft;
+  const names=[...new Set([c.category,...cats.data.categories.map(x=>x.name)].filter(Boolean))];
   $('#art-editor').style.display='block'; $('#art-title').textContent=slug;
-  $('#art-body').innerHTML=`<button class="btn" onclick="saveArticle('${slug}')">保存</button>
-    <textarea class="code" id="art-json">${esc(JSON.stringify(d.content,null,2))}</textarea>`;
+  $('#art-body').innerHTML=`<button class="btn" id="save-article">保存</button>
+    ${field('art-name','标题',c.title)}<label class="form-field">分类<select id="art-category"><option value="">请选择分类</option>${names.map(n=>`<option value="${esc(n)}" ${n===c.category?'selected':''}>${esc(n)}</option>`).join('')}</select></label>
+    ${field('art-summary','摘要',c.summary,true)}${field('art-markdown','Markdown 正文',c.markdown,true)}
+    <div class="grid2">${field('art-demo','示范媒体 ID',c.demoMediaId)}${field('art-demotext','示范文本',c.demoText)}</div>
+    ${field('art-related','关联关卡 ID（逗号分隔）',(c.relatedLevelIds||[]).join(', '))}
+    ${listForm('art-practice','短练习',c.practice||[],articlePracticeColumns)}
+    ${listForm('art-refs','参考资料',c.references||[],referenceColumns)}<div id="art-result" role="status"></div>`;
+  bindList('art-practice',c.practice||[],articlePracticeColumns); bindList('art-refs',c.references||[],referenceColumns);
+  $('#save-article').onclick=()=>saveArticle(slug);
 }
 async function saveArticle(slug){
-  let c; try{ c=JSON.parse($('#art-json').value);}catch(e){ alert('JSON 解析失败'); return; }
-  const j = await api(`/api/admin/articles/${slug}`,{method:'PUT',body:JSON.stringify({content:c})});
-  if(j.code==='OK') alert('已保存，前端立即生效');
+  const content={...articleDraft,slug,title:$('#art-name').value.trim(),category:$('#art-category').value,summary:$('#art-summary').value.trim(),markdown:$('#art-markdown').value,demoMediaId:$('#art-demo').value.trim()||null,demoText:$('#art-demotext').value.trim(),relatedLevelIds:$('#art-related').value.split(/[,，\s]+/).filter(Boolean),practice:readList('art-practice'),references:readList('art-refs')};
+  if(!content.title||!content.category){ alert('请填写标题并选择分类；没有分类时请先新建分类。'); return; }
+  const j=await api(`/api/admin/articles/${encodeURIComponent(slug)}`,{method:'PUT',body:JSON.stringify({content})});
+  if(j.code==='OK'){ articleDraft=content; $('#art-result').textContent='已保存，前端立即生效。'; }
 }
 async function toggleArticle(slug,published){
   const j = await api(`/api/admin/articles/${slug}/published`,{method:'PUT',body:JSON.stringify({published})});
@@ -303,8 +308,10 @@ async function renderCalibration(){
   m.innerHTML=`<div class="grid2">
     <div class="card"><h3>音域标定朗读文本（须覆盖六个单韵母）</h3>
       <p>当前版本 <b>${cal.data.textVersion||'未配置'}</b>：${esc(cal.data.text||'')}</p>
-      <textarea id="cal-text" placeholder="新标定文本">${esc(cal.data.text||'')}</textarea>
-      <div class="row"><input id="cal-ver" placeholder="版本号，如 v2" style="max-width:120px">
+      <textarea id="cal-text" placeholder="新标定文本" oninput="syncCalSyllables()">${esc(cal.data.text||'')}</textarea>
+      <p class="muted">请为每个汉字填写带数字声调的拼音，如 ma1、nv3，轻声用 5。标点不需要拼音。</p>
+      <div id="cal-syllables"></div>
+      <div class="row"><input id="cal-ver" aria-label="版本号" placeholder="版本号，如 v2" value="${esc(cal.data.textVersion||'')}" style="max-width:120px">
         <button class="btn" onclick="setCal()">保存</button></div></div>
     <div class="card"><h3>参考发音人（上传其朗读标定文本的音频后登记）</h3>
       <table><tr><th>姓名</th><th>性别</th><th>音域</th><th>ID</th></tr>${spkRows}</table>
@@ -313,12 +320,45 @@ async function renderCalibration(){
         <select id="spk-g" style="max-width:90px"><option>male</option><option>female</option></select>
         <input id="spk-media" placeholder="媒体ID（先在媒体页上传wav）" style="max-width:260px">
         <button class="btn" onclick="addSpeaker()">登记</button></div></div></div>`;
+  syncCalSyllables(cal.data.syllables||[]);
+}
+function alignCalPinyin(previous, chars){
+  // 按保持顺序的相同汉字匹配，插入或删除文字不会清空后续标注。
+  const lengths=Array.from({length:previous.length+1},()=>new Uint32Array(chars.length+1));
+  for(let i=previous.length-1;i>=0;i--){
+    for(let j=chars.length-1;j>=0;j--){
+      lengths[i][j]=previous[i].text===chars[j]
+        ?1+lengths[i+1][j+1]:Math.max(lengths[i+1][j],lengths[i][j+1]);
+    }
+  }
+  const pinyin=chars.map(()=>'');
+  let i=0,j=0;
+  while(i<previous.length&&j<chars.length){
+    if(previous[i].text===chars[j]){ pinyin[j]=previous[i].pinyin; i++; j++; }
+    else if(lengths[i+1][j]>=lengths[i][j+1]) i++;
+    else j++;
+  }
+  return pinyin;
+}
+function syncCalSyllables(saved){
+  const container=$('#cal-syllables');
+  const previous=saved||[...container.querySelectorAll('input')].map(input=>({text:input.dataset.char,pinyin:input.value}));
+  const chars=[...$('#cal-text').value].filter(c=>/[\u4e00-\u9fff]/.test(c));
+  const pinyin=alignCalPinyin(previous,chars);
+  container.innerHTML=chars.map((char,i)=>`<label class="row">${i+1}. ${esc(char)}
+    <input data-char="${esc(char)}" aria-label="第${i+1}个字${esc(char)}的拼音" placeholder="如 ma1" style="max-width:140px"
+      value="${esc(pinyin[i])}"></label>`).join('');
 }
 async function setCal(){
   const text=$('#cal-text').value.trim();
-  const syllables=[...text].filter(c=>/[\u4e00-\u9fff]/.test(c));
-  const j=await api('/api/admin/calibration-text',{method:'PUT',body:JSON.stringify({textVersion:$('#cal-ver').value,text,syllables})});
-  if(j.code==='OK') alert('已保存'); else alert(j.message);
+  const textVersion=$('#cal-ver').value.trim();
+  const inputs=[...$('#cal-syllables').querySelectorAll('input')];
+  if(!textVersion||!inputs.length){ alert('请填写版本号和包含汉字的标定文本'); return; }
+  const invalid=inputs.find(input=>! /^[a-zv:ü]+[0-9]$/i.test(input.value.trim()));
+  if(invalid){ alert(`请填写“${invalid.dataset.char}”的带调拼音，如 ma1、nv3`); invalid.focus(); return; }
+  const syllables=inputs.map(input=>({text:input.dataset.char,pinyin:input.value.trim().toLowerCase()}));
+  const j=await api('/api/admin/calibration-text',{method:'PUT',body:JSON.stringify({textVersion,text,syllables})});
+  if(j.code==='OK'){ alert('已保存'); await renderCalibration(); }
 }
 async function addSpeaker(){
   const j=await api('/api/admin/reference-speakers',{method:'POST',body:JSON.stringify({
