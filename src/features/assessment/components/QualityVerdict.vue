@@ -11,11 +11,12 @@ import type { Quality } from '@/api'
 
 const props = defineProps<{ quality: Quality }>()
 
-const SIGNAL_CHECKS: Array<{ key: 'volume' | 'noise' | 'clipping' | 'duration'; label: string }> = [
+const SIGNAL_CHECKS: Array<{ key: 'volume' | 'noise' | 'clipping' | 'duration' | 'bandwidth'; label: string }> = [
   { key: 'volume', label: '音量偏小' },
   { key: 'noise', label: '底噪偏大' },
   { key: 'clipping', label: '爆音' },
   { key: 'duration', label: '时长过短' },
+  { key: 'bandwidth', label: '疑似蓝牙耳机录音' },
 ]
 
 const READING_CHECKS: Array<{ key: 'missing' | 'extra' | 'repeated' | 'replaced' | 'disordered'; label: string }> = [

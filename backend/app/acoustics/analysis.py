@@ -1,4 +1,4 @@
-"""声学分析内核：本地信号维质检（音量/噪声/截幅/时长/静音比）、F0 提取
+"""声学分析内核：本地信号维质检（音量/噪声/截幅/时长/静音比/频带截断）、F0 提取
 （统一走 f0_pipeline 滤波自相关管线）、自适应声道长度共振峰提取（Burg）、
 送气段/清辅音起始检测（VOT）与曲线可靠性把关。
 
@@ -31,6 +31,11 @@ SNR_DB_MIN = 10.0                     # 噪声：语音峰值 vs 环境底噪
 SILENCE_RATIO_MAX = 0.92              # 静音比
 DURATION_RANGE_RECORDING = (0.3, 30.0)
 DURATION_RANGE_CALIBRATION = (1.5, 40.0)
+# 频带截断（蓝牙耳机免提 HFP 窄带录音识别）：44.1 kHz 规范化录音中擦音/送气
+# 在 8 kHz 以上仍有能量；蓝牙通话协议把采集限制到 8/16 kHz，转码后高频全空
+BANDWIDTH_CUTOFF_HZ_MIN = 8500.0
+BANDWIDTH_ROLLOFF_DB = -45.0          # 相对语音谱峰的判定线
+BANDWIDTH_FRAME = 4096                # 频谱分析窗长
 
 
 @dataclass
@@ -41,6 +46,7 @@ class SignalCheckResult:
     clipping: dict = field(default_factory=dict)
     duration: dict = field(default_factory=dict)
     silence: dict = field(default_factory=dict)
+    bandwidth: dict = field(default_factory=dict)
     failures: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
@@ -51,12 +57,41 @@ class SignalCheckResult:
             "clipping": self.clipping,
             "duration": self.duration,
             "silence": self.silence,
+            "bandwidth": self.bandwidth,
             "failedDimensions": self.failures,
         }
 
 
 def _dbfs(x: float) -> float:
     return float(20 * np.log10(max(x, 1e-10)))
+
+
+def _spectral_cutoff_hz(samples: np.ndarray, sample_rate: int) -> float:
+    """语音段 max-hold 频谱的有效上边界（最后一个高于「谱峰 - 45 dB」的频点）。
+
+    逐频点取响度接近峰值的语音帧做最大保持，避免平均谱被元音主导而漏掉
+    擦音帧的高频能量；正常录音返回奈奎斯特附近，蓝牙 HFP 窄带录音转码后
+    高频全空，返回 8 kHz 左右。无有效帧（过短/全静音）时返回奈奎斯特，
+    交由时长与静音维度处理。
+    """
+    frame = BANDWIDTH_FRAME
+    n_frames = len(samples) // frame
+    if n_frames == 0:
+        return sample_rate / 2
+    window = np.hanning(frame)
+    framed = samples[: n_frames * frame].reshape(n_frames, frame)
+    rms = np.sqrt(np.mean(framed ** 2, axis=1))
+    loud = rms >= rms.max() * 10 ** (-30.0 / 20.0) if rms.max() > 0 else np.ones(n_frames, dtype=bool)
+    if not loud.any():
+        loud = np.ones(n_frames, dtype=bool)
+    spectrum = np.max(np.abs(np.fft.rfft(framed[loud] * window, axis=1)), axis=0)
+    freqs = np.fft.rfftfreq(frame, 1.0 / sample_rate)
+    db = 20 * np.log10(spectrum + 1e-10)
+    # 谱峰参考带取 80 Hz–6 kHz（元音共振峰区），避免直流偏置或孤立高频毛刺冒充峰值
+    reference = (freqs >= 80.0) & (freqs <= 6000.0)
+    peak_db = float(db[reference].max()) if reference.any() else float(db.max())
+    above = freqs[db >= peak_db + BANDWIDTH_ROLLOFF_DB]
+    return float(above[-1]) if len(above) else 0.0
 
 
 def check_signal(wav_path: Path, *, purpose: str, expected_duration: float | None = None) -> SignalCheckResult:
@@ -142,6 +177,21 @@ def check_signal(wav_path: Path, *, purpose: str, expected_duration: float | Non
     if not sil_pass:
         result.failures.append("silence")
 
+    # 频带截断：蓝牙耳机被网页调用麦克风时会切到 HFP 免提窄带（8/16 kHz 采集 +
+    # 高强度有损压缩），转码后 8 kHz 以上频谱全空，擦音/送气等高频特征丢失。
+    # 仅提示不计入 failures / verdict（FR-1301 不设阻断式门禁；频带不影响 F0
+    # 提取与标定，标定门禁不应误伤窄带录音）
+    cutoff_hz = _spectral_cutoff_hz(samples, transcode.SAMPLE_RATE)
+    bw_pass = cutoff_hz >= BANDWIDTH_CUTOFF_HZ_MIN
+    result.bandwidth = {
+        "cutoffHz": round(cutoff_hz),
+        "pass": bw_pass,
+        "advice": None if bw_pass else (
+            f"录音高频信息缺失（有效频带约 {cutoff_hz / 1000:.1f} kHz），常见于蓝牙耳机的"
+            "通话模式，请改用手机自带麦克风或外接麦克风重录"
+        ),
+    }
+
     if result.failures:
         result.verdict = "fail"
     return result
@@ -171,6 +221,11 @@ def extract_f0(wav_path: Path) -> F0Result:
         # 与旧实现一致：过短录音返回空结果 + 提示文案
         return F0Result([], [], 0.0, 0.0, False, "录音太短，无法提取音高")
 
+    return f0_result_from_track(track)
+
+
+def f0_result_from_track(track: f0_pipeline.PitchTrack) -> F0Result:
+    """将一次提取的 F0 复用于产品曲线与声学证据。"""
     t = track.times
     f0 = track.f0            # 主轨 Hz，NaN＝无声（50–800Hz 限幅已在管线内完成）
     voiced = np.isfinite(f0)
@@ -402,7 +457,11 @@ def adaptive_f0_range(f0: F0Result) -> tuple[float, float] | None:
     - 若录音为单字平调（如阴平单韵母/声母关，起伏窄），以其中位数 F0 锚定该发音人的
       自然音高中心，按标准半音跨度（下探 7 半音、上浮 4 半音）构建个人自适应五度音域，
       避免回落到固定 95–260Hz 导致女高音全顶在 5 度或男低音全压在 1 度。"""
-    hz = np.array([fr["hz"] for fr in f0.frames if "hz" in fr], dtype=float)
+    return adaptive_range_from_hz(np.array([fr["hz"] for fr in f0.frames if "hz" in fr], dtype=float))
+
+
+def adaptive_range_from_hz(hz: np.ndarray) -> tuple[float, float] | None:
+    """adaptive_f0_range 的数组版本：输入单次录音的有声帧 Hz。"""
     if hz.size < 12:
         return None
     lo, hi = (float(v) for v in np.percentile(hz, [5, 95]))

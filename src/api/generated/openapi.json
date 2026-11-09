@@ -2071,7 +2071,6 @@
           "admin"
         ],
         "summary": "Admin Set Calibration",
-        "description": "标定文本配置：须覆盖六个单韵母（FR-1403）；每字带拼音标注。",
         "operationId": "admin_set_calibration_api_admin_calibration_text_put",
         "requestBody": {
           "content": {
@@ -2873,6 +2872,16 @@
                 "type": "null"
               }
             ]
+          },
+          "pronunciationEvidence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PronunciationEvidence"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -2918,6 +2927,46 @@
           "context"
         ],
         "title": "AuthLoginResponse"
+      },
+      "BandwidthCheck": {
+        "properties": {
+          "cutoffHz": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cutoffhz"
+          },
+          "pass": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pass"
+          },
+          "advice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Advice"
+          }
+        },
+        "type": "object",
+        "title": "BandwidthCheck",
+        "description": "频带截断（蓝牙 HFP 窄带识别）：cutoffHz 为语音谱的有效上边界。"
       },
       "Body_admin_upload_media_api_admin_media_post": {
         "properties": {
@@ -6185,6 +6234,89 @@
         ],
         "title": "ProgressLevel"
       },
+      "PronunciationEvidence": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "unavailable"
+            ],
+            "title": "Status"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "measurements": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Measurements"
+          },
+          "images": {
+            "items": {
+              "$ref": "#/components/schemas/PronunciationImage"
+            },
+            "type": "array",
+            "title": "Images"
+          },
+          "llm_input": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Llm Input"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "PronunciationEvidence"
+      },
+      "PronunciationImage": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "mime_type": {
+            "type": "string",
+            "const": "image/png",
+            "title": "Mime Type",
+            "default": "image/png"
+          },
+          "data_url": {
+            "type": "string",
+            "title": "Data Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "data_url"
+        ],
+        "title": "PronunciationImage"
+      },
       "PublishedBody": {
         "properties": {
           "published": {
@@ -6371,6 +6503,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/DurationCheck"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "bandwidth": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BandwidthCheck"
               },
               {
                 "type": "null"

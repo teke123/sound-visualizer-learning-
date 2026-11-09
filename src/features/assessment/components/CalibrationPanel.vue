@@ -103,6 +103,11 @@ async function submit() {
             <p class="cal-note">用平常说话的音高自然朗读，不用刻意高或低。</p>
           </div>
 
+          <!-- 蓝牙耳机警告：HFP 窄带会丢失高频，标定与正式录音同样受影响 -->
+          <p v-if="calibration.recorder.inputBluetooth" class="cal-bluetooth-warn">
+            当前检测到蓝牙耳机麦克风（{{ calibration.recorder.inputLabel }}）：录音会切换到窄带通话模式、丢失高频信息，请改用手机自带麦克风或外接麦克风。
+          </p>
+
           <div v-if="calibration.failAdvice.value" class="cal-fail">
             <p class="cal-fail-title">这次标定没有成功</p>
             <p>{{ calibration.failAdvice.value }}</p>
@@ -242,6 +247,12 @@ async function submit() {
   margin: 0
   font-size: 13px
   color: #00796b
+
+.cal-bluetooth-warn
+  margin: 0
+  font-size: 13px
+  color: #bf360c
+  font-weight: 600
 
 .cal-actions, .cal-recorded, .cal-recording
   display: flex

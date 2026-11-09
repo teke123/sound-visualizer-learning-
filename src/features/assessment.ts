@@ -147,11 +147,11 @@ export function useAssessmentFlow(options: AssessmentFlowOptions) {
     try {
       if (!audioId.value) {
         state.value = 'uploading'
-        const ext = recorder.mimeType?.includes('mp4') ? 'm4a' : 'webm'
+        // 录音链路输出为前端封装的无损 WAV（见 stores/recorder.ts）
         const uploaded = await detectionApi.uploadAudio(
           recorder.blob,
           'recording',
-          `take-${Date.now()}.${ext}`,
+          `take-${Date.now()}.wav`,
         )
         audioId.value = uploaded.data.audioId
       }

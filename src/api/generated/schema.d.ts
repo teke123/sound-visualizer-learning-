@@ -761,10 +761,7 @@ export interface paths {
         };
         /** Admin Get Calibration */
         get: operations["admin_get_calibration_api_admin_calibration_text_get"];
-        /**
-         * Admin Set Calibration
-         * @description 标定文本配置：须覆盖六个单韵母（FR-1403）；每字带拼音标注。
-         */
+        /** Admin Set Calibration */
         put: operations["admin_set_calibration_api_admin_calibration_text_put"];
         post?: never;
         delete?: never;
@@ -1016,6 +1013,7 @@ export interface components {
             curve?: components["schemas"]["ResultCurve"] | null;
             formants?: components["schemas"]["ResultFormants"] | null;
             vot?: components["schemas"]["ResultVot"] | null;
+            pronunciationEvidence?: components["schemas"]["PronunciationEvidence"] | null;
         };
         /** AudioUploadResponse */
         AudioUploadResponse: {
@@ -1029,6 +1027,18 @@ export interface components {
         /** AuthLoginResponse */
         AuthLoginResponse: {
             context: components["schemas"]["LoginContextPartial"];
+        };
+        /**
+         * BandwidthCheck
+         * @description 频带截断（蓝牙 HFP 窄带识别）：cutoffHz 为语音谱的有效上边界。
+         */
+        BandwidthCheck: {
+            /** Cutoffhz */
+            cutoffHz?: number | null;
+            /** Pass */
+            pass?: boolean | null;
+            /** Advice */
+            advice?: string | null;
         };
         /** Body_admin_upload_media_api_admin_media_post */
         Body_admin_upload_media_api_admin_media_post: {
@@ -2107,6 +2117,39 @@ export interface components {
             /** Completed */
             completed: boolean;
         };
+        /** PronunciationEvidence */
+        PronunciationEvidence: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "unavailable";
+            /** Reason */
+            reason?: string | null;
+            /** Measurements */
+            measurements?: {
+                [key: string]: unknown;
+            } | null;
+            /** Images */
+            images?: components["schemas"]["PronunciationImage"][];
+            /** Llm Input */
+            llm_input?: {
+                [key: string]: unknown;
+            } | null;
+        };
+        /** PronunciationImage */
+        PronunciationImage: {
+            /** Name */
+            name: string;
+            /**
+             * Mime Type
+             * @default image/png
+             * @constant
+             */
+            mime_type: "image/png";
+            /** Data Url */
+            data_url: string;
+        };
         /** PublishedBody */
         PublishedBody: {
             /** Published */
@@ -2145,6 +2188,7 @@ export interface components {
             noise?: components["schemas"]["NoiseCheck"] | null;
             clipping?: components["schemas"]["ClippingCheck"] | null;
             duration?: components["schemas"]["DurationCheck"] | null;
+            bandwidth?: components["schemas"]["BandwidthCheck"] | null;
         };
         /** QuizOption */
         QuizOption: {

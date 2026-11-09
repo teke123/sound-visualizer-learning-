@@ -68,8 +68,8 @@ export function useCalibration() {
     let audioId: string | undefined
     try {
       phase.value = 'uploading'
-      const ext = recorder.mimeType?.includes('mp4') ? 'm4a' : 'webm'
-      const uploaded = await detectionApi.uploadAudio(recorder.blob, 'calibration', `calibration.${ext}`)
+      // 录音链路输出为前端封装的无损 WAV（见 stores/recorder.ts）
+      const uploaded = await detectionApi.uploadAudio(recorder.blob, 'calibration', 'calibration.wav')
       audioId = uploaded.data.audioId
       phase.value = 'submitting'
       const res = await detectionApi.submitCalibration({ audioId })

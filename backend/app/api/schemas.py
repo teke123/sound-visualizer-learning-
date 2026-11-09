@@ -344,12 +344,20 @@ class DurationCheck(BaseModel):
     advice: Optional[str] = None
 
 
+class BandwidthCheck(BaseModel):
+    """频带截断（蓝牙 HFP 窄带识别）：cutoffHz 为语音谱的有效上边界。"""
+    cutoffHz: Optional[float] = None
+    pass_: Optional[bool] = Field(None, alias="pass")
+    advice: Optional[str] = None
+
+
 class QualitySignal(BaseModel):
     verdict: Optional[Literal["pass", "fail"]] = None
     volume: Optional[VolumeCheck] = None
     noise: Optional[NoiseCheck] = None
     clipping: Optional[ClippingCheck] = None
     duration: Optional[DurationCheck] = None
+    bandwidth: Optional[BandwidthCheck] = None
 
 
 class QualityReading(BaseModel):
@@ -511,6 +519,20 @@ class ScoreBreakdown(BaseModel):
     tone: Optional[float] = None
 
 
+class PronunciationImage(BaseModel):
+    name: str
+    mime_type: Literal["image/png"] = "image/png"
+    data_url: str
+
+
+class PronunciationEvidence(BaseModel):
+    status: Literal["ready", "unavailable"]
+    reason: Optional[str] = None
+    measurements: Optional[dict] = None
+    images: List[PronunciationImage] = Field(default_factory=list)
+    llm_input: Optional[dict] = None
+
+
 class AssessmentResult(BaseModel):
     levelId: str
     providerVersion: str
@@ -522,6 +544,7 @@ class AssessmentResult(BaseModel):
     curve: Optional[ResultCurve] = None
     formants: Optional[ResultFormants] = None
     vot: Optional[ResultVot] = None
+    pronunciationEvidence: Optional[PronunciationEvidence] = None
 
 
 class RecordingWithResult(BaseModel):

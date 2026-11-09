@@ -1,6 +1,8 @@
 /**
- * recorder store：唯一 MediaRecorder 封装（授权、格式选择、时长上限、释放）。
+ * recorder store：唯一录音封装（授权、设备识别、时长上限、释放）。
  * 采集参数关闭回声消除 / 降噪 / 自动增益（若浏览器允许），避免改变音高与能量；
+ * 不在浏览器端强制采样率，以声卡硬件原生采样率采集，由后端统一重采样到 44.1 kHz；
+ * 输出为 AudioWorklet 原始 PCM 封装的无损 WAV（不走 MediaRecorder 的 Opus/AAC 有损编码）。
  * iOS：AudioContext 在首次手势时 resume。
  *
  * 职责边界（FR-907）：本 store 只管录音状态机与产出音频 Blob；
@@ -9,6 +11,8 @@
 import { computed, ref, shallowRef } from 'vue'
 import { defineStore } from 'pinia'
 import { ANALYSIS_FFT_SIZE } from '@/utils/realtimeAcoustics'
+import { detectActiveAudioInput } from '@/utils/deviceCheck'
+import { encodeWav } from '@/utils/wavEncoder'
 
 export type RecorderStatus =
   | 'idle'
@@ -19,39 +23,22 @@ export type RecorderStatus =
   | 'recording'
   | 'recorded'
 
-/** 按 isTypeSupported 依次选择 webm/opus → mp4/aac（§8） */
-const MIME_CANDIDATES = [
-  'audio/webm;codecs=opus',
-  'audio/webm',
-  'audio/mp4;codecs=mp4a.40.2',
-  'audio/mp4',
-  'audio/aac',
-]
-
-function pickMimeType(): string | undefined {
-  if (typeof MediaRecorder === 'undefined') return undefined
-  return MIME_CANDIDATES.find((mime) => {
-    try {
-      return MediaRecorder.isTypeSupported(mime)
-    } catch {
-      return false
-    }
-  })
-}
+type PcmListener = (samples: Float32Array, startSample: number) => void
 
 export const RECORD_MAX_MS = { recording: 15_000, calibration: 40_000 } as const
 
 export const useRecorderStore = defineStore('recorder', () => {
   const status = ref<RecorderStatus>('idle')
   const denied = ref(false)
-  const mimeType = ref<string | undefined>(undefined)
   const blob = shallowRef<Blob | null>(null)
   const blobUrl = ref<string | null>(null)
   const elapsedMs = ref(0)
   const error = ref<string | null>(null)
+  /** 当前输入设备（授权后识别；蓝牙输入供界面提示更换设备） */
+  const inputLabel = ref('')
+  const inputBluetooth = ref(false)
 
   let stream: MediaStream | null = null
-  let recorder: MediaRecorder | null = null
   let audioContext: AudioContext | null = null
   let analyser: AnalyserNode | null = null
   let capture: AudioWorkletNode | null = null
@@ -60,7 +47,23 @@ export const useRecorderStore = defineStore('recorder', () => {
   let autoStopAt = 0
   let onAutoStop: (() => void) | null = null
 
-  const supported = computed(() => typeof MediaRecorder !== 'undefined' && pickMimeType() !== undefined)
+  /** 录音中的 PCM 累积（Worklet 帧序；stop 时封装为 WAV） */
+  const pcmListeners = new Set<PcmListener>()
+  let pcmChunks: Float32Array[] = []
+  let capturing = false
+
+  // 内部累积监听只注册一次（request 可能多次重入，重复注册会重复累积同一帧）
+  pcmListeners.add((samples) => {
+    if (capturing) pcmChunks.push(samples)
+  })
+
+  const supported = computed(
+    () =>
+      typeof navigator !== 'undefined' &&
+      !!navigator.mediaDevices?.getUserMedia &&
+      typeof AudioContext !== 'undefined' &&
+      typeof AudioWorkletNode !== 'undefined',
+  )
   const hasPendingTake = computed(() => blob.value !== null)
 
   function stopTimer() {
@@ -69,6 +72,7 @@ export const useRecorderStore = defineStore('recorder', () => {
   }
 
   function releaseMic() {
+    capturing = false
     capture?.disconnect()
     capture = null
     stream?.getTracks().forEach((track) => track.stop())
@@ -83,6 +87,8 @@ export const useRecorderStore = defineStore('recorder', () => {
     blob.value = null
     blobUrl.value = null
     elapsedMs.value = 0
+    pcmChunks = []
+    capturing = false
   }
 
   /** 请求麦克风授权；成功后保持待机（不立刻录音） */
@@ -95,16 +101,21 @@ export const useRecorderStore = defineStore('recorder', () => {
     if (status.value === 'ready' || status.value === 'recorded') return true
     status.value = 'requesting'
     try {
+      // 不设 sampleRate 约束：以硬件原生采样率采集（通常 44.1/48 kHz），
+      // 重采样统一交给后端处理；channelCount 单声道。
       stream = await navigator.mediaDevices.getUserMedia({
         audio: {
+          channelCount: { ideal: 1 },
           echoCancellation: false,
           noiseSuppression: false,
           autoGainControl: false,
         },
       })
       denied.value = false
-      mimeType.value = pickMimeType()
-      // AudioContext 需在用户手势内创建/resume（iOS Safari）
+      const device = detectActiveAudioInput(stream)
+      inputLabel.value = device.label
+      inputBluetooth.value = device.bluetooth
+      // AudioContext 需在用户手势内创建/resume（iOS Safari）；采样率跟随硬件
       audioContext = new AudioContext()
       if (audioContext.state === 'suspended') await audioContext.resume()
       const source = audioContext.createMediaStreamSource(stream)
@@ -117,6 +128,12 @@ export const useRecorderStore = defineStore('recorder', () => {
       analyser.connect(capture)
       // Processor 的输出保持静音；连接 destination 维持音频处理图运行。
       capture.connect(audioContext.destination)
+      capture.port.onmessage = (event: MessageEvent<{ samples: Float32Array; startSample: number }>) => {
+        const { samples, startSample } = event.data
+        for (const listener of pcmListeners) listener(samples, startSample)
+      }
+      // 常开采集：录音时累积 PCM，同时供实时分析画布订阅
+      capture.port.postMessage({ enabled: true })
       status.value = 'ready'
       return true
     } catch (err) {
@@ -142,16 +159,11 @@ export const useRecorderStore = defineStore('recorder', () => {
     return recordingStartSample
   }
 
-  function subscribePcm(onChunk: (samples: Float32Array, startSample: number) => void): () => void {
-    const node = capture
-    if (!node) return () => {}
-    node.port.onmessage = (event: MessageEvent<{ samples: Float32Array; startSample: number }>) => {
-      onChunk(event.data.samples, event.data.startSample)
-    }
-    node.port.postMessage({ enabled: true })
+  /** 订阅原始 PCM（AudioWorklet 帧流）；返回取消订阅函数 */
+  function subscribePcm(onChunk: PcmListener): () => void {
+    pcmListeners.add(onChunk)
     return () => {
-      node.port.onmessage = null
-      node.port.postMessage({ enabled: false })
+      pcmListeners.delete(onChunk)
     }
   }
 
@@ -162,23 +174,12 @@ export const useRecorderStore = defineStore('recorder', () => {
       if (!ok) return false
     }
     discardTake()
-    if (!stream || !mimeType.value) return false
+    if (!stream || !audioContext) return false
     autoStopAt = Date.now() + options.maxMs
     onAutoStop = options.onAutoStop ?? null
-    const chunks: BlobPart[] = []
-    recorder = new MediaRecorder(stream, { mimeType: mimeType.value })
-    recorder.ondataavailable = (event) => {
-      if (event.data.size > 0) chunks.push(event.data)
-    }
-    recorder.onstop = () => {
-      stopTimer()
-      const type = mimeType.value ?? 'audio/webm'
-      blob.value = new Blob(chunks, { type })
-      blobUrl.value = URL.createObjectURL(blob.value)
-      status.value = 'recorded'
-    }
-    recordingStartSample = Math.round((audioContext?.currentTime ?? 0) * (audioContext?.sampleRate ?? 48000))
-    recorder.start(250)
+    pcmChunks = []
+    capturing = true
+    recordingStartSample = Math.round(audioContext.currentTime * audioContext.sampleRate)
     status.value = 'recording'
     elapsedMs.value = 0
     timerHandle = window.setInterval(() => {
@@ -191,10 +192,15 @@ export const useRecorderStore = defineStore('recorder', () => {
   }
 
   function stop() {
-    if (status.value !== 'recording' || !recorder) return
+    if (status.value !== 'recording') return
     autoStopAt = Date.now() // 防止 interval 再次触发
-    if (recorder.state !== 'inactive') recorder.stop()
-    recorder = null
+    capturing = false
+    stopTimer()
+    const sampleRate = audioContext?.sampleRate ?? 44100
+    blob.value = encodeWav(pcmChunks, sampleRate)
+    pcmChunks = []
+    blobUrl.value = URL.createObjectURL(blob.value)
+    status.value = 'recorded'
     onAutoStop?.()
     onAutoStop = null
   }
@@ -207,12 +213,10 @@ export const useRecorderStore = defineStore('recorder', () => {
 
   /** 离开录音组件 / 页面隐藏超时：停止录音并释放麦克风，避免指示灯常亮（§8） */
   function release() {
-    if (recorder && recorder.state !== 'inactive') {
-      recorder.onstop = null
-      recorder.stop()
+    if (status.value === 'recording') {
+      onAutoStop = null
+      stopTimer()
     }
-    recorder = null
-    stopTimer()
     discardTake()
     releaseMic()
     status.value = 'idle'
@@ -222,11 +226,12 @@ export const useRecorderStore = defineStore('recorder', () => {
     status,
     denied,
     supported,
-    mimeType,
     blob,
     blobUrl,
     elapsedMs,
     error,
+    inputLabel,
+    inputBluetooth,
     hasPendingTake,
     request,
     start,
