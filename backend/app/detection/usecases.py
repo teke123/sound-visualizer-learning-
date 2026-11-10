@@ -14,10 +14,10 @@ import logging
 from sqlalchemy.orm import Session
 
 from app import config
-from app.acoustics import analysis
+from app.acoustics import analysis, f0_pipeline
 from app.acoustics.models import AudioRow
 from app.acoustics.usecases import audio_path
-from app.content.models import LevelRow, MediaAssetRow
+from app.content.models import LevelRow
 from app.content_seed_data import GLOBAL_FOUR_STEP_FALLBACKS
 from app.db import JSONText, get_session, now
 from app.detection.models import AssessmentResultRow, RecordingRow
@@ -222,7 +222,12 @@ def run_pipeline(recording_id: str) -> None:
         # 质量指标照常计算，仅作提示（FR-1301）
         set_stage("analyzing")
         signal = analysis.check_signal(path, purpose="recording")
-        f0res = analysis.extract_f0(path)
+        try:
+            track = f0_pipeline.extract_track(path)
+        except f0_pipeline.F0PipelineError:
+            track = None
+        f0res = analysis.f0_result_from_track(track) if track is not None else analysis.F0Result(
+            [], [], 0.0, 0.0, False, "请延长录音以提取音高")
 
         set_stage("scoring")
         reading: dict | None = None
@@ -260,28 +265,30 @@ def run_pipeline(recording_id: str) -> None:
                 snapshot_row.created_from = JSONText.dump({"kind": "recording_adaptive"})
                 db.commit()
         snapshot = scoring_uc.snapshot_dict(snapshot_row)
+        from app.acoustics.pronunciation_figures import analyze, load_recording
+        from app.acoustics.pronunciation_figures.inputs import alignment_from_provider
+        measured = None
+        evidence_error = None
+        try:
+            alignment = alignment_from_provider(prov, path, audio.duration_sec)
+            recording = load_recording(
+                path, alignment, f0_range=(snapshot["fLo"], snapshot["fHi"]),
+                f0_range_source=JSONText.load(snapshot_row.created_from, {}).get("kind", "personal_calibration"),
+                vowel_norm=snapshot.get("vowelSpace"),
+                formant_ceiling_hz=(snapshot.get("vowelSpace") or {}).get("speaker_max_formant"),
+                signal_quality=signal.to_dict())
+            measured = analyze(recording, track=track)
+        except (ValueError, f0_pipeline.F0PipelineError) as exc:
+            evidence_error = str(exc)
+        # 标准参考留空，由独立入口接入。
         curve = scoring_rules.analyze_user_curve(
-            str(path), prov, snapshot, content.get("standardCurve"))
+            str(path), prov, snapshot, None, measured=measured, track=track)
         curve_tags = scoring_rules.curve_phenomena(curve)
-
+        if measured is not None and measured.f0_range_source in {
+                "estimated_from_this_recording", "recording_adaptive", "default_adult_range"}:
+            curve_tags = [tag for tag in curve_tags if tag["tag"] not in {
+                "tone_start_high", "tone_start_low"}]
         formant_dev = None
-        formants_out = None
-        if level is not None and level.layer == "vowel":
-            f_out = scoring_rules.analyze_formants(
-                str(path), prov, snapshot, (content.get("standardCurve") or {}).get("referenceRegion"))
-            formants_out = f_out
-            formant_dev = f_out.get("deviation")
-
-        # 送气段/VOT 对比（FR-1005）：参考示范取本关检测任务的 sampleMediaId
-        # （seed/CMS 维护），用户侧复用管线已提取的 f0res，避免重复提取音高
-        vot_out = None
-        if level is not None and level.layer == "initial":
-            ref_media_id = det.get("sampleMediaId")
-            ref_asset = db.get(MediaAssetRow, ref_media_id) if ref_media_id else None
-            if ref_asset is not None and ref_asset.deleted_at is None:
-                vot_out = scoring_rules.analyze_vot(
-                    str(path), f0res, str(config.DATA_DIR / ref_asset.storage_path),
-                    content.get("targetSound") or "", ref_asset.id)
 
         phenomena, four_steps, score = scoring_rules.build_phenomena_and_four_steps(
             provider=prov, curve_phenomena_items=curve_tags,
@@ -291,6 +298,18 @@ def run_pipeline(recording_id: str) -> None:
         )
 
         set_stage("finalizing")
+        if measured is not None:
+            from app.acoustics.pronunciation_figures import build_bundle
+            evidence = build_bundle(measured, goal=level.layer if level else "general", context={
+                "target_sound": content.get("targetSound"),
+                "evaluation_text": det.get("evaluationText"),
+                "evaluation_pinyin": det.get("evaluationPinyin"),
+                "native_language_or_dialect": user_dialect(db, rec.user_id),
+                "score": score, "phenomena": phenomena, "reading": reading,
+                "provider_syllables": _provider_payload(prov)["syllables"],
+            })
+        else:
+            evidence = {"status": "unavailable", "reason": evidence_error, "images": []}
         result = {
             "levelId": rec.level_id,
             "providerVersion": prov.provider_version,
@@ -300,11 +319,8 @@ def run_pipeline(recording_id: str) -> None:
             "phenomena": phenomena,
             "fourSteps": four_steps,
             "curve": curve,
+            "pronunciationEvidence": evidence,
         }
-        if formants_out is not None:
-            result["formants"] = formants_out
-        if vot_out is not None:
-            result["vot"] = vot_out
         _finalize_completed(db, rec, result, cacheable={
             "provider": _provider_payload(prov), "reading": reading,
         })
@@ -364,7 +380,7 @@ def _provider_payload(prov) -> dict:  # noqa: ANN001
         "syllables": [
             {"text": s.text, "pinyin": s.pinyin, "t0": s.t0, "t1": s.t1,
              "initial_ok": s.initial_ok, "final_ok": s.final_ok,
-             "tone_ok": s.tone_ok, "tone_value": s.tone_value}
+             "tone_ok": s.tone_ok, "tone_value": s.tone_value, "detail": s.detail}
             for s in prov.syllables
         ],
     }
@@ -383,7 +399,7 @@ def _provider_from_cache(data: dict):
                 text=s["text"], pinyin=s.get("pinyin"), t0=s.get("t0", 0.0),
                 t1=s.get("t1", 0.0), initial_ok=s.get("initial_ok", True),
                 final_ok=s.get("final_ok", True), tone_ok=s.get("tone_ok", True),
-                tone_value=s.get("tone_value"),
+                tone_value=s.get("tone_value"), detail=s.get("detail", {}),
             ) for s in data.get("syllables", [])
         ],
     })()

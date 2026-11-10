@@ -49,7 +49,8 @@ class MockProvider(ScoringProvider):
     version = "mock-1.0.0"
 
     def evaluate(self, wav_path: str, evaluation_text: str,
-                 pinyin: str | None = None) -> ProviderResult:
+                 pinyin: str | None = None,
+                 category: str | None = None) -> ProviderResult:
         import time
 
         mode = os.environ.get("SVS_MOCK_PROVIDER", "")

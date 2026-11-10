@@ -23,6 +23,30 @@ export interface MockSession {
   calibration: { status: 'none' | 'personal' }
 }
 
+/** 标定会话的单条录音（个人标定流程改造方案） */
+export interface MockCalibrationTake {
+  audioId: string
+  kind: 'vowel' | 'pitch'
+  vowel: string | null
+  ordinal: number
+  status: 'accepted' | 'replaced'
+  measurements: Record<string, unknown>
+  createdAt: string
+}
+
+/** 内存中的标定会话（视图由 handlers 组装） */
+export interface MockCalibrationSession {
+  id: string
+  status: 'active' | 'completed'
+  calcState: 'idle' | 'processing' | 'done' | 'failed'
+  takes: MockCalibrationTake[]
+  result: {
+    pitchRange: { fLo: number; fHi: number }
+    rangeSnapshotId: string
+    updatedAt: string
+  } | null
+}
+
 export interface MockRecording {
   recording: RecordingDTO
   submissionPayload: string
@@ -42,11 +66,13 @@ export const state = {
   recordings: new Map<string, MockRecording>(),
   submissions: new Map<string, string>(),
   submissionCounter: 0,
+  calibSession: null as MockCalibrationSession | null,
 }
 
 export function resetSession() {
   state.session.authenticated = null
   state.session.calibration = { status: 'none' }
+  state.calibSession = null
 }
 
 /* ------------------------------ 结果合成 ------------------------------ */

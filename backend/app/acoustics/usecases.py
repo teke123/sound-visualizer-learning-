@@ -62,7 +62,7 @@ def register_upload(db: Session, *, user_id: str, purpose: str,
     return {
         "audioId": audio_id,
         "duration": normalized.duration_sec,
-        "format": "pcm16k16mono",
+        "format": "pcm44k1_16mono",
     }
 
 

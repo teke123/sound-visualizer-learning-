@@ -9,7 +9,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { QBtn } from 'quasar'
 import { useContextStore } from '@/stores/context'
 import { dialectLabel, genderLabel, useAuth } from '@/features/auth'
-import { useCalibration } from '@/features/calibration'
 import { errorCopy } from '@/copy/usePageCopy'
 import CalibrationPanel from '@/features/assessment/components/CalibrationPanel.vue'
 import DangerConfirmDialog from '@/components/DangerConfirmDialog.vue'
@@ -60,8 +59,6 @@ watch(
   },
   { immediate: true },
 )
-
-const calibration = useCalibration()
 
 const authenticated = computed(() => contextStore.isAuthenticated)
 

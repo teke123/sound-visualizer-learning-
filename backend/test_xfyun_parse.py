@@ -216,8 +216,8 @@ def test_read_pcm_format_guard(tmp_path: Path) -> None:
     bad = tmp_path / "bad.wav"
     with wave.open(str(bad), "wb") as w:
         w.setnchannels(1)
-        w.setsampwidth(2)
-        w.setframerate(8000)          # 非 16k
+        w.setsampwidth(1)
+        w.setframerate(44100)        # 非 16-bit PCM
         w.writeframes(b"\x00" * 1600)
     with pytest.raises(ProviderError) as ei:
         _read_pcm(str(bad))

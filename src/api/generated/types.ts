@@ -68,12 +68,13 @@ export type FormantsResponse = Schemas['FormantsResponse']
 /* --------------------------------- 标定 ----------------------------------- */
 
 export type PitchCalibrationInfo = Schemas['PitchCalibrationInfo']
-
-/** POST /api/pitch-calibration 成功响应（后端 schema 名 CalibrationOkResult） */
-export type CalibrationPostResult = Schemas['CalibrationOkResult']
-
-/** CALIBRATION_FAIL（HTTP 200 业务结果）的 data */
-export type CalibrationFailResult = Schemas['CalibrationFailResult']
+export type VowelTaskConfig = Schemas['VowelTaskConfig']
+export type CalibrationOkResult = Schemas['CalibrationOkResult']
+export type CalibrationNextTask = Schemas['CalibrationNextTask']
+export type CalibrationTakeView = Schemas['CalibrationTakeView']
+export type CalibrationVowelProgress = Schemas['CalibrationVowelProgress']
+export type CalibrationSessionView = Schemas['CalibrationSessionView']
+export type CalibrationTakeOutcome = Schemas['CalibrationTakeOutcome']
 
 /* -------------------------------- 录音与结果 ------------------------------- */
 

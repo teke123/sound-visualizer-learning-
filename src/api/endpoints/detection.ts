@@ -3,8 +3,8 @@ import { apiRequest } from '../client'
 import type {
   AudioPurpose,
   AudioUploadResponse,
-  CalibrationFailResult,
-  CalibrationPostResult,
+  CalibrationSessionView,
+  CalibrationTakeOutcome,
   F0Response,
   FormantsResponse,
   PitchCalibrationInfo,
@@ -17,6 +17,14 @@ export interface SubmitRecordingPayload {
   audioId: string
   levelId: string
   submissionId: string
+}
+
+export interface CalibrationTakePayload {
+  sessionId: string
+  audioId: string
+  kind: 'vowel' | 'pitch'
+  /** kind=vowel 时必填：i / u / a / ü */
+  vowel?: string
 }
 
 export const detectionApi = {
@@ -38,12 +46,28 @@ export const detectionApi = {
   getCalibration() {
     return apiRequest<PitchCalibrationInfo>('/pitch-calibration')
   },
-  /** 标定：同步处理；未得出有效音域时 HTTP 200 + code=CALIBRATION_FAIL（带重录指引） */
-  submitCalibration(payload: { audioId: string }) {
-    return apiRequest<CalibrationPostResult | CalibrationFailResult>('/pitch-calibration', {
-      method: 'POST',
-      body: payload,
-    })
+
+  /** 创建或返回当前用户进行中的标定会话（刷新/重开后由此恢复进度） */
+  createCalibrationSession() {
+    return apiRequest<CalibrationSessionView>('/pitch-calibration/sessions', { method: 'POST' })
+  },
+  /** 查询会话进度与最终计算状态 */
+  getCalibrationSession(sessionId: string) {
+    return apiRequest<CalibrationSessionView>(
+      `/pitch-calibration/sessions/${encodeURIComponent(sessionId)}`)
+  },
+  /** 提交单条标定录音并验收：accepted / retry_take / additional_take_required / vowel_dispersed */
+  submitCalibrationTake(payload: CalibrationTakePayload) {
+    const { sessionId, ...body } = payload
+    return apiRequest<CalibrationTakeOutcome>(
+      `/pitch-calibration/sessions/${encodeURIComponent(sessionId)}/takes`,
+      { method: 'POST', body })
+  },
+  /** 任务齐备后启动最终计算；幂等，重复请求返回同一计算状态 */
+  completeCalibrationSession(sessionId: string) {
+    return apiRequest<CalibrationSessionView>(
+      `/pitch-calibration/sessions/${encodeURIComponent(sessionId)}/complete`,
+      { method: 'POST' })
   },
 
   /** 两步提交第二步：窗口内完成 200；未完成 202；幂等冲突 409 */

@@ -70,7 +70,6 @@ SYNC_WINDOW_SECONDS: float = float(os.environ.get("SVS_SYNC_WINDOW", "8"))
 HARD_DEADLINE_SECONDS: float = float(os.environ.get("SVS_HARD_DEADLINE", "30"))  # 自受理起
 # 标定路由等待上限：与录音硬截止解耦（标定不受调度器 sweep 约束，
 # 借用 HARD_DEADLINE 会让慢 Provider 场景下标定先于检测误超时）
-CALIBRATION_TIMEOUT_SECONDS: float = float(os.environ.get("SVS_CALIBRATION_TIMEOUT", "45"))
 RETRY_AFTER_SECONDS: int = 2           # 202 响应 Retry-After
 EXECUTOR_WORKERS: int = int(os.environ.get("SVS_EXECUTOR_WORKERS", "4"))
 EXECUTOR_QUEUE_LIMIT: int = int(os.environ.get("SVS_EXECUTOR_QUEUE", "32"))
@@ -108,7 +107,10 @@ XFYUN_TIMEOUT_SEC: float = float(os.environ.get("XFYUN_TIMEOUT_SEC", "20"))   # 
 RATE_LIMITS: dict[str, tuple[int, int]] = {
     "upload": (30, 300),
     "recording_submit": (20, 300),
-    "calibration": (10, 600),
+    # 多录音标定：一次会话通常九条录音，补录时更多
+    "calibration_session": (10, 600),
+    "calibration_take": (40, 600),
+    "calibration_complete": (20, 600),
     "feature_read": (60, 300),
     "feedback": (10, 600),
     "wish": (10, 600),

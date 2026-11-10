@@ -1,5 +1,5 @@
 """音频解码与转码规范化：任意浏览器录音格式（webm/opus、mp4/aac、ogg、wav、mp3）
-统一转 16 kHz 单声道 16-bit PCM WAV；内容哈希基于规范化 PCM（决策图 #11）。
+统一转 44.1 kHz 单声道 16-bit PCM WAV；内容哈希基于规范化 PCM。
 
 ffmpeg 二进制来自 imageio-ffmpeg（随依赖分发）；进程外调用，不在数据库事务内。
 """
@@ -12,7 +12,7 @@ from pathlib import Path
 
 from app.platform.envelope import ApiError
 
-SAMPLE_RATE = 16000
+SAMPLE_RATE = 44100
 
 _FFMPEG_CANDIDATES: list[str] = []
 
@@ -83,12 +83,21 @@ def normalize_to_wav(input_path: Path, output_path: Path) -> NormalizedAudio:
 
 
 def read_pcm_samples(wav_path: Path):
-    """读 16k 单声道 s16 WAV 为 numpy float32 [-1, 1]。"""
+    """读取 PCM WAV，并按产品采样率返回单声道 float32。"""
     import numpy as np
     import wave
 
     with wave.open(str(wav_path), "rb") as w:
+        if w.getsampwidth() != 2:
+            raise ValueError("需要 16-bit PCM WAV")
+        channels, rate = w.getnchannels(), w.getframerate()
         n = w.getnframes()
         raw = w.readframes(n)
-    samples = np.frombuffer(raw, dtype="<i2").astype(np.float32) / 32768.0
+    samples = np.frombuffer(raw, dtype="<i2").reshape(-1, channels)[:, 0].astype(np.float32) / 32768.0
+    if rate != SAMPLE_RATE:
+        from math import gcd
+        from scipy.signal import resample_poly
+
+        divisor = gcd(rate, SAMPLE_RATE)
+        samples = resample_poly(samples, SAMPLE_RATE // divisor, rate // divisor)
     return samples

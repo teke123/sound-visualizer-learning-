@@ -151,9 +151,14 @@ def _filtered_ac(snd, voicing_threshold: float):
 def extract_track(wav_path) -> PitchTrack:
     """filtered AC 主趟＋救援趟＋Intensity 对齐（docs §2.1）。"""
     import parselmouth
+
+    return extract_track_from_sound(parselmouth.Sound(str(wav_path)))
+
+
+def extract_track_from_sound(snd) -> PitchTrack:
+    """extract_track 的内存版本：输入 parselmouth.Sound。"""
     from parselmouth.praat import call
 
-    snd = parselmouth.Sound(str(wav_path))
     if snd.duration < 0.08:
         raise F0PipelineError("录音太短，无法提取音高")
 
@@ -727,7 +732,7 @@ def _chao_from_comparison(comp: list[dict]):
 # ---------------- 哼鸣合成（docs §5.2，接入 tone_py.sonify）----------------
 
 def sonify_frames(frames: list[dict], *, remap_range: tuple[float, float] | None = None,
-                  duration: float | None = None, fs: int = 16000) -> bytes:
+                  duration: float | None = None, fs: int = 44100) -> bytes:
     """绘图帧 → WAV 音高哼鸣。
 
     连续有效段分别用 sonify_f0（三共振峰级联合成器，中性元音 /a/）合成，

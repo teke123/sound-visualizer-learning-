@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+  <xml_result>
+      <read_syllable lan="cn" type="study" version="7,0,0,1024">
+          <rec_paper>
+              <read_syllable beg_pos="0" content="烫。" end_pos="106" except_info="0" fluency_score="0.000000" integrity_score="0.000000" phone_score="100.000000" time_len="106" tone_score="100.000000" total_score="100.000000">
+                  <sentence beg_pos="0" content="烫" end_pos="106" time_len="106">
+                      <word beg_pos="0" content="烫" end_pos="106" symbol="tang4" time_len="106">
+                          <syll beg_pos="0" content="silv" dp_message="0" end_pos="16" rec_node_type="silv" time_len="16">
+                              <phone beg_pos="0" content="silv" dp_message="0" end_pos="16" rec_node_type="silv" time_len="16"></phone>
+                          </syll>
+                          <syll beg_pos="16" content="烫" dp_message="0" end_pos="77" rec_node_type="paper" symbol="tang4" time_len="61">
+                              <phone beg_pos="16" content="t" dp_message="0" end_pos="43" is_yun="0" perr_level_msg="0" perr_msg="0" rec_node_type="paper" time_len="27"></phone>
+                              <phone beg_pos="43" content="ang" dp_message="0" end_pos="77" is_yun="1" mono_tone="TONE4" perr_level_msg="0" perr_msg="0" rec_node_type="paper" time_len="34"></phone>
+                          </syll>
+                          <syll beg_pos="77" content="silv" dp_message="0" end_pos="106" rec_node_type="silv" time_len="29">
+                              <phone beg_pos="77" content="silv" end_pos="106" time_len="29"></phone>
+                          </syll>
+                      </word>
+                  </sentence>
+              </read_syllable>
+          </rec_paper>
+      </read_syllable>
+  </xml_result>

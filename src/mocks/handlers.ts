@@ -24,6 +24,7 @@ import {
   LEVEL_SUMMARIES,
   PUBLISHED_IDS,
   SKELETONS,
+  VOWEL_TASKS,
 } from './fixtures'
 import { buildResult, deriveProgress, resetSession, state } from './state'
 import { TINY_PNG, freqForMediaId, makeMouthGlb, makeMouthSvg, makeToneWav } from './media'
@@ -67,6 +68,59 @@ function meContext(): MeContext {
     gender: user?.gender ?? undefined,
     calibration: state.session.calibration,
     nextLevelId: user ? deriveProgress().nextLevelId : LEVEL_SUMMARIES[0]?.id,
+  }
+}
+
+/** 组装会话视图（进度由 takes 派生，与后端口径一致） */
+function calibSessionView() {
+  const session = state.calibSession
+  if (!session) return null
+  const acceptedOf = (vowel: string) =>
+    session.takes.filter((t) => t.kind === 'vowel' && t.vowel === vowel && t.status === 'accepted').length
+  const vowels = VOWEL_TASKS.map((cfg) => ({
+    ...cfg,
+    acceptedTakes: acceptedOf(cfg.key),
+    done: acceptedOf(cfg.key) >= cfg.targetTakes,
+  }))
+  const pitchAccepted = session.takes.some((t) => t.kind === 'pitch' && t.status === 'accepted')
+  const pendingVowel = vowels.find((v) => !v.done)
+  const nextTask = session.status === 'completed'
+    ? null
+    : pendingVowel
+      ? { kind: 'vowel' as const, vowel: pendingVowel.key, ordinal: pendingVowel.acceptedTakes + 1 }
+      : pitchAccepted
+        ? null
+        : { kind: 'pitch' as const }
+  return {
+    sessionId: session.id,
+    textVersion: CALIBRATION_TEXT.textVersion,
+    passageText: CALIBRATION_TEXT.text,
+    status: session.status,
+    calcState: session.calcState,
+    vowels,
+    passageAccepted: pitchAccepted,
+    nextTask,
+    takes: session.takes.map((t) => ({
+      audioId: t.audioId,
+      kind: t.kind,
+      vowel: t.vowel,
+      ordinal: t.ordinal,
+      status: t.status,
+      measurements: t.measurements,
+      createdAt: t.createdAt,
+    })),
+    ...(session.result
+      ? {
+          result: {
+            ok: true,
+            status: 'personal',
+            pitchRange: session.result.pitchRange,
+            vowelSpaceReady: true,
+            rangeSnapshotId: session.result.rangeSnapshotId,
+            updatedAt: session.result.updatedAt,
+          },
+        }
+      : {}),
   }
 }
 
@@ -223,39 +277,105 @@ export const handlers = [
       status: state.session.calibration.status,
       pitchRange: state.session.calibration.status === 'none' ? undefined : { fLo: 120, fHi: 260 },
       vowelSpaceReady: state.session.calibration.status !== 'none',
+      vowelTasks: VOWEL_TASKS,
     }),
   ),
 
-  http.post('/api/pitch-calibration', async ({ request }) => {
+  // ---- 标定会话（个人标定流程改造方案）：创建/恢复 → 单条验收 → 最终计算 ----
+
+
+  http.post('/api/pitch-calibration/sessions', () => {
     if (!currentUser()) return fail(401, 'AUTH_REQUIRED', '需要登录')
-    const body = (await request.json()) as { audioId: string }
-    if (!state.uploads.has(body.audioId)) return fail(404, 'NOT_FOUND', '上传不存在')
-    // 每几次标定演示一次 CALIBRATION_FAIL（HTTP 200 业务结果，可重试/可跳过）
-    state.submissionCounter += 1
-    const failThis = state.submissionCounter % 5 === 0
-    if (failThis) {
-      return envelope(
-        {
-          reason: '未检出足够的有声段',
-          signal: {
-            verdict: 'fail',
-            volume: { dbfs: -30.1, pass: false, advice: '请用平常说话的音量完整朗读整段文本' },
-            noise: { snrDb: 6.2, pass: false, advice: '环境噪声较大，请找安静的地方重录' },
-          },
-        },
-        { code: 'CALIBRATION_FAIL', message: '标定未得出有效音域' },
-      )
+    if (!state.calibSession) {
+      state.calibSession = {
+        id: `cal-mock-${Math.random().toString(36).slice(2, 10)}`,
+        status: 'active',
+        calcState: 'idle',
+        takes: [],
+        result: null,
+      }
     }
-    state.session.calibration = { status: 'personal' }
-    state.uploads.delete(body.audioId) // 标定音频用后即删
-    return envelope({
-      ok: true,
-      status: state.session.calibration.status,
-      pitchRange: { fLo: 110 + Math.round(Math.random() * 30), fHi: 240 + Math.round(Math.random() * 40) },
-      vowelSpaceReady: true,
-      rangeSnapshotId: `prs-mock-${Math.random().toString(36).slice(2, 8)}`,
-      updatedAt: new Date().toISOString(),
+    return envelope(calibSessionView())
+  }),
+
+  http.get('/api/pitch-calibration/sessions/:sessionId', ({ params }) => {
+    if (!currentUser()) return fail(401, 'AUTH_REQUIRED', '需要登录')
+    const view = calibSessionView()
+    if (!view || view.sessionId !== params.sessionId) return fail(404, 'NOT_FOUND', '标定会话不存在')
+    return envelope(view)
+  }),
+
+  http.post('/api/pitch-calibration/sessions/:sessionId/takes', async ({ request, params }) => {
+    if (!currentUser()) return fail(401, 'AUTH_REQUIRED', '需要登录')
+    const view = calibSessionView()
+    if (!view || view.sessionId !== params.sessionId) return fail(404, 'NOT_FOUND', '标定会话不存在')
+    const session = state.calibSession!
+    const body = (await request.json()) as { audioId: string; kind: 'vowel' | 'pitch'; vowel?: string }
+    if (!state.uploads.has(body.audioId)) return fail(404, 'NOT_FOUND', '上传不存在')
+    if (view.nextTask?.kind !== body.kind || (body.kind === 'vowel' && view.nextTask.vowel !== body.vowel)) {
+      return fail(422, 'VALIDATION_ERROR', '请按当前任务顺序录音')
+    }
+    // 每几次提交演示一次质检不过（retry_take：本条重录，其余进度保留）
+    state.submissionCounter += 1
+    if (state.submissionCounter % 5 === 0) {
+      return envelope({
+        outcome: 'retry_take',
+        reason: '未检出足够的有声段',
+        signal: {
+          verdict: 'fail',
+          volume: { dbfs: -30.1, pass: false, advice: '请用平常说话的音量发音' },
+          noise: { snrDb: 6.2, pass: false, advice: '环境噪声较大，请找安静的地方重录' },
+        },
+        session: view,
+      })
+    }
+    session.takes.push({
+      audioId: body.audioId,
+      kind: body.kind,
+      vowel: body.kind === 'vowel' ? body.vowel ?? null : null,
+      ordinal: body.kind === 'vowel'
+        ? session.takes.filter((t) => t.vowel === body.vowel).length + 1
+        : 1,
+      status: 'accepted',
+      measurements: body.kind === 'pitch'
+        ? { fLo: 118.4, fHi: 252.7, f0Median: 176.5, validFrames: 182, textVersion: CALIBRATION_TEXT.textVersion }
+        : { f1: 320.5, f2: 2301.2, f3: 3560.8, f1Std: 8.2, f2Std: 21.4, f3Std: 44.9, nFrames: 42, voicedSec: 0.9, steady: [0.25, 0.61], ceiling: 5500 },
+      createdAt: new Date().toISOString(),
     })
+    return envelope({
+      outcome: 'accepted',
+      reason: null,
+      signal: null,
+      session: calibSessionView(),
+    })
+  }),
+
+  http.post('/api/pitch-calibration/sessions/:sessionId/complete', ({ params }) => {
+    if (!currentUser()) return fail(401, 'AUTH_REQUIRED', '需要登录')
+    const view = calibSessionView()
+    if (!view || view.sessionId !== params.sessionId) return fail(404, 'NOT_FOUND', '标定会话不存在')
+    const session = state.calibSession!
+    if (session.status === 'completed' || session.calcState === 'processing') {
+      return envelope(view)
+    }
+    if (view.nextTask) return fail(422, 'VALIDATION_ERROR', '标定任务尚未完成')
+    session.calcState = 'processing'
+    // 模拟后台计算：稍后落为完成（GET 查询可见）
+    setTimeout(() => {
+      const s = state.calibSession
+      if (!s || s.calcState !== 'processing') return
+      s.calcState = 'done'
+      s.status = 'completed'
+      s.result = {
+        pitchRange: { fLo: 110 + Math.round(Math.random() * 30), fHi: 240 + Math.round(Math.random() * 40) },
+        rangeSnapshotId: `prs-mock-${Math.random().toString(36).slice(2, 8)}`,
+        updatedAt: new Date().toISOString(),
+      }
+      state.session.calibration = { status: 'personal' }
+      // 会话录音用后即删
+      for (const take of s.takes) state.uploads.delete(take.audioId)
+    }, 1500)
+    return envelope({ ...view, calcState: 'processing' })
   }),
 
   /* ------------------------------ 录音与检测 ------------------------------ */

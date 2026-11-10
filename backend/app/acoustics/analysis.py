@@ -31,6 +31,15 @@ SNR_DB_MIN = 10.0                     # 噪声：语音峰值 vs 环境底噪
 SILENCE_RATIO_MAX = 0.92              # 静音比
 DURATION_RANGE_RECORDING = (0.3, 30.0)
 DURATION_RANGE_CALIBRATION = (1.5, 40.0)
+DURATION_RANGE_CALIBRATION_VOWEL = (0.3, 10.0)   # 个人标定单条元音录音
+
+# 各用途的时长重录指引（未列出的用途用通用文案）
+_DURATION_SHORT_ADVICE = {
+    "calibration_vowel": "录音太短，请自然、平稳地延长元音后再停止录音",
+}
+_DURATION_LONG_ADVICE = {
+    "calibration_vowel": "录音过长，请只录一个元音的延长发音",
+}
 # 频带截断（蓝牙耳机免提 HFP 窄带录音识别）：44.1 kHz 规范化录音中擦音/送气
 # 在 8 kHz 以上仍有能量；蓝牙通话协议把采集限制到 8/16 kHz，转码后高频全空
 BANDWIDTH_CUTOFF_HZ_MIN = 8500.0
@@ -103,6 +112,7 @@ def check_signal(wav_path: Path, *, purpose: str, expected_duration: float | Non
 
     # 时长
     lo, hi = (DURATION_RANGE_CALIBRATION if purpose == "calibration"
+              else DURATION_RANGE_CALIBRATION_VOWEL if purpose == "calibration_vowel"
               else DURATION_RANGE_RECORDING)
     dur_pass = lo <= duration <= hi
     result.duration = {
@@ -113,9 +123,11 @@ def check_signal(wav_path: Path, *, purpose: str, expected_duration: float | Non
     if not dur_pass:
         result.failures.append("duration")
         if duration < lo:
-            result.duration["advice"] = "录音太短，请等提示读完再停止录音"
+            result.duration["advice"] = _DURATION_SHORT_ADVICE.get(
+                purpose, "录音太短，请等提示读完再停止录音")
         else:
-            result.duration["advice"] = "录音过长，请只朗读提示的内容"
+            result.duration["advice"] = _DURATION_LONG_ADVICE.get(
+                purpose, "录音过长，请只朗读提示的内容")
 
     # 截幅
     clip_ratio = float(np.mean(np.abs(samples) >= 0.985)) if len(samples) else 0.0

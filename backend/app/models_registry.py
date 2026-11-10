@@ -6,6 +6,9 @@ from app.content.models import (  # noqa: F401
     ReferenceSpeakerRow,
 )
 from app.acoustics.models import AudioRow, FeatureCacheRow  # noqa: F401
-from app.scoring.models import PitchRangeRow, PitchRangeSnapshotRow, ScoreCacheRow  # noqa: F401
+from app.scoring.models import (  # noqa: F401
+    CalibrationSessionRow, CalibrationTakeRow, PitchRangeRow, PitchRangeSnapshotRow,
+    ScoreCacheRow,
+)
 from app.detection.models import AssessmentResultRow, RecordingRow  # noqa: F401
 from app.feedback.models import FeedbackRow, WishRow  # noqa: F401

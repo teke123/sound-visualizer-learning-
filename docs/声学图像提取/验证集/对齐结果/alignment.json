@@ -1,0 +1,6933 @@
+{
+  "meta": {
+    "createdAt": "2026-11-07T22:36:10",
+    "source": "讯飞语音评测 open-ise（category=read_syllable，ent=cn_vip，拼音标注 interphonic 格式）",
+    "corpus": "项目语料库（CORPUS_DIR，即仓库同级的「录音」目录）",
+    "audioSentToApi": "原始 44.1 kHz 双声道录音经 ffmpeg 转为 16 kHz 单声道 16-bit，首部补 0.2 s、尾部补 0.3 s 静音",
+    "timeline": "t0/t1 为秒，相对原始录音起点（已减去首部补白，并截断到 [0, 时长]）；begPos/endPos 为接口原始值（10 ms 单位，含首部补白）",
+    "leadPaddingSec": 0.2,
+    "tailPaddingSec": 0.3,
+    "positionUnitSec": 0.01,
+    "set": "验证集（不参与参数调整，用于检验代码效果）",
+    "speakers": [
+      "FV2",
+      "FV3",
+      "MV2",
+      "MV3"
+    ]
+  },
+  "samples": [
+    {
+      "file": "样本/FV2/tang1_FV2.wav",
+      "speaker": "FV2",
+      "pinyin": "tang1",
+      "text": "汤",
+      "category": "声调对比/送气塞音/后鼻韵母",
+      "durationSec": 0.628,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d230c@dx1a1b66d7dc9b993812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "汤",
+          "symbol": "tang1",
+          "begPos": 16.0,
+          "endPos": 80.0,
+          "t0": 0.0,
+          "t1": 0.6,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "t",
+              "part": "initial",
+              "begPos": 16.0,
+              "endPos": 38.0,
+              "t0": 0.0,
+              "t1": 0.18,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "ang",
+              "part": "final",
+              "begPos": 38.0,
+              "endPos": 80.0,
+              "t0": 0.18,
+              "t1": 0.6,
+              "perr": "ok",
+              "monoTone": "TONE1"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 16.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 80.0,
+          "endPos": 111.0,
+          "t0": 0.6,
+          "t1": 0.628
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV2/tang2_FV2.wav",
+      "speaker": "FV2",
+      "pinyin": "tang2",
+      "text": "糖",
+      "category": "声调对比/送气塞音/后鼻韵母",
+      "durationSec": 0.7586,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000eac1f@dx1a1b66d84dc7612812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "糖",
+          "symbol": "tang2",
+          "begPos": 16.0,
+          "endPos": 94.0,
+          "t0": 0.0,
+          "t1": 0.74,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "t",
+              "part": "initial",
+              "begPos": 16.0,
+              "endPos": 38.0,
+              "t0": 0.0,
+              "t1": 0.18,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "ang",
+              "part": "final",
+              "begPos": 38.0,
+              "endPos": 94.0,
+              "t0": 0.18,
+              "t1": 0.74,
+              "perr": "ok",
+              "monoTone": "TONE2"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 16.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 94.0,
+          "endPos": 124.0,
+          "t0": 0.74,
+          "t1": 0.759
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV2/tang3_FV2.wav",
+      "speaker": "FV2",
+      "pinyin": "tang3",
+      "text": "躺",
+      "category": "声调对比/送气塞音/后鼻韵母",
+      "durationSec": 0.8631,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d2364@dx1a1b66d8c6ab993812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "躺",
+          "symbol": "tang3",
+          "begPos": 15.0,
+          "endPos": 102.0,
+          "t0": 0.0,
+          "t1": 0.82,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "t",
+              "part": "initial",
+              "begPos": 15.0,
+              "endPos": 40.0,
+              "t0": 0.0,
+              "t1": 0.2,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "ang",
+              "part": "final",
+              "begPos": 40.0,
+              "endPos": 102.0,
+              "t0": 0.2,
+              "t1": 0.82,
+              "perr": "ok",
+              "monoTone": "TONE3"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 15.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 102.0,
+          "endPos": 134.0,
+          "t0": 0.82,
+          "t1": 0.863
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV2/tang4_FV2.wav",
+      "speaker": "FV2",
+      "pinyin": "tang4",
+      "text": "烫",
+      "category": "声调对比/送气塞音/后鼻韵母",
+      "durationSec": 0.5496,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000eac7a@dx1a1b66d94697612812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "烫",
+          "symbol": "tang4",
+          "begPos": 16.0,
+          "endPos": 72.0,
+          "t0": 0.0,
+          "t1": 0.52,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "t",
+              "part": "initial",
+              "begPos": 16.0,
+              "endPos": 37.0,
+              "t0": 0.0,
+              "t1": 0.17,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "ang",
+              "part": "final",
+              "begPos": 37.0,
+              "endPos": 72.0,
+              "t0": 0.17,
+              "t1": 0.52,
+              "perr": "ok",
+              "monoTone": "TONE4"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 16.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 72.0,
+          "endPos": 103.0,
+          "t0": 0.52,
+          "t1": 0.55
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV2/bu4_FV2.wav",
+      "speaker": "FV2",
+      "pinyin": "bu4",
+      "text": "不",
+      "category": "塞音-不送气",
+      "durationSec": 0.419,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d72e2@dx1a1b66d9b0fb8de812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "不",
+          "symbol": "bu4",
+          "begPos": 15.0,
+          "endPos": 59.0,
+          "t0": 0.0,
+          "t1": 0.39,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "b",
+              "part": "initial",
+              "begPos": 15.0,
+              "endPos": 23.0,
+              "t0": 0.0,
+              "t1": 0.03,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "u",
+              "part": "final",
+              "begPos": 23.0,
+              "endPos": 59.0,
+              "t0": 0.03,
+              "t1": 0.39,
+              "perr": "ok",
+              "monoTone": "TONE4"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 15.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 59.0,
+          "endPos": 90.0,
+          "t0": 0.39,
+          "t1": 0.419
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV2/ku3_FV2.wav",
+      "speaker": "FV2",
+      "pinyin": "ku3",
+      "text": "苦",
+      "category": "塞音-送气",
+      "durationSec": 1.0198,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000eacc1@dx1a1b66da1267612812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "苦",
+          "symbol": "ku3",
+          "begPos": 15.0,
+          "endPos": 116.0,
+          "t0": 0.0,
+          "t1": 0.96,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "k",
+              "part": "initial",
+              "begPos": 15.0,
+              "endPos": 42.0,
+              "t0": 0.0,
+              "t1": 0.22,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "u",
+              "part": "final",
+              "begPos": 42.0,
+              "endPos": 116.0,
+              "t0": 0.22,
+              "t1": 0.96,
+              "perr": "ok",
+              "monoTone": "TONE3"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 15.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 116.0,
+          "endPos": 150.0,
+          "t0": 0.96,
+          "t1": 1.02
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV2/de2_FV2.wav",
+      "speaker": "FV2",
+      "pinyin": "de2",
+      "text": "得",
+      "category": "塞音-不送气",
+      "durationSec": 0.7325,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000eacfe@dx1a1b66da9f17612812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "得",
+          "symbol": "de2",
+          "begPos": 15.0,
+          "endPos": 88.0,
+          "t0": 0.0,
+          "t1": 0.68,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "d",
+              "part": "initial",
+              "begPos": 15.0,
+              "endPos": 22.0,
+              "t0": 0.0,
+              "t1": 0.02,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "e",
+              "part": "final",
+              "begPos": 22.0,
+              "endPos": 88.0,
+              "t0": 0.02,
+              "t1": 0.68,
+              "perr": "ok",
+              "monoTone": "TONE2"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 15.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 88.0,
+          "endPos": 121.0,
+          "t0": 0.68,
+          "t1": 0.733
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV2/fa1_FV2.wav",
+      "speaker": "FV2",
+      "pinyin": "fa1",
+      "text": "发",
+      "category": "擦音",
+      "durationSec": 0.7064,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000ead34@dx1a1b66db1587612812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "发",
+          "symbol": "fa1",
+          "begPos": 21.0,
+          "endPos": 79.0,
+          "t0": 0.01,
+          "t1": 0.59,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "f",
+              "part": "initial",
+              "begPos": 21.0,
+              "endPos": 33.0,
+              "t0": 0.01,
+              "t1": 0.13,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "a",
+              "part": "final",
+              "begPos": 33.0,
+              "endPos": 79.0,
+              "t0": 0.13,
+              "t1": 0.59,
+              "perr": "ok",
+              "monoTone": "TONE1"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 21.0,
+          "t0": 0.0,
+          "t1": 0.01
+        },
+        {
+          "label": "silv",
+          "begPos": 79.0,
+          "endPos": 119.0,
+          "t0": 0.59,
+          "t1": 0.706
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV2/sha1_FV2.wav",
+      "speaker": "FV2",
+      "pinyin": "sha1",
+      "text": "沙",
+      "category": "擦音",
+      "durationSec": 0.6541,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d247b@dx1a1b66db89bb993812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "沙",
+          "symbol": "sha1",
+          "begPos": 22.0,
+          "endPos": 74.0,
+          "t0": 0.02,
+          "t1": 0.54,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "sh",
+              "part": "initial",
+              "begPos": 22.0,
+              "endPos": 46.0,
+              "t0": 0.02,
+              "t1": 0.26,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "a",
+              "part": "final",
+              "begPos": 46.0,
+              "endPos": 74.0,
+              "t0": 0.26,
+              "t1": 0.54,
+              "perr": "ok",
+              "monoTone": "TONE1"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 22.0,
+          "t0": 0.0,
+          "t1": 0.02
+        },
+        {
+          "label": "silv",
+          "begPos": 74.0,
+          "endPos": 113.0,
+          "t0": 0.54,
+          "t1": 0.654
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV2/xu1_FV2.wav",
+      "speaker": "FV2",
+      "pinyin": "xu1",
+      "text": "需",
+      "category": "擦音",
+      "durationSec": 0.7325,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000ead8c@dx1a1b66dbfa67612812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "需",
+          "symbol": "xu1",
+          "begPos": 22.0,
+          "endPos": 88.0,
+          "t0": 0.02,
+          "t1": 0.68,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "x",
+              "part": "initial",
+              "begPos": 22.0,
+              "endPos": 46.0,
+              "t0": 0.02,
+              "t1": 0.26,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "v",
+              "part": "final",
+              "begPos": 46.0,
+              "endPos": 88.0,
+              "t0": 0.26,
+              "t1": 0.68,
+              "perr": "ok",
+              "monoTone": "TONE1"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 22.0,
+          "t0": 0.0,
+          "t1": 0.02
+        },
+        {
+          "label": "silv",
+          "begPos": 88.0,
+          "endPos": 121.0,
+          "t0": 0.68,
+          "t1": 0.733
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV2/he1_FV2.wav",
+      "speaker": "FV2",
+      "pinyin": "he1",
+      "text": "喝",
+      "category": "擦音",
+      "durationSec": 0.7325,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d24d7@dx1a1b66dc705b993812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "喝",
+          "symbol": "he1",
+          "begPos": 18.0,
+          "endPos": 92.0,
+          "t0": 0.0,
+          "t1": 0.72,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "h",
+              "part": "initial",
+              "begPos": 18.0,
+              "endPos": 41.0,
+              "t0": 0.0,
+              "t1": 0.21,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "e",
+              "part": "final",
+              "begPos": 41.0,
+              "endPos": 92.0,
+              "t0": 0.21,
+              "t1": 0.72,
+              "perr": "ok",
+              "monoTone": "TONE1"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 18.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 92.0,
+          "endPos": 121.0,
+          "t0": 0.72,
+          "t1": 0.733
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV2/re4_FV2.wav",
+      "speaker": "FV2",
+      "pinyin": "re4",
+      "text": "热",
+      "category": "浊擦音/近音",
+      "durationSec": 0.5496,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d2502@dx1a1b66dce6bb993812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "热",
+          "symbol": "re4",
+          "begPos": 16.0,
+          "endPos": 74.0,
+          "t0": 0.0,
+          "t1": 0.54,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "r",
+              "part": "initial",
+              "begPos": 16.0,
+              "endPos": 39.0,
+              "t0": 0.0,
+              "t1": 0.19,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "e",
+              "part": "final",
+              "begPos": 39.0,
+              "endPos": 74.0,
+              "t0": 0.19,
+              "t1": 0.54,
+              "perr": "ok",
+              "monoTone": "TONE4"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 16.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 74.0,
+          "endPos": 103.0,
+          "t0": 0.54,
+          "t1": 0.55
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV2/zi4_FV2.wav",
+      "speaker": "FV2",
+      "pinyin": "zi4",
+      "text": "字",
+      "category": "塞擦音-不送气",
+      "durationSec": 0.6019,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d252c@dx1a1b66dd520b993812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "字",
+          "symbol": "zi4",
+          "begPos": 17.0,
+          "endPos": 76.0,
+          "t0": 0.0,
+          "t1": 0.56,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "z",
+              "part": "initial",
+              "begPos": 17.0,
+              "endPos": 27.0,
+              "t0": 0.0,
+              "t1": 0.07,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "ii",
+              "part": "final",
+              "begPos": 27.0,
+              "endPos": 76.0,
+              "t0": 0.07,
+              "t1": 0.56,
+              "perr": "ok",
+              "monoTone": "TONE4"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 17.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 76.0,
+          "endPos": 108.0,
+          "t0": 0.56,
+          "t1": 0.602
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV2/chi1_FV2.wav",
+      "speaker": "FV2",
+      "pinyin": "chi1",
+      "text": "吃",
+      "category": "塞擦音-送气",
+      "durationSec": 0.6541,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000eae45@dx1a1b66ddbed7612812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "吃",
+          "symbol": "chi1",
+          "begPos": 20.0,
+          "endPos": 79.0,
+          "t0": 0.0,
+          "t1": 0.59,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "ch",
+              "part": "initial",
+              "begPos": 20.0,
+              "endPos": 26.0,
+              "t0": 0.0,
+              "t1": 0.06,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "iii",
+              "part": "final",
+              "begPos": 26.0,
+              "endPos": 79.0,
+              "t0": 0.06,
+              "t1": 0.59,
+              "perr": "ok",
+              "monoTone": "TONE1"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 20.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 79.0,
+          "endPos": 113.0,
+          "t0": 0.59,
+          "t1": 0.654
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV2/qu4_FV2.wav",
+      "speaker": "FV2",
+      "pinyin": "qu4",
+      "text": "去",
+      "category": "塞擦音-送气",
+      "durationSec": 0.6019,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000eae66@dx1a1b66de2e67612812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "去",
+          "symbol": "qu4",
+          "begPos": 21.0,
+          "endPos": 79.0,
+          "t0": 0.01,
+          "t1": 0.59,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "q",
+              "part": "initial",
+              "begPos": 21.0,
+              "endPos": 50.0,
+              "t0": 0.01,
+              "t1": 0.3,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "v",
+              "part": "final",
+              "begPos": 50.0,
+              "endPos": 79.0,
+              "t0": 0.3,
+              "t1": 0.59,
+              "perr": "ok",
+              "monoTone": "TONE4"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 21.0,
+          "t0": 0.0,
+          "t1": 0.01
+        },
+        {
+          "label": "silv",
+          "begPos": 79.0,
+          "endPos": 108.0,
+          "t0": 0.59,
+          "t1": 0.602
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV2/ju2_FV2.wav",
+      "speaker": "FV2",
+      "pinyin": "ju2",
+      "text": "局",
+      "category": "塞擦音-不送气",
+      "durationSec": 0.7064,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d7498@dx1a1b66de9cbb8de812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "局",
+          "symbol": "ju2",
+          "begPos": 20.0,
+          "endPos": 85.0,
+          "t0": 0.0,
+          "t1": 0.65,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "j",
+              "part": "initial",
+              "begPos": 20.0,
+              "endPos": 30.0,
+              "t0": 0.0,
+              "t1": 0.1,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "v",
+              "part": "final",
+              "begPos": 30.0,
+              "endPos": 85.0,
+              "t0": 0.1,
+              "t1": 0.65,
+              "perr": "ok",
+              "monoTone": "TONE2"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 20.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 85.0,
+          "endPos": 119.0,
+          "t0": 0.65,
+          "t1": 0.706
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV2/na4_FV2.wav",
+      "speaker": "FV2",
+      "pinyin": "na4",
+      "text": "那",
+      "category": "鼻音",
+      "durationSec": 0.5758,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d25dd@dx1a1b66df12ab993812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "那",
+          "symbol": "na4",
+          "begPos": 15.0,
+          "endPos": 71.0,
+          "t0": 0.0,
+          "t1": 0.51,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "n",
+              "part": "initial",
+              "begPos": 15.0,
+              "endPos": 34.0,
+              "t0": 0.0,
+              "t1": 0.14,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "a",
+              "part": "final",
+              "begPos": 34.0,
+              "endPos": 71.0,
+              "t0": 0.14,
+              "t1": 0.51,
+              "perr": "ok",
+              "monoTone": "TONE4"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 15.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 71.0,
+          "endPos": 106.0,
+          "t0": 0.51,
+          "t1": 0.576
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV2/mi3_FV2.wav",
+      "speaker": "FV2",
+      "pinyin": "mi3",
+      "text": "米",
+      "category": "鼻音",
+      "durationSec": 0.9676,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d2602@dx1a1b66df7b7b993812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "米",
+          "symbol": "mi3",
+          "begPos": 16.0,
+          "endPos": 114.0,
+          "t0": 0.0,
+          "t1": 0.94,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "m",
+              "part": "initial",
+              "begPos": 16.0,
+              "endPos": 42.0,
+              "t0": 0.0,
+              "t1": 0.22,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "i",
+              "part": "final",
+              "begPos": 42.0,
+              "endPos": 114.0,
+              "t0": 0.22,
+              "t1": 0.94,
+              "perr": "ok",
+              "monoTone": "TONE3"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 16.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "sil",
+          "begPos": 114.0,
+          "endPos": 145.0,
+          "t0": 0.94,
+          "t1": 0.968
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV2/lu4_FV2.wav",
+      "speaker": "FV2",
+      "pinyin": "lu4",
+      "text": "路",
+      "category": "边音",
+      "durationSec": 0.6802,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d74fe@dx1a1b66e0000b8de812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "路",
+          "symbol": "lu4",
+          "begPos": 16.0,
+          "endPos": 79.0,
+          "t0": 0.0,
+          "t1": 0.59,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "l",
+              "part": "initial",
+              "begPos": 16.0,
+              "endPos": 36.0,
+              "t0": 0.0,
+              "t1": 0.16,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "u",
+              "part": "final",
+              "begPos": 36.0,
+              "endPos": 79.0,
+              "t0": 0.16,
+              "t1": 0.59,
+              "perr": "ok",
+              "monoTone": "TONE4"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 16.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "sil",
+          "begPos": 79.0,
+          "endPos": 116.0,
+          "t0": 0.59,
+          "t1": 0.68
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV2/er2_FV2.wav",
+      "speaker": "FV2",
+      "pinyin": "er2",
+      "text": "儿",
+      "category": "零声母卷舌元音",
+      "durationSec": 0.628,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d2663@dx1a1b66e072cb993812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "儿",
+          "symbol": "er2",
+          "begPos": 16.0,
+          "endPos": 79.0,
+          "t0": 0.0,
+          "t1": 0.59,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "_e",
+              "part": "initial",
+              "begPos": 16.0,
+              "endPos": 25.0,
+              "t0": 0.0,
+              "t1": 0.05,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "er",
+              "part": "final",
+              "begPos": 25.0,
+              "endPos": 79.0,
+              "t0": 0.05,
+              "t1": 0.59,
+              "perr": "ok",
+              "monoTone": "TONE2"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 16.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 79.0,
+          "endPos": 111.0,
+          "t0": 0.59,
+          "t1": 0.628
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV2/ou1_FV2.wav",
+      "speaker": "FV2",
+      "pinyin": "ou1",
+      "text": "欧",
+      "category": "零声母复合韵母",
+      "durationSec": 0.5235,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d2685@dx1a1b66e0e28b993812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "欧",
+          "symbol": "ou1",
+          "begPos": 17.0,
+          "endPos": 68.0,
+          "t0": 0.0,
+          "t1": 0.48,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "_o",
+              "part": "initial",
+              "begPos": 17.0,
+              "endPos": 22.0,
+              "t0": 0.0,
+              "t1": 0.02,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "ou",
+              "part": "final",
+              "begPos": 22.0,
+              "endPos": 68.0,
+              "t0": 0.02,
+              "t1": 0.48,
+              "perr": "ok",
+              "monoTone": "TONE1"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 17.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 68.0,
+          "endPos": 100.0,
+          "t0": 0.48,
+          "t1": 0.523
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV2/kuai4_FV2.wav",
+      "speaker": "FV2",
+      "pinyin": "kuai4",
+      "text": "快",
+      "category": "三合元音韵母",
+      "durationSec": 0.6802,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d756a@dx1a1b66e14afb8de812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "快",
+          "symbol": "kuai4",
+          "begPos": 15.0,
+          "endPos": 85.0,
+          "t0": 0.0,
+          "t1": 0.65,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "k",
+              "part": "initial",
+              "begPos": 15.0,
+              "endPos": 45.0,
+              "t0": 0.0,
+              "t1": 0.25,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "uai",
+              "part": "final",
+              "begPos": 45.0,
+              "endPos": 85.0,
+              "t0": 0.25,
+              "t1": 0.65,
+              "perr": "ok",
+              "monoTone": "TONE4"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 15.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 85.0,
+          "endPos": 116.0,
+          "t0": 0.65,
+          "t1": 0.68
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV2/xin1_FV2.wav",
+      "speaker": "FV2",
+      "pinyin": "xin1",
+      "text": "心",
+      "category": "前鼻韵母",
+      "durationSec": 0.7064,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d759b@dx1a1b66e1bd4b8de812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 50.0,
+        "tone_score": 100.0,
+        "total_score": 75.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "心",
+          "symbol": "xin1",
+          "begPos": 22.0,
+          "endPos": 90.0,
+          "t0": 0.02,
+          "t1": 0.7,
+          "initialOk": true,
+          "finalOk": false,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "x",
+              "part": "initial",
+              "begPos": 22.0,
+              "endPos": 50.0,
+              "t0": 0.02,
+              "t1": 0.3,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "in",
+              "part": "final",
+              "begPos": 50.0,
+              "endPos": 90.0,
+              "t0": 0.3,
+              "t1": 0.7,
+              "perr": "final_error",
+              "monoTone": "TONE1"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 22.0,
+          "t0": 0.0,
+          "t1": 0.02
+        },
+        {
+          "label": "silv",
+          "begPos": 90.0,
+          "endPos": 119.0,
+          "t0": 0.7,
+          "t1": 0.706
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV2/yuan2_FV2.wav",
+      "speaker": "FV2",
+      "pinyin": "yuan2",
+      "text": "元",
+      "category": "零声母鼻韵母",
+      "durationSec": 0.6541,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000eafbf@dx1a1b66e232c7612812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "元",
+          "symbol": "yuan2",
+          "begPos": 16.0,
+          "endPos": 82.0,
+          "t0": 0.0,
+          "t1": 0.62,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "_v",
+              "part": "initial",
+              "begPos": 16.0,
+              "endPos": 32.0,
+              "t0": 0.0,
+              "t1": 0.12,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "van",
+              "part": "final",
+              "begPos": 32.0,
+              "endPos": 82.0,
+              "t0": 0.12,
+              "t1": 0.62,
+              "perr": "ok",
+              "monoTone": "TONE2"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 16.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 82.0,
+          "endPos": 113.0,
+          "t0": 0.62,
+          "t1": 0.654
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV3/tang1_FV3.wav",
+      "speaker": "FV3",
+      "pinyin": "tang1",
+      "text": "汤",
+      "category": "声调对比/送气塞音/后鼻韵母",
+      "durationSec": 0.9415,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000eafe6@dx1a1b66e2a317612812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 0.0,
+        "tone_score": 100.0,
+        "total_score": 50.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "汤",
+          "symbol": "tang1",
+          "begPos": 16.0,
+          "endPos": 110.0,
+          "t0": 0.0,
+          "t1": 0.9,
+          "initialOk": false,
+          "finalOk": false,
+          "toneOk": false,
+          "phones": [
+            {
+              "label": "t",
+              "part": "initial",
+              "begPos": 16.0,
+              "endPos": 49.0,
+              "t0": 0.0,
+              "t1": 0.29,
+              "perr": "initial_error",
+              "monoTone": null
+            },
+            {
+              "label": "ang",
+              "part": "final",
+              "begPos": 49.0,
+              "endPos": 110.0,
+              "t0": 0.29,
+              "t1": 0.9,
+              "perr": "final_error",
+              "monoTone": "TONE1"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 16.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 110.0,
+          "endPos": 142.0,
+          "t0": 0.9,
+          "t1": 0.942
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV3/tang2_FV3.wav",
+      "speaker": "FV3",
+      "pinyin": "tang2",
+      "text": "糖",
+      "category": "声调对比/送气塞音/后鼻韵母",
+      "durationSec": 1.0982,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000eb011@dx1a1b66e329d7612812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 50.0,
+        "tone_score": 100.0,
+        "total_score": 75.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "糖",
+          "symbol": "tang2",
+          "begPos": 16.0,
+          "endPos": 123.0,
+          "t0": 0.0,
+          "t1": 1.03,
+          "initialOk": true,
+          "finalOk": false,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "t",
+              "part": "initial",
+              "begPos": 16.0,
+              "endPos": 49.0,
+              "t0": 0.0,
+              "t1": 0.29,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "ang",
+              "part": "final",
+              "begPos": 49.0,
+              "endPos": 123.0,
+              "t0": 0.29,
+              "t1": 1.03,
+              "perr": "final_error",
+              "monoTone": "TONE2"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 16.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 123.0,
+          "endPos": 158.0,
+          "t0": 1.03,
+          "t1": 1.098
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV3/tang3_FV3.wav",
+      "speaker": "FV3",
+      "pinyin": "tang3",
+      "text": "躺",
+      "category": "声调对比/送气塞音/后鼻韵母",
+      "durationSec": 1.2288,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d2768@dx1a1b66e3b6eb993812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "躺",
+          "symbol": "tang3",
+          "begPos": 16.0,
+          "endPos": 132.0,
+          "t0": 0.0,
+          "t1": 1.12,
+          "initialOk": false,
+          "finalOk": false,
+          "toneOk": false,
+          "phones": [
+            {
+              "label": "t",
+              "part": "initial",
+              "begPos": 16.0,
+              "endPos": 51.0,
+              "t0": 0.0,
+              "t1": 0.31,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "ang",
+              "part": "final",
+              "begPos": 51.0,
+              "endPos": 132.0,
+              "t0": 0.31,
+              "t1": 1.12,
+              "perr": "ok",
+              "monoTone": "TONE3"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 16.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "sil",
+          "begPos": 132.0,
+          "endPos": 171.0,
+          "t0": 1.12,
+          "t1": 1.229
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV3/tang4_FV3.wav",
+      "speaker": "FV3",
+      "pinyin": "tang4",
+      "text": "烫",
+      "category": "声调对比/送气塞音/后鼻韵母",
+      "durationSec": 0.5758,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d2797@dx1a1b66e44f0b993812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "烫",
+          "symbol": "tang4",
+          "begPos": 16.0,
+          "endPos": 77.0,
+          "t0": 0.0,
+          "t1": 0.57,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "t",
+              "part": "initial",
+              "begPos": 16.0,
+              "endPos": 43.0,
+              "t0": 0.0,
+              "t1": 0.23,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "ang",
+              "part": "final",
+              "begPos": 43.0,
+              "endPos": 77.0,
+              "t0": 0.23,
+              "t1": 0.57,
+              "perr": "ok",
+              "monoTone": "TONE4"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 16.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 77.0,
+          "endPos": 106.0,
+          "t0": 0.57,
+          "t1": 0.576
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV3/bu4_FV3.wav",
+      "speaker": "FV3",
+      "pinyin": "bu4",
+      "text": "不",
+      "category": "塞音-不送气",
+      "durationSec": 0.5235,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000eb094@dx1a1b66e4bb27612812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "不",
+          "symbol": "bu4",
+          "begPos": 16.0,
+          "endPos": 69.0,
+          "t0": 0.0,
+          "t1": 0.49,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "b",
+              "part": "initial",
+              "begPos": 16.0,
+              "endPos": 23.0,
+              "t0": 0.0,
+              "t1": 0.03,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "u",
+              "part": "final",
+              "begPos": 23.0,
+              "endPos": 69.0,
+              "t0": 0.03,
+              "t1": 0.49,
+              "perr": "ok",
+              "monoTone": "TONE4"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 16.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 69.0,
+          "endPos": 100.0,
+          "t0": 0.49,
+          "t1": 0.523
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV3/ku3_FV3.wav",
+      "speaker": "FV3",
+      "pinyin": "ku3",
+      "text": "苦",
+      "category": "塞音-送气",
+      "durationSec": 1.0721,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d27e2@dx1a1b66e5242b993812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "苦",
+          "symbol": "ku3",
+          "begPos": 15.0,
+          "endPos": 121.0,
+          "t0": 0.0,
+          "t1": 1.01,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "k",
+              "part": "initial",
+              "begPos": 15.0,
+              "endPos": 37.0,
+              "t0": 0.0,
+              "t1": 0.17,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "u",
+              "part": "final",
+              "begPos": 37.0,
+              "endPos": 121.0,
+              "t0": 0.17,
+              "t1": 1.01,
+              "perr": "ok",
+              "monoTone": "TONE3"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 15.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "sil",
+          "begPos": 121.0,
+          "endPos": 155.0,
+          "t0": 1.01,
+          "t1": 1.072
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV3/de2_FV3.wav",
+      "speaker": "FV3",
+      "pinyin": "de2",
+      "text": "得",
+      "category": "塞音-不送气",
+      "durationSec": 0.8631,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d76f5@dx1a1b66e5b0eb8de812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "得",
+          "symbol": "de2",
+          "begPos": 16.0,
+          "endPos": 102.0,
+          "t0": 0.0,
+          "t1": 0.82,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "d",
+              "part": "initial",
+              "begPos": 16.0,
+              "endPos": 23.0,
+              "t0": 0.0,
+              "t1": 0.03,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "e",
+              "part": "final",
+              "begPos": 23.0,
+              "endPos": 102.0,
+              "t0": 0.03,
+              "t1": 0.82,
+              "perr": "ok",
+              "monoTone": "TONE2"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 16.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 102.0,
+          "endPos": 134.0,
+          "t0": 0.82,
+          "t1": 0.863
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV3/fa1_FV3.wav",
+      "speaker": "FV3",
+      "pinyin": "fa1",
+      "text": "发",
+      "category": "擦音",
+      "durationSec": 0.8109,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d772e@dx1a1b66e62f8b8de812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "发",
+          "symbol": "fa1",
+          "begPos": 23.0,
+          "endPos": 90.0,
+          "t0": 0.03,
+          "t1": 0.7,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "f",
+              "part": "initial",
+              "begPos": 23.0,
+              "endPos": 46.0,
+              "t0": 0.03,
+              "t1": 0.26,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "a",
+              "part": "final",
+              "begPos": 46.0,
+              "endPos": 90.0,
+              "t0": 0.26,
+              "t1": 0.7,
+              "perr": "ok",
+              "monoTone": "TONE1"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 23.0,
+          "t0": 0.0,
+          "t1": 0.03
+        },
+        {
+          "label": "silv",
+          "begPos": 90.0,
+          "endPos": 129.0,
+          "t0": 0.7,
+          "t1": 0.811
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV3/sha1_FV3.wav",
+      "speaker": "FV3",
+      "pinyin": "sha1",
+      "text": "沙",
+      "category": "擦音",
+      "durationSec": 0.8631,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d2865@dx1a1b66e6a97b993812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "沙",
+          "symbol": "sha1",
+          "begPos": 19.0,
+          "endPos": 93.0,
+          "t0": 0.0,
+          "t1": 0.73,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "sh",
+              "part": "initial",
+              "begPos": 19.0,
+              "endPos": 45.0,
+              "t0": 0.0,
+              "t1": 0.25,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "a",
+              "part": "final",
+              "begPos": 45.0,
+              "endPos": 93.0,
+              "t0": 0.25,
+              "t1": 0.73,
+              "perr": "ok",
+              "monoTone": "TONE1"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 19.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 93.0,
+          "endPos": 134.0,
+          "t0": 0.73,
+          "t1": 0.863
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV3/xu1_FV3.wav",
+      "speaker": "FV3",
+      "pinyin": "xu1",
+      "text": "需",
+      "category": "擦音",
+      "durationSec": 0.8631,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d7782@dx1a1b66e729bb8de812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "需",
+          "symbol": "xu1",
+          "begPos": 22.0,
+          "endPos": 98.0,
+          "t0": 0.02,
+          "t1": 0.78,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "x",
+              "part": "initial",
+              "begPos": 22.0,
+              "endPos": 43.0,
+              "t0": 0.02,
+              "t1": 0.23,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "v",
+              "part": "final",
+              "begPos": 43.0,
+              "endPos": 98.0,
+              "t0": 0.23,
+              "t1": 0.78,
+              "perr": "ok",
+              "monoTone": "TONE1"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 22.0,
+          "t0": 0.0,
+          "t1": 0.02
+        },
+        {
+          "label": "silv",
+          "begPos": 98.0,
+          "endPos": 134.0,
+          "t0": 0.78,
+          "t1": 0.863
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV3/he1_FV3.wav",
+      "speaker": "FV3",
+      "pinyin": "he1",
+      "text": "喝",
+      "category": "擦音",
+      "durationSec": 0.837,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d28c0@dx1a1b66e7aa3b993812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 50.0,
+        "tone_score": 100.0,
+        "total_score": 75.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "喝",
+          "symbol": "he1",
+          "begPos": 19.0,
+          "endPos": 99.0,
+          "t0": 0.0,
+          "t1": 0.79,
+          "initialOk": false,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "h",
+              "part": "initial",
+              "begPos": 19.0,
+              "endPos": 42.0,
+              "t0": 0.0,
+              "t1": 0.22,
+              "perr": "initial_error",
+              "monoTone": null
+            },
+            {
+              "label": "e",
+              "part": "final",
+              "begPos": 42.0,
+              "endPos": 99.0,
+              "t0": 0.22,
+              "t1": 0.79,
+              "perr": "ok",
+              "monoTone": "TONE1"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 19.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 99.0,
+          "endPos": 132.0,
+          "t0": 0.79,
+          "t1": 0.837
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV3/re4_FV3.wav",
+      "speaker": "FV3",
+      "pinyin": "re4",
+      "text": "热",
+      "category": "浊擦音/近音",
+      "durationSec": 0.5758,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d28ef@dx1a1b66e826ab993812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "热",
+          "symbol": "re4",
+          "begPos": 16.0,
+          "endPos": 75.0,
+          "t0": 0.0,
+          "t1": 0.55,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "r",
+              "part": "initial",
+              "begPos": 16.0,
+              "endPos": 23.0,
+              "t0": 0.0,
+              "t1": 0.03,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "e",
+              "part": "final",
+              "begPos": 23.0,
+              "endPos": 75.0,
+              "t0": 0.03,
+              "t1": 0.55,
+              "perr": "ok",
+              "monoTone": "TONE4"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 16.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 75.0,
+          "endPos": 106.0,
+          "t0": 0.55,
+          "t1": 0.576
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV3/zi4_FV3.wav",
+      "speaker": "FV3",
+      "pinyin": "zi4",
+      "text": "字",
+      "category": "塞擦音-不送气",
+      "durationSec": 0.5758,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d781c@dx1a1b66e891eb8de812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "字",
+          "symbol": "zi4",
+          "begPos": 19.0,
+          "endPos": 72.0,
+          "t0": 0.0,
+          "t1": 0.52,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "z",
+              "part": "initial",
+              "begPos": 19.0,
+              "endPos": 29.0,
+              "t0": 0.0,
+              "t1": 0.09,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "ii",
+              "part": "final",
+              "begPos": 29.0,
+              "endPos": 72.0,
+              "t0": 0.09,
+              "t1": 0.52,
+              "perr": "ok",
+              "monoTone": "TONE4"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 19.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 72.0,
+          "endPos": 106.0,
+          "t0": 0.52,
+          "t1": 0.576
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV3/chi1_FV3.wav",
+      "speaker": "FV3",
+      "pinyin": "chi1",
+      "text": "吃",
+      "category": "塞擦音-送气",
+      "durationSec": 0.837,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d2948@dx1a1b66e8fbdb993812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "吃",
+          "symbol": "chi1",
+          "begPos": 21.0,
+          "endPos": 97.0,
+          "t0": 0.01,
+          "t1": 0.77,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "ch",
+              "part": "initial",
+              "begPos": 21.0,
+              "endPos": 27.0,
+              "t0": 0.01,
+              "t1": 0.07,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "iii",
+              "part": "final",
+              "begPos": 27.0,
+              "endPos": 97.0,
+              "t0": 0.07,
+              "t1": 0.77,
+              "perr": "ok",
+              "monoTone": "TONE1"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 21.0,
+          "t0": 0.0,
+          "t1": 0.01
+        },
+        {
+          "label": "silv",
+          "begPos": 97.0,
+          "endPos": 132.0,
+          "t0": 0.77,
+          "t1": 0.837
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV3/qu4_FV3.wav",
+      "speaker": "FV3",
+      "pinyin": "qu4",
+      "text": "去",
+      "category": "塞擦音-送气",
+      "durationSec": 0.6802,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d297d@dx1a1b66e97a8b993812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "去",
+          "symbol": "qu4",
+          "begPos": 20.0,
+          "endPos": 82.0,
+          "t0": 0.0,
+          "t1": 0.62,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "q",
+              "part": "initial",
+              "begPos": 20.0,
+              "endPos": 46.0,
+              "t0": 0.0,
+              "t1": 0.26,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "v",
+              "part": "final",
+              "begPos": 46.0,
+              "endPos": 82.0,
+              "t0": 0.26,
+              "t1": 0.62,
+              "perr": "ok",
+              "monoTone": "TONE4"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 20.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 82.0,
+          "endPos": 116.0,
+          "t0": 0.62,
+          "t1": 0.68
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV3/ju2_FV3.wav",
+      "speaker": "FV3",
+      "pinyin": "ju2",
+      "text": "局",
+      "category": "塞擦音-不送气",
+      "durationSec": 0.8892,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d78a7@dx1a1b66e9edfb8de812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "局",
+          "symbol": "ju2",
+          "begPos": 17.0,
+          "endPos": 99.0,
+          "t0": 0.0,
+          "t1": 0.79,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "j",
+              "part": "initial",
+              "begPos": 17.0,
+              "endPos": 32.0,
+              "t0": 0.0,
+              "t1": 0.12,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "v",
+              "part": "final",
+              "begPos": 32.0,
+              "endPos": 99.0,
+              "t0": 0.12,
+              "t1": 0.79,
+              "perr": "ok",
+              "monoTone": "TONE2"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 17.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 99.0,
+          "endPos": 137.0,
+          "t0": 0.79,
+          "t1": 0.889
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV3/na4_FV3.wav",
+      "speaker": "FV3",
+      "pinyin": "na4",
+      "text": "那",
+      "category": "鼻音",
+      "durationSec": 0.4713,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d29da@dx1a1b66ea6e4b993812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "那",
+          "symbol": "na4",
+          "begPos": 16.0,
+          "endPos": 58.0,
+          "t0": 0.0,
+          "t1": 0.38,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "n",
+              "part": "initial",
+              "begPos": 16.0,
+              "endPos": 30.0,
+              "t0": 0.0,
+              "t1": 0.1,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "a",
+              "part": "final",
+              "begPos": 30.0,
+              "endPos": 58.0,
+              "t0": 0.1,
+              "t1": 0.38,
+              "perr": "ok",
+              "monoTone": "TONE4"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 16.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 58.0,
+          "endPos": 95.0,
+          "t0": 0.38,
+          "t1": 0.471
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV3/mi3_FV3.wav",
+      "speaker": "FV3",
+      "pinyin": "mi3",
+      "text": "米",
+      "category": "鼻音",
+      "durationSec": 0.9937,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d29f5@dx1a1b66ead40b993812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "米",
+          "symbol": "mi3",
+          "begPos": 16.0,
+          "endPos": 112.0,
+          "t0": 0.0,
+          "t1": 0.92,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "m",
+              "part": "initial",
+              "begPos": 16.0,
+              "endPos": 36.0,
+              "t0": 0.0,
+              "t1": 0.16,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "i",
+              "part": "final",
+              "begPos": 36.0,
+              "endPos": 112.0,
+              "t0": 0.16,
+              "t1": 0.92,
+              "perr": "ok",
+              "monoTone": "TONE3"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 16.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "sil",
+          "begPos": 112.0,
+          "endPos": 147.0,
+          "t0": 0.92,
+          "t1": 0.994
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV3/lu4_FV3.wav",
+      "speaker": "FV3",
+      "pinyin": "lu4",
+      "text": "路",
+      "category": "边音",
+      "durationSec": 0.6019,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d2a1f@dx1a1b66eb5bab993812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "路",
+          "symbol": "lu4",
+          "begPos": 16.0,
+          "endPos": 75.0,
+          "t0": 0.0,
+          "t1": 0.55,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "l",
+              "part": "initial",
+              "begPos": 16.0,
+              "endPos": 32.0,
+              "t0": 0.0,
+              "t1": 0.12,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "u",
+              "part": "final",
+              "begPos": 32.0,
+              "endPos": 75.0,
+              "t0": 0.12,
+              "t1": 0.55,
+              "perr": "ok",
+              "monoTone": "TONE4"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 16.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 75.0,
+          "endPos": 108.0,
+          "t0": 0.55,
+          "t1": 0.602
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV3/er2_FV3.wav",
+      "speaker": "FV3",
+      "pinyin": "er2",
+      "text": "儿",
+      "category": "零声母卷舌元音",
+      "durationSec": 0.7586,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000eb338@dx1a1b66ebc9b7612812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "儿",
+          "symbol": "er2",
+          "begPos": 17.0,
+          "endPos": 88.0,
+          "t0": 0.0,
+          "t1": 0.68,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "_e",
+              "part": "initial",
+              "begPos": 17.0,
+              "endPos": 27.0,
+              "t0": 0.0,
+              "t1": 0.07,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "er",
+              "part": "final",
+              "begPos": 27.0,
+              "endPos": 88.0,
+              "t0": 0.07,
+              "t1": 0.68,
+              "perr": "ok",
+              "monoTone": "TONE2"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 17.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 88.0,
+          "endPos": 124.0,
+          "t0": 0.68,
+          "t1": 0.759
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV3/ou1_FV3.wav",
+      "speaker": "FV3",
+      "pinyin": "ou1",
+      "text": "欧",
+      "category": "零声母复合韵母",
+      "durationSec": 0.7325,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d2a74@dx1a1b66ec411b993812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "欧",
+          "symbol": "ou1",
+          "begPos": 17.0,
+          "endPos": 85.0,
+          "t0": 0.0,
+          "t1": 0.65,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "_o",
+              "part": "initial",
+              "begPos": 17.0,
+              "endPos": 27.0,
+              "t0": 0.0,
+              "t1": 0.07,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "ou",
+              "part": "final",
+              "begPos": 27.0,
+              "endPos": 85.0,
+              "t0": 0.07,
+              "t1": 0.65,
+              "perr": "ok",
+              "monoTone": "TONE1"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 17.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 85.0,
+          "endPos": 121.0,
+          "t0": 0.65,
+          "t1": 0.733
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV3/kuai4_FV3.wav",
+      "speaker": "FV3",
+      "pinyin": "kuai4",
+      "text": "快",
+      "category": "三合元音韵母",
+      "durationSec": 0.6802,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d2a9d@dx1a1b66ecb7cb993812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "快",
+          "symbol": "kuai4",
+          "begPos": 18.0,
+          "endPos": 88.0,
+          "t0": 0.0,
+          "t1": 0.68,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "k",
+              "part": "initial",
+              "begPos": 18.0,
+              "endPos": 44.0,
+              "t0": 0.0,
+              "t1": 0.24,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "uai",
+              "part": "final",
+              "begPos": 44.0,
+              "endPos": 88.0,
+              "t0": 0.24,
+              "t1": 0.68,
+              "perr": "ok",
+              "monoTone": "TONE4"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 18.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 88.0,
+          "endPos": 116.0,
+          "t0": 0.68,
+          "t1": 0.68
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV3/xin1_FV3.wav",
+      "speaker": "FV3",
+      "pinyin": "xin1",
+      "text": "心",
+      "category": "前鼻韵母",
+      "durationSec": 1.0198,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d79db@dx1a1b66ed2c7b8de812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "心",
+          "symbol": "xin1",
+          "begPos": 20.0,
+          "endPos": 118.0,
+          "t0": 0.0,
+          "t1": 0.98,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "x",
+              "part": "initial",
+              "begPos": 20.0,
+              "endPos": 48.0,
+              "t0": 0.0,
+              "t1": 0.28,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "in",
+              "part": "final",
+              "begPos": 48.0,
+              "endPos": 118.0,
+              "t0": 0.28,
+              "t1": 0.98,
+              "perr": "ok",
+              "monoTone": "TONE1"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 20.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 118.0,
+          "endPos": 150.0,
+          "t0": 0.98,
+          "t1": 1.02
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/FV3/yuan2_FV3.wav",
+      "speaker": "FV3",
+      "pinyin": "yuan2",
+      "text": "元",
+      "category": "零声母鼻韵母",
+      "durationSec": 0.7847,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d2b06@dx1a1b66edb5ab993812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "元",
+          "symbol": "yuan2",
+          "begPos": 16.0,
+          "endPos": 92.0,
+          "t0": 0.0,
+          "t1": 0.72,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "_v",
+              "part": "initial",
+              "begPos": 16.0,
+              "endPos": 27.0,
+              "t0": 0.0,
+              "t1": 0.07,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "van",
+              "part": "final",
+              "begPos": 27.0,
+              "endPos": 92.0,
+              "t0": 0.07,
+              "t1": 0.72,
+              "perr": "ok",
+              "monoTone": "TONE2"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 16.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 92.0,
+          "endPos": 126.0,
+          "t0": 0.72,
+          "t1": 0.785
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV2/tang1_MV2.wav",
+      "speaker": "MV2",
+      "pinyin": "tang1",
+      "text": "汤",
+      "category": "声调对比/送气塞音/后鼻韵母",
+      "durationSec": 0.7325,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d7a39@dx1a1b66ee30ab8de812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "汤",
+          "symbol": "tang1",
+          "begPos": 16.0,
+          "endPos": 81.0,
+          "t0": 0.0,
+          "t1": 0.61,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "t",
+              "part": "initial",
+              "begPos": 16.0,
+              "endPos": 33.0,
+              "t0": 0.0,
+              "t1": 0.13,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "ang",
+              "part": "final",
+              "begPos": 33.0,
+              "endPos": 81.0,
+              "t0": 0.13,
+              "t1": 0.61,
+              "perr": "ok",
+              "monoTone": "TONE1"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 16.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "sil",
+          "begPos": 81.0,
+          "endPos": 121.0,
+          "t0": 0.61,
+          "t1": 0.733
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV2/tang2_MV2.wav",
+      "speaker": "MV2",
+      "pinyin": "tang2",
+      "text": "糖",
+      "category": "声调对比/送气塞音/后鼻韵母",
+      "durationSec": 0.7847,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d7a5c@dx1a1b66eea62b8de812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "糖",
+          "symbol": "tang2",
+          "begPos": 16.0,
+          "endPos": 89.0,
+          "t0": 0.0,
+          "t1": 0.69,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "t",
+              "part": "initial",
+              "begPos": 16.0,
+              "endPos": 36.0,
+              "t0": 0.0,
+              "t1": 0.16,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "ang",
+              "part": "final",
+              "begPos": 36.0,
+              "endPos": 89.0,
+              "t0": 0.16,
+              "t1": 0.69,
+              "perr": "ok",
+              "monoTone": "TONE2"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 16.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "sil",
+          "begPos": 89.0,
+          "endPos": 126.0,
+          "t0": 0.69,
+          "t1": 0.785
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV2/tang3_MV2.wav",
+      "speaker": "MV2",
+      "pinyin": "tang3",
+      "text": "躺",
+      "category": "声调对比/送气塞音/后鼻韵母",
+      "durationSec": 0.9154,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d7a90@dx1a1b66ef231b8de812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "躺",
+          "symbol": "tang3",
+          "begPos": 16.0,
+          "endPos": 104.0,
+          "t0": 0.0,
+          "t1": 0.84,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "t",
+              "part": "initial",
+              "begPos": 16.0,
+              "endPos": 40.0,
+              "t0": 0.0,
+              "t1": 0.2,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "ang",
+              "part": "final",
+              "begPos": 40.0,
+              "endPos": 104.0,
+              "t0": 0.2,
+              "t1": 0.84,
+              "perr": "ok",
+              "monoTone": "TONE3"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 16.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "sil",
+          "begPos": 104.0,
+          "endPos": 140.0,
+          "t0": 0.84,
+          "t1": 0.915
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV2/tang4_MV2.wav",
+      "speaker": "MV2",
+      "pinyin": "tang4",
+      "text": "烫",
+      "category": "声调对比/送气塞音/后鼻韵母",
+      "durationSec": 0.5235,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d2bb5@dx1a1b66efa3eb993812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "烫",
+          "symbol": "tang4",
+          "begPos": 15.0,
+          "endPos": 69.0,
+          "t0": 0.0,
+          "t1": 0.49,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "t",
+              "part": "initial",
+              "begPos": 15.0,
+              "endPos": 38.0,
+              "t0": 0.0,
+              "t1": 0.18,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "ang",
+              "part": "final",
+              "begPos": 38.0,
+              "endPos": 69.0,
+              "t0": 0.18,
+              "t1": 0.49,
+              "perr": "ok",
+              "monoTone": "TONE4"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 15.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 69.0,
+          "endPos": 100.0,
+          "t0": 0.49,
+          "t1": 0.523
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV2/bu4_MV2.wav",
+      "speaker": "MV2",
+      "pinyin": "bu4",
+      "text": "不",
+      "category": "塞音-不送气",
+      "durationSec": 0.6019,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000eb4be@dx1a1b66f00d17612812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "不",
+          "symbol": "bu4",
+          "begPos": 16.0,
+          "endPos": 73.0,
+          "t0": 0.0,
+          "t1": 0.53,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "b",
+              "part": "initial",
+              "begPos": 16.0,
+              "endPos": 24.0,
+              "t0": 0.0,
+              "t1": 0.04,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "u",
+              "part": "final",
+              "begPos": 24.0,
+              "endPos": 73.0,
+              "t0": 0.04,
+              "t1": 0.53,
+              "perr": "ok",
+              "monoTone": "TONE4"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 16.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 73.0,
+          "endPos": 108.0,
+          "t0": 0.53,
+          "t1": 0.602
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV2/ku3_MV2.wav",
+      "speaker": "MV2",
+      "pinyin": "ku3",
+      "text": "苦",
+      "category": "塞音-送气",
+      "durationSec": 1.0982,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d7b08@dx1a1b66f07c3b8de812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "苦",
+          "symbol": "ku3",
+          "begPos": 15.0,
+          "endPos": 120.0,
+          "t0": 0.0,
+          "t1": 1.0,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "k",
+              "part": "initial",
+              "begPos": 15.0,
+              "endPos": 42.0,
+              "t0": 0.0,
+              "t1": 0.22,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "u",
+              "part": "final",
+              "begPos": 42.0,
+              "endPos": 120.0,
+              "t0": 0.22,
+              "t1": 1.0,
+              "perr": "ok",
+              "monoTone": "TONE3"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 15.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 120.0,
+          "endPos": 158.0,
+          "t0": 1.0,
+          "t1": 1.098
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV2/de2_MV2.wav",
+      "speaker": "MV2",
+      "pinyin": "de2",
+      "text": "得",
+      "category": "塞音-不送气",
+      "durationSec": 0.7325,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d2c3f@dx1a1b66f10e5b993812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "得",
+          "symbol": "de2",
+          "begPos": 16.0,
+          "endPos": 87.0,
+          "t0": 0.0,
+          "t1": 0.67,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "d",
+              "part": "initial",
+              "begPos": 16.0,
+              "endPos": 23.0,
+              "t0": 0.0,
+              "t1": 0.03,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "e",
+              "part": "final",
+              "begPos": 23.0,
+              "endPos": 87.0,
+              "t0": 0.03,
+              "t1": 0.67,
+              "perr": "ok",
+              "monoTone": "TONE2"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 16.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "sil",
+          "begPos": 87.0,
+          "endPos": 121.0,
+          "t0": 0.67,
+          "t1": 0.733
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV2/fa1_MV2.wav",
+      "speaker": "MV2",
+      "pinyin": "fa1",
+      "text": "发",
+      "category": "擦音",
+      "durationSec": 1.046,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d2c70@dx1a1b66f1836b993812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "发",
+          "symbol": "fa1",
+          "begPos": 26.0,
+          "endPos": 93.0,
+          "t0": 0.06,
+          "t1": 0.73,
+          "initialOk": false,
+          "finalOk": false,
+          "toneOk": false,
+          "phones": [
+            {
+              "label": "f",
+              "part": "initial",
+              "begPos": 26.0,
+              "endPos": 49.0,
+              "t0": 0.06,
+              "t1": 0.29,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "a",
+              "part": "final",
+              "begPos": 49.0,
+              "endPos": 93.0,
+              "t0": 0.29,
+              "t1": 0.73,
+              "perr": "ok",
+              "monoTone": "TONE1"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 26.0,
+          "t0": 0.0,
+          "t1": 0.06
+        },
+        {
+          "label": "silv",
+          "begPos": 93.0,
+          "endPos": 153.0,
+          "t0": 0.73,
+          "t1": 1.046
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV2/sha1_MV2.wav",
+      "speaker": "MV2",
+      "pinyin": "sha1",
+      "text": "沙",
+      "category": "擦音",
+      "durationSec": 0.7586,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d7ba4@dx1a1b66f20edb8de812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "沙",
+          "symbol": "sha1",
+          "begPos": 18.0,
+          "endPos": 77.0,
+          "t0": 0.0,
+          "t1": 0.57,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "sh",
+              "part": "initial",
+              "begPos": 18.0,
+              "endPos": 40.0,
+              "t0": 0.0,
+              "t1": 0.2,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "a",
+              "part": "final",
+              "begPos": 40.0,
+              "endPos": 77.0,
+              "t0": 0.2,
+              "t1": 0.57,
+              "perr": "ok",
+              "monoTone": "TONE1"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 18.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 77.0,
+          "endPos": 124.0,
+          "t0": 0.57,
+          "t1": 0.759
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV2/xu1_MV2.wav",
+      "speaker": "MV2",
+      "pinyin": "xu1",
+      "text": "需",
+      "category": "擦音",
+      "durationSec": 0.7847,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d7bd9@dx1a1b66f2880b8de812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "需",
+          "symbol": "xu1",
+          "begPos": 20.0,
+          "endPos": 91.0,
+          "t0": 0.0,
+          "t1": 0.71,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "x",
+              "part": "initial",
+              "begPos": 20.0,
+              "endPos": 44.0,
+              "t0": 0.0,
+              "t1": 0.24,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "v",
+              "part": "final",
+              "begPos": 44.0,
+              "endPos": 91.0,
+              "t0": 0.24,
+              "t1": 0.71,
+              "perr": "ok",
+              "monoTone": "TONE1"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 20.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "sil",
+          "begPos": 91.0,
+          "endPos": 126.0,
+          "t0": 0.71,
+          "t1": 0.785
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV2/he1_MV2.wav",
+      "speaker": "MV2",
+      "pinyin": "he1",
+      "text": "喝",
+      "category": "擦音",
+      "durationSec": 0.9154,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000eb5e3@dx1a1b66f302a7612812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 0.0,
+        "tone_score": 100.0,
+        "total_score": 50.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "喝",
+          "symbol": "he1",
+          "begPos": 19.0,
+          "endPos": 94.0,
+          "t0": 0.0,
+          "t1": 0.74,
+          "initialOk": false,
+          "finalOk": false,
+          "toneOk": false,
+          "phones": [
+            {
+              "label": "h",
+              "part": "initial",
+              "begPos": 19.0,
+              "endPos": 48.0,
+              "t0": 0.0,
+              "t1": 0.28,
+              "perr": "initial_error",
+              "monoTone": null
+            },
+            {
+              "label": "e",
+              "part": "final",
+              "begPos": 48.0,
+              "endPos": 94.0,
+              "t0": 0.28,
+              "t1": 0.74,
+              "perr": "final_error",
+              "monoTone": "TONE1"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 19.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "sil",
+          "begPos": 94.0,
+          "endPos": 140.0,
+          "t0": 0.74,
+          "t1": 0.915
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV2/re4_MV2.wav",
+      "speaker": "MV2",
+      "pinyin": "re4",
+      "text": "热",
+      "category": "浊擦音/近音",
+      "durationSec": 0.4451,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000eb615@dx1a1b66f38517612812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "热",
+          "symbol": "re4",
+          "begPos": 18.0,
+          "endPos": 64.0,
+          "t0": 0.0,
+          "t1": 0.44,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "r",
+              "part": "initial",
+              "begPos": 18.0,
+              "endPos": 33.0,
+              "t0": 0.0,
+              "t1": 0.13,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "e",
+              "part": "final",
+              "begPos": 33.0,
+              "endPos": 64.0,
+              "t0": 0.13,
+              "t1": 0.44,
+              "perr": "ok",
+              "monoTone": "TONE4"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 18.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 64.0,
+          "endPos": 93.0,
+          "t0": 0.44,
+          "t1": 0.445
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV2/zi4_MV2.wav",
+      "speaker": "MV2",
+      "pinyin": "zi4",
+      "text": "字",
+      "category": "塞擦音-不送气",
+      "durationSec": 0.5235,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d2d6b@dx1a1b66f3e6bb993812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "字",
+          "symbol": "zi4",
+          "begPos": 18.0,
+          "endPos": 62.0,
+          "t0": 0.0,
+          "t1": 0.42,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "z",
+              "part": "initial",
+              "begPos": 18.0,
+              "endPos": 29.0,
+              "t0": 0.0,
+              "t1": 0.09,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "ii",
+              "part": "final",
+              "begPos": 29.0,
+              "endPos": 62.0,
+              "t0": 0.09,
+              "t1": 0.42,
+              "perr": "ok",
+              "monoTone": "TONE4"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 18.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 62.0,
+          "endPos": 100.0,
+          "t0": 0.42,
+          "t1": 0.523
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV2/chi1_MV2.wav",
+      "speaker": "MV2",
+      "pinyin": "chi1",
+      "text": "吃",
+      "category": "塞擦音-送气",
+      "durationSec": 0.7586,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d2d8e@dx1a1b66f44f4b993812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "吃",
+          "symbol": "chi1",
+          "begPos": 22.0,
+          "endPos": 74.0,
+          "t0": 0.02,
+          "t1": 0.54,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "ch",
+              "part": "initial",
+              "begPos": 22.0,
+              "endPos": 39.0,
+              "t0": 0.02,
+              "t1": 0.19,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "iii",
+              "part": "final",
+              "begPos": 39.0,
+              "endPos": 74.0,
+              "t0": 0.19,
+              "t1": 0.54,
+              "perr": "ok",
+              "monoTone": "TONE1"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 22.0,
+          "t0": 0.0,
+          "t1": 0.02
+        },
+        {
+          "label": "sil",
+          "begPos": 74.0,
+          "endPos": 124.0,
+          "t0": 0.54,
+          "t1": 0.759
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV2/qu4_MV2.wav",
+      "speaker": "MV2",
+      "pinyin": "qu4",
+      "text": "去",
+      "category": "塞擦音-送气",
+      "durationSec": 0.6802,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d2db3@dx1a1b66f4c89b993812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "去",
+          "symbol": "qu4",
+          "begPos": 18.0,
+          "endPos": 72.0,
+          "t0": 0.0,
+          "t1": 0.52,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "q",
+              "part": "initial",
+              "begPos": 18.0,
+              "endPos": 43.0,
+              "t0": 0.0,
+              "t1": 0.23,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "v",
+              "part": "final",
+              "begPos": 43.0,
+              "endPos": 72.0,
+              "t0": 0.23,
+              "t1": 0.52,
+              "perr": "ok",
+              "monoTone": "TONE4"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 18.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "sil",
+          "begPos": 72.0,
+          "endPos": 116.0,
+          "t0": 0.52,
+          "t1": 0.68
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV2/ju2_MV2.wav",
+      "speaker": "MV2",
+      "pinyin": "ju2",
+      "text": "局",
+      "category": "塞擦音-不送气",
+      "durationSec": 0.7064,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000eb6cc@dx1a1b66f53cf7612812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "局",
+          "symbol": "ju2",
+          "begPos": 17.0,
+          "endPos": 82.0,
+          "t0": 0.0,
+          "t1": 0.62,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "j",
+              "part": "initial",
+              "begPos": 17.0,
+              "endPos": 29.0,
+              "t0": 0.0,
+              "t1": 0.09,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "v",
+              "part": "final",
+              "begPos": 29.0,
+              "endPos": 82.0,
+              "t0": 0.09,
+              "t1": 0.62,
+              "perr": "ok",
+              "monoTone": "TONE2"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 17.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "sil",
+          "begPos": 82.0,
+          "endPos": 119.0,
+          "t0": 0.62,
+          "t1": 0.706
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV2/na4_MV2.wav",
+      "speaker": "MV2",
+      "pinyin": "na4",
+      "text": "那",
+      "category": "鼻音",
+      "durationSec": 0.5235,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d2df8@dx1a1b66f5b06b993812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "那",
+          "symbol": "na4",
+          "begPos": 18.0,
+          "endPos": 60.0,
+          "t0": 0.0,
+          "t1": 0.4,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "n",
+              "part": "initial",
+              "begPos": 18.0,
+              "endPos": 31.0,
+              "t0": 0.0,
+              "t1": 0.11,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "a",
+              "part": "final",
+              "begPos": 31.0,
+              "endPos": 60.0,
+              "t0": 0.11,
+              "t1": 0.4,
+              "perr": "ok",
+              "monoTone": "TONE4"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 18.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 60.0,
+          "endPos": 100.0,
+          "t0": 0.4,
+          "t1": 0.523
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV2/mi3_MV2.wav",
+      "speaker": "MV2",
+      "pinyin": "mi3",
+      "text": "米",
+      "category": "鼻音",
+      "durationSec": 0.9676,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d7d25@dx1a1b66f6192b8de812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "米",
+          "symbol": "mi3",
+          "begPos": 18.0,
+          "endPos": 108.0,
+          "t0": 0.0,
+          "t1": 0.88,
+          "initialOk": false,
+          "finalOk": false,
+          "toneOk": false,
+          "phones": [
+            {
+              "label": "m",
+              "part": "initial",
+              "begPos": 18.0,
+              "endPos": 41.0,
+              "t0": 0.0,
+              "t1": 0.21,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "i",
+              "part": "final",
+              "begPos": 41.0,
+              "endPos": 108.0,
+              "t0": 0.21,
+              "t1": 0.88,
+              "perr": "ok",
+              "monoTone": "TONE3"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 18.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "sil",
+          "begPos": 108.0,
+          "endPos": 145.0,
+          "t0": 0.88,
+          "t1": 0.968
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV2/lu4_MV2.wav",
+      "speaker": "MV2",
+      "pinyin": "lu4",
+      "text": "路",
+      "category": "边音",
+      "durationSec": 0.7325,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000eb737@dx1a1b66f69e57612812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 50.0,
+        "tone_score": 100.0,
+        "total_score": 75.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "路",
+          "symbol": "lu4",
+          "begPos": 16.0,
+          "endPos": 81.0,
+          "t0": 0.0,
+          "t1": 0.61,
+          "initialOk": false,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "l",
+              "part": "initial",
+              "begPos": 16.0,
+              "endPos": 39.0,
+              "t0": 0.0,
+              "t1": 0.19,
+              "perr": "initial_error",
+              "monoTone": null
+            },
+            {
+              "label": "u",
+              "part": "final",
+              "begPos": 39.0,
+              "endPos": 81.0,
+              "t0": 0.19,
+              "t1": 0.61,
+              "perr": "ok",
+              "monoTone": "TONE4"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 16.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 81.0,
+          "endPos": 121.0,
+          "t0": 0.61,
+          "t1": 0.733
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV2/er2_MV2.wav",
+      "speaker": "MV2",
+      "pinyin": "er2",
+      "text": "儿",
+      "category": "零声母卷舌元音",
+      "durationSec": 0.7847,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000eb763@dx1a1b66f71397612812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 50.0,
+        "tone_score": 100.0,
+        "total_score": 75.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "儿",
+          "symbol": "er2",
+          "begPos": 27.0,
+          "endPos": 87.0,
+          "t0": 0.07,
+          "t1": 0.67,
+          "initialOk": false,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "_e",
+              "part": "initial",
+              "begPos": 27.0,
+              "endPos": 42.0,
+              "t0": 0.07,
+              "t1": 0.22,
+              "perr": "initial_error",
+              "monoTone": null
+            },
+            {
+              "label": "er",
+              "part": "final",
+              "begPos": 42.0,
+              "endPos": 87.0,
+              "t0": 0.22,
+              "t1": 0.67,
+              "perr": "ok",
+              "monoTone": "TONE2"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 27.0,
+          "t0": 0.0,
+          "t1": 0.07
+        },
+        {
+          "label": "silv",
+          "begPos": 87.0,
+          "endPos": 126.0,
+          "t0": 0.67,
+          "t1": 0.785
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV2/ou1_MV2.wav",
+      "speaker": "MV2",
+      "pinyin": "ou1",
+      "text": "欧",
+      "category": "零声母复合韵母",
+      "durationSec": 0.5758,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d2e8f@dx1a1b66f78d6b993812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "欧",
+          "symbol": "ou1",
+          "begPos": 17.0,
+          "endPos": 70.0,
+          "t0": 0.0,
+          "t1": 0.5,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "_o",
+              "part": "initial",
+              "begPos": 17.0,
+              "endPos": 23.0,
+              "t0": 0.0,
+              "t1": 0.03,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "ou",
+              "part": "final",
+              "begPos": 23.0,
+              "endPos": 70.0,
+              "t0": 0.03,
+              "t1": 0.5,
+              "perr": "ok",
+              "monoTone": "TONE1"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 17.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "sil",
+          "begPos": 70.0,
+          "endPos": 106.0,
+          "t0": 0.5,
+          "t1": 0.576
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV2/kuai4_MV2.wav",
+      "speaker": "MV2",
+      "pinyin": "kuai4",
+      "text": "快",
+      "category": "三合元音韵母",
+      "durationSec": 0.628,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000eb7ba@dx1a1b66f7f977612812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "快",
+          "symbol": "kuai4",
+          "begPos": 15.0,
+          "endPos": 71.0,
+          "t0": 0.0,
+          "t1": 0.51,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "k",
+              "part": "initial",
+              "begPos": 15.0,
+              "endPos": 44.0,
+              "t0": 0.0,
+              "t1": 0.24,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "uai",
+              "part": "final",
+              "begPos": 44.0,
+              "endPos": 71.0,
+              "t0": 0.24,
+              "t1": 0.51,
+              "perr": "ok",
+              "monoTone": "TONE4"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 15.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 71.0,
+          "endPos": 111.0,
+          "t0": 0.51,
+          "t1": 0.628
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV2/xin1_MV2.wav",
+      "speaker": "MV2",
+      "pinyin": "xin1",
+      "text": "心",
+      "category": "前鼻韵母",
+      "durationSec": 0.8892,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d2ee9@dx1a1b66f86afb993812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "心",
+          "symbol": "xin1",
+          "begPos": 22.0,
+          "endPos": 94.0,
+          "t0": 0.02,
+          "t1": 0.74,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "x",
+              "part": "initial",
+              "begPos": 22.0,
+              "endPos": 41.0,
+              "t0": 0.02,
+              "t1": 0.21,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "in",
+              "part": "final",
+              "begPos": 41.0,
+              "endPos": 94.0,
+              "t0": 0.21,
+              "t1": 0.74,
+              "perr": "ok",
+              "monoTone": "TONE1"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 22.0,
+          "t0": 0.0,
+          "t1": 0.02
+        },
+        {
+          "label": "sil",
+          "begPos": 94.0,
+          "endPos": 137.0,
+          "t0": 0.74,
+          "t1": 0.889
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV2/yuan2_MV2.wav",
+      "speaker": "MV2",
+      "pinyin": "yuan2",
+      "text": "元",
+      "category": "零声母鼻韵母",
+      "durationSec": 0.7586,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000eb810@dx1a1b66f8eac7612812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 50.0,
+        "tone_score": 100.0,
+        "total_score": 75.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "元",
+          "symbol": "yuan2",
+          "begPos": 18.0,
+          "endPos": 88.0,
+          "t0": 0.0,
+          "t1": 0.68,
+          "initialOk": true,
+          "finalOk": false,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "_v",
+              "part": "initial",
+              "begPos": 18.0,
+              "endPos": 23.0,
+              "t0": 0.0,
+              "t1": 0.03,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "van",
+              "part": "final",
+              "begPos": 23.0,
+              "endPos": 88.0,
+              "t0": 0.03,
+              "t1": 0.68,
+              "perr": "final_error",
+              "monoTone": "TONE2"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 18.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 88.0,
+          "endPos": 124.0,
+          "t0": 0.68,
+          "t1": 0.759
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV3/tang1_MV3.wav",
+      "speaker": "MV3",
+      "pinyin": "tang1",
+      "text": "汤",
+      "category": "声调对比/送气塞音/后鼻韵母",
+      "durationSec": 0.4974,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d7e5a@dx1a1b66f961cb8de812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "汤",
+          "symbol": "tang1",
+          "begPos": 16.0,
+          "endPos": 67.0,
+          "t0": 0.0,
+          "t1": 0.47,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "t",
+              "part": "initial",
+              "begPos": 16.0,
+              "endPos": 35.0,
+              "t0": 0.0,
+              "t1": 0.15,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "ang",
+              "part": "final",
+              "begPos": 35.0,
+              "endPos": 67.0,
+              "t0": 0.15,
+              "t1": 0.47,
+              "perr": "ok",
+              "monoTone": "TONE1"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 16.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 67.0,
+          "endPos": 98.0,
+          "t0": 0.47,
+          "t1": 0.497
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV3/tang2_MV3.wav",
+      "speaker": "MV3",
+      "pinyin": "tang2",
+      "text": "糖",
+      "category": "声调对比/送气塞音/后鼻韵母",
+      "durationSec": 0.5496,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d7e79@dx1a1b66f9c64b8de812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "糖",
+          "symbol": "tang2",
+          "begPos": 16.0,
+          "endPos": 69.0,
+          "t0": 0.0,
+          "t1": 0.49,
+          "initialOk": false,
+          "finalOk": false,
+          "toneOk": false,
+          "phones": [
+            {
+              "label": "t",
+              "part": "initial",
+              "begPos": 16.0,
+              "endPos": 38.0,
+              "t0": 0.0,
+              "t1": 0.18,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "ang",
+              "part": "final",
+              "begPos": 38.0,
+              "endPos": 69.0,
+              "t0": 0.18,
+              "t1": 0.49,
+              "perr": "ok",
+              "monoTone": "TONE2"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 16.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 69.0,
+          "endPos": 103.0,
+          "t0": 0.49,
+          "t1": 0.55
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV3/tang3_MV3.wav",
+      "speaker": "MV3",
+      "pinyin": "tang3",
+      "text": "躺",
+      "category": "声调对比/送气塞音/后鼻韵母",
+      "durationSec": 0.6802,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000eb893@dx1a1b66fa3167612812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "躺",
+          "symbol": "tang3",
+          "begPos": 16.0,
+          "endPos": 79.0,
+          "t0": 0.0,
+          "t1": 0.59,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "t",
+              "part": "initial",
+              "begPos": 16.0,
+              "endPos": 41.0,
+              "t0": 0.0,
+              "t1": 0.21,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "ang",
+              "part": "final",
+              "begPos": 41.0,
+              "endPos": 79.0,
+              "t0": 0.21,
+              "t1": 0.59,
+              "perr": "ok",
+              "monoTone": "TONE3"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 16.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "sil",
+          "begPos": 79.0,
+          "endPos": 116.0,
+          "t0": 0.59,
+          "t1": 0.68
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV3/tang4_MV3.wav",
+      "speaker": "MV3",
+      "pinyin": "tang4",
+      "text": "烫",
+      "category": "声调对比/送气塞音/后鼻韵母",
+      "durationSec": 0.419,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d7ebd@dx1a1b66faa39b8de812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 50.0,
+        "tone_score": 100.0,
+        "total_score": 75.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "烫",
+          "symbol": "tang4",
+          "begPos": 16.0,
+          "endPos": 56.0,
+          "t0": 0.0,
+          "t1": 0.36,
+          "initialOk": false,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "t",
+              "part": "initial",
+              "begPos": 16.0,
+              "endPos": 37.0,
+              "t0": 0.0,
+              "t1": 0.17,
+              "perr": "initial_error",
+              "monoTone": null
+            },
+            {
+              "label": "ang",
+              "part": "final",
+              "begPos": 37.0,
+              "endPos": 56.0,
+              "t0": 0.17,
+              "t1": 0.36,
+              "perr": "ok",
+              "monoTone": "TONE4"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 16.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 56.0,
+          "endPos": 90.0,
+          "t0": 0.36,
+          "t1": 0.419
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV3/bu4_MV3.wav",
+      "speaker": "MV3",
+      "pinyin": "bu4",
+      "text": "不",
+      "category": "塞音-不送气",
+      "durationSec": 0.4713,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d7ee0@dx1a1b66fb044b8de812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "不",
+          "symbol": "bu4",
+          "begPos": 16.0,
+          "endPos": 63.0,
+          "t0": 0.0,
+          "t1": 0.43,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "b",
+              "part": "initial",
+              "begPos": 16.0,
+              "endPos": 23.0,
+              "t0": 0.0,
+              "t1": 0.03,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "u",
+              "part": "final",
+              "begPos": 23.0,
+              "endPos": 63.0,
+              "t0": 0.03,
+              "t1": 0.43,
+              "perr": "ok",
+              "monoTone": "TONE4"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 16.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 63.0,
+          "endPos": 95.0,
+          "t0": 0.43,
+          "t1": 0.471
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV3/ku3_MV3.wav",
+      "speaker": "MV3",
+      "pinyin": "ku3",
+      "text": "苦",
+      "category": "塞音-送气",
+      "durationSec": 0.7325,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d7f0e@dx1a1b66fb6a1b8de812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "苦",
+          "symbol": "ku3",
+          "begPos": 16.0,
+          "endPos": 88.0,
+          "t0": 0.0,
+          "t1": 0.68,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "k",
+              "part": "initial",
+              "begPos": 16.0,
+              "endPos": 39.0,
+              "t0": 0.0,
+              "t1": 0.19,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "u",
+              "part": "final",
+              "begPos": 39.0,
+              "endPos": 88.0,
+              "t0": 0.19,
+              "t1": 0.68,
+              "perr": "ok",
+              "monoTone": "TONE3"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 16.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 88.0,
+          "endPos": 121.0,
+          "t0": 0.68,
+          "t1": 0.733
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV3/de2_MV3.wav",
+      "speaker": "MV3",
+      "pinyin": "de2",
+      "text": "得",
+      "category": "塞音-不送气",
+      "durationSec": 0.4974,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d7f4b@dx1a1b66fbe0bb8de812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "得",
+          "symbol": "de2",
+          "begPos": 16.0,
+          "endPos": 64.0,
+          "t0": 0.0,
+          "t1": 0.44,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "d",
+              "part": "initial",
+              "begPos": 16.0,
+              "endPos": 24.0,
+              "t0": 0.0,
+              "t1": 0.04,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "e",
+              "part": "final",
+              "begPos": 24.0,
+              "endPos": 64.0,
+              "t0": 0.04,
+              "t1": 0.44,
+              "perr": "ok",
+              "monoTone": "TONE2"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 16.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 64.0,
+          "endPos": 98.0,
+          "t0": 0.44,
+          "t1": 0.497
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV3/fa1_MV3.wav",
+      "speaker": "MV3",
+      "pinyin": "fa1",
+      "text": "发",
+      "category": "擦音",
+      "durationSec": 0.5758,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000eb95e@dx1a1b66fc45c7612812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "发",
+          "symbol": "fa1",
+          "begPos": 19.0,
+          "endPos": 63.0,
+          "t0": 0.0,
+          "t1": 0.43,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "f",
+              "part": "initial",
+              "begPos": 19.0,
+              "endPos": 35.0,
+              "t0": 0.0,
+              "t1": 0.15,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "a",
+              "part": "final",
+              "begPos": 35.0,
+              "endPos": 63.0,
+              "t0": 0.15,
+              "t1": 0.43,
+              "perr": "ok",
+              "monoTone": "TONE1"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 19.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 63.0,
+          "endPos": 106.0,
+          "t0": 0.43,
+          "t1": 0.576
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV3/sha1_MV3.wav",
+      "speaker": "MV3",
+      "pinyin": "sha1",
+      "text": "沙",
+      "category": "擦音",
+      "durationSec": 0.5758,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d30ad@dx1a1b66fcb0ab993812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "沙",
+          "symbol": "sha1",
+          "begPos": 19.0,
+          "endPos": 68.0,
+          "t0": 0.0,
+          "t1": 0.48,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "sh",
+              "part": "initial",
+              "begPos": 19.0,
+              "endPos": 43.0,
+              "t0": 0.0,
+              "t1": 0.23,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "a",
+              "part": "final",
+              "begPos": 43.0,
+              "endPos": 68.0,
+              "t0": 0.23,
+              "t1": 0.48,
+              "perr": "ok",
+              "monoTone": "TONE1"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 19.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 68.0,
+          "endPos": 106.0,
+          "t0": 0.48,
+          "t1": 0.576
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV3/xu1_MV3.wav",
+      "speaker": "MV3",
+      "pinyin": "xu1",
+      "text": "需",
+      "category": "擦音",
+      "durationSec": 0.6802,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d7fb9@dx1a1b66fd1e1b8de812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "需",
+          "symbol": "xu1",
+          "begPos": 22.0,
+          "endPos": 82.0,
+          "t0": 0.02,
+          "t1": 0.62,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "x",
+              "part": "initial",
+              "begPos": 22.0,
+              "endPos": 48.0,
+              "t0": 0.02,
+              "t1": 0.28,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "v",
+              "part": "final",
+              "begPos": 48.0,
+              "endPos": 82.0,
+              "t0": 0.28,
+              "t1": 0.62,
+              "perr": "ok",
+              "monoTone": "TONE1"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 22.0,
+          "t0": 0.0,
+          "t1": 0.02
+        },
+        {
+          "label": "silv",
+          "begPos": 82.0,
+          "endPos": 116.0,
+          "t0": 0.62,
+          "t1": 0.68
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV3/he1_MV3.wav",
+      "speaker": "MV3",
+      "pinyin": "he1",
+      "text": "喝",
+      "category": "擦音",
+      "durationSec": 0.5496,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d30f5@dx1a1b66fd907b993812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "喝",
+          "symbol": "he1",
+          "begPos": 19.0,
+          "endPos": 67.0,
+          "t0": 0.0,
+          "t1": 0.47,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "h",
+              "part": "initial",
+              "begPos": 19.0,
+              "endPos": 42.0,
+              "t0": 0.0,
+              "t1": 0.22,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "e",
+              "part": "final",
+              "begPos": 42.0,
+              "endPos": 67.0,
+              "t0": 0.22,
+              "t1": 0.47,
+              "perr": "ok",
+              "monoTone": "TONE1"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 19.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 67.0,
+          "endPos": 103.0,
+          "t0": 0.47,
+          "t1": 0.55
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV3/re4_MV3.wav",
+      "speaker": "MV3",
+      "pinyin": "re4",
+      "text": "热",
+      "category": "浊擦音/近音",
+      "durationSec": 0.5235,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d3121@dx1a1b66fdfadb993812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "热",
+          "symbol": "re4",
+          "begPos": 16.0,
+          "endPos": 70.0,
+          "t0": 0.0,
+          "t1": 0.5,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "r",
+              "part": "initial",
+              "begPos": 16.0,
+              "endPos": 40.0,
+              "t0": 0.0,
+              "t1": 0.2,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "e",
+              "part": "final",
+              "begPos": 40.0,
+              "endPos": 70.0,
+              "t0": 0.2,
+              "t1": 0.5,
+              "perr": "ok",
+              "monoTone": "TONE4"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 16.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 70.0,
+          "endPos": 100.0,
+          "t0": 0.5,
+          "t1": 0.523
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV3/zi4_MV3.wav",
+      "speaker": "MV3",
+      "pinyin": "zi4",
+      "text": "字",
+      "category": "塞擦音-不送气",
+      "durationSec": 0.4713,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000eba23@dx1a1b66fe61d7612812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "字",
+          "symbol": "zi4",
+          "begPos": 21.0,
+          "endPos": 68.0,
+          "t0": 0.01,
+          "t1": 0.471,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "z",
+              "part": "initial",
+              "begPos": 21.0,
+              "endPos": 31.0,
+              "t0": 0.01,
+              "t1": 0.11,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "ii",
+              "part": "final",
+              "begPos": 31.0,
+              "endPos": 68.0,
+              "t0": 0.11,
+              "t1": 0.471,
+              "perr": "ok",
+              "monoTone": "TONE4"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 21.0,
+          "t0": 0.0,
+          "t1": 0.01
+        },
+        {
+          "label": "silv",
+          "begPos": 68.0,
+          "endPos": 95.0,
+          "t0": 0.471,
+          "t1": 0.471
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV3/chi1_MV3.wav",
+      "speaker": "MV3",
+      "pinyin": "chi1",
+      "text": "吃",
+      "category": "塞擦音-送气",
+      "durationSec": 0.5235,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d316d@dx1a1b66fec81b993812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "吃",
+          "symbol": "chi1",
+          "begPos": 16.0,
+          "endPos": 65.0,
+          "t0": 0.0,
+          "t1": 0.45,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "ch",
+              "part": "initial",
+              "begPos": 16.0,
+              "endPos": 25.0,
+              "t0": 0.0,
+              "t1": 0.05,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "iii",
+              "part": "final",
+              "begPos": 25.0,
+              "endPos": 65.0,
+              "t0": 0.05,
+              "t1": 0.45,
+              "perr": "ok",
+              "monoTone": "TONE1"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 16.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 65.0,
+          "endPos": 100.0,
+          "t0": 0.45,
+          "t1": 0.523
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV3/qu4_MV3.wav",
+      "speaker": "MV3",
+      "pinyin": "qu4",
+      "text": "去",
+      "category": "塞擦音-送气",
+      "durationSec": 0.5496,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d318b@dx1a1b66ff316b993812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "去",
+          "symbol": "qu4",
+          "begPos": 17.0,
+          "endPos": 76.0,
+          "t0": 0.0,
+          "t1": 0.55,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "q",
+              "part": "initial",
+              "begPos": 17.0,
+              "endPos": 46.0,
+              "t0": 0.0,
+              "t1": 0.26,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "v",
+              "part": "final",
+              "begPos": 46.0,
+              "endPos": 76.0,
+              "t0": 0.26,
+              "t1": 0.55,
+              "perr": "ok",
+              "monoTone": "TONE4"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 17.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 76.0,
+          "endPos": 103.0,
+          "t0": 0.55,
+          "t1": 0.55
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV3/ju2_MV3.wav",
+      "speaker": "MV3",
+      "pinyin": "ju2",
+      "text": "局",
+      "category": "塞擦音-不送气",
+      "durationSec": 0.5496,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000eba9a@dx1a1b66ff9c97612812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "局",
+          "symbol": "ju2",
+          "begPos": 19.0,
+          "endPos": 71.0,
+          "t0": 0.0,
+          "t1": 0.51,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "j",
+              "part": "initial",
+              "begPos": 19.0,
+              "endPos": 32.0,
+              "t0": 0.0,
+              "t1": 0.12,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "v",
+              "part": "final",
+              "begPos": 32.0,
+              "endPos": 71.0,
+              "t0": 0.12,
+              "t1": 0.51,
+              "perr": "ok",
+              "monoTone": "TONE2"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 19.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 71.0,
+          "endPos": 103.0,
+          "t0": 0.51,
+          "t1": 0.55
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV3/na4_MV3.wav",
+      "speaker": "MV3",
+      "pinyin": "na4",
+      "text": "那",
+      "category": "鼻音",
+      "durationSec": 0.3145,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d31d4@dx1a1b6700064b993812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "那",
+          "symbol": "na4",
+          "begPos": 15.0,
+          "endPos": 50.0,
+          "t0": 0.0,
+          "t1": 0.3,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "n",
+              "part": "initial",
+              "begPos": 15.0,
+              "endPos": 28.0,
+              "t0": 0.0,
+              "t1": 0.08,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "a",
+              "part": "final",
+              "begPos": 28.0,
+              "endPos": 50.0,
+              "t0": 0.08,
+              "t1": 0.3,
+              "perr": "ok",
+              "monoTone": "TONE4"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 15.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 50.0,
+          "endPos": 79.0,
+          "t0": 0.3,
+          "t1": 0.315
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV3/mi3_MV3.wav",
+      "speaker": "MV3",
+      "pinyin": "mi3",
+      "text": "米",
+      "category": "鼻音",
+      "durationSec": 0.7586,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000ebad0@dx1a1b67006357612812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "米",
+          "symbol": "mi3",
+          "begPos": 16.0,
+          "endPos": 95.0,
+          "t0": 0.0,
+          "t1": 0.75,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "m",
+              "part": "initial",
+              "begPos": 16.0,
+              "endPos": 38.0,
+              "t0": 0.0,
+              "t1": 0.18,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "i",
+              "part": "final",
+              "begPos": 38.0,
+              "endPos": 95.0,
+              "t0": 0.18,
+              "t1": 0.75,
+              "perr": "ok",
+              "monoTone": "TONE3"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 16.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "sil",
+          "begPos": 95.0,
+          "endPos": 124.0,
+          "t0": 0.75,
+          "t1": 0.759
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV3/lu4_MV3.wav",
+      "speaker": "MV3",
+      "pinyin": "lu4",
+      "text": "路",
+      "category": "边音",
+      "durationSec": 0.3668,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d3215@dx1a1b6700dc0b993812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "路",
+          "symbol": "lu4",
+          "begPos": 17.0,
+          "endPos": 55.0,
+          "t0": 0.0,
+          "t1": 0.35,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "l",
+              "part": "initial",
+              "begPos": 17.0,
+              "endPos": 28.0,
+              "t0": 0.0,
+              "t1": 0.08,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "u",
+              "part": "final",
+              "begPos": 28.0,
+              "endPos": 55.0,
+              "t0": 0.08,
+              "t1": 0.35,
+              "perr": "ok",
+              "monoTone": "TONE4"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 17.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 55.0,
+          "endPos": 85.0,
+          "t0": 0.35,
+          "t1": 0.367
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV3/er2_MV3.wav",
+      "speaker": "MV3",
+      "pinyin": "er2",
+      "text": "儿",
+      "category": "零声母卷舌元音",
+      "durationSec": 0.4713,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000ebb0b@dx1a1b67013a67612812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "儿",
+          "symbol": "er2",
+          "begPos": 18.0,
+          "endPos": 65.0,
+          "t0": 0.0,
+          "t1": 0.45,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "_e",
+              "part": "initial",
+              "begPos": 18.0,
+              "endPos": 28.0,
+              "t0": 0.0,
+              "t1": 0.08,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "er",
+              "part": "final",
+              "begPos": 28.0,
+              "endPos": 65.0,
+              "t0": 0.08,
+              "t1": 0.45,
+              "perr": "ok",
+              "monoTone": "TONE2"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 18.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 65.0,
+          "endPos": 95.0,
+          "t0": 0.45,
+          "t1": 0.471
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV3/ou1_MV3.wav",
+      "speaker": "MV3",
+      "pinyin": "ou1",
+      "text": "欧",
+      "category": "零声母复合韵母",
+      "durationSec": 0.5496,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d324b@dx1a1b6701a07b993812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "欧",
+          "symbol": "ou1",
+          "begPos": 16.0,
+          "endPos": 68.0,
+          "t0": 0.0,
+          "t1": 0.48,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "_o",
+              "part": "initial",
+              "begPos": 16.0,
+              "endPos": 24.0,
+              "t0": 0.0,
+              "t1": 0.04,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "ou",
+              "part": "final",
+              "begPos": 24.0,
+              "endPos": 68.0,
+              "t0": 0.04,
+              "t1": 0.48,
+              "perr": "ok",
+              "monoTone": "TONE1"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 16.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 68.0,
+          "endPos": 103.0,
+          "t0": 0.48,
+          "t1": 0.55
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV3/kuai4_MV3.wav",
+      "speaker": "MV3",
+      "pinyin": "kuai4",
+      "text": "快",
+      "category": "三合元音韵母",
+      "durationSec": 0.4713,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d815b@dx1a1b67020bfb8de812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "快",
+          "symbol": "kuai4",
+          "begPos": 15.0,
+          "endPos": 64.0,
+          "t0": 0.0,
+          "t1": 0.44,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "k",
+              "part": "initial",
+              "begPos": 15.0,
+              "endPos": 39.0,
+              "t0": 0.0,
+              "t1": 0.19,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "uai",
+              "part": "final",
+              "begPos": 39.0,
+              "endPos": 64.0,
+              "t0": 0.19,
+              "t1": 0.44,
+              "perr": "ok",
+              "monoTone": "TONE4"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 15.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 64.0,
+          "endPos": 95.0,
+          "t0": 0.44,
+          "t1": 0.471
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV3/xin1_MV3.wav",
+      "speaker": "MV3",
+      "pinyin": "xin1",
+      "text": "心",
+      "category": "前鼻韵母",
+      "durationSec": 0.7064,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000d8185@dx1a1b670271db8de812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "心",
+          "symbol": "xin1",
+          "begPos": 20.0,
+          "endPos": 86.0,
+          "t0": 0.0,
+          "t1": 0.66,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "x",
+              "part": "initial",
+              "begPos": 20.0,
+              "endPos": 47.0,
+              "t0": 0.0,
+              "t1": 0.27,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "in",
+              "part": "final",
+              "begPos": 47.0,
+              "endPos": 86.0,
+              "t0": 0.27,
+              "t1": 0.66,
+              "perr": "ok",
+              "monoTone": "TONE1"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 20.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 86.0,
+          "endPos": 119.0,
+          "t0": 0.66,
+          "t1": 0.706
+        }
+      ],
+      "fillers": []
+    },
+    {
+      "file": "样本/MV3/yuan2_MV3.wav",
+      "speaker": "MV3",
+      "pinyin": "yuan2",
+      "text": "元",
+      "category": "零声母鼻韵母",
+      "durationSec": 0.5235,
+      "sampleRate": 44100,
+      "channels": 2,
+      "sid": "ise000ebb8e@dx1a1b6702e747612812",
+      "scores": {
+        "fluency_score": 0.0,
+        "integrity_score": 0.0,
+        "phone_score": 100.0,
+        "tone_score": 100.0,
+        "total_score": 100.0
+      },
+      "isRejected": false,
+      "exceptInfo": "0",
+      "syllables": [
+        {
+          "text": "元",
+          "symbol": "yuan2",
+          "begPos": 18.0,
+          "endPos": 69.0,
+          "t0": 0.0,
+          "t1": 0.49,
+          "initialOk": true,
+          "finalOk": true,
+          "toneOk": true,
+          "phones": [
+            {
+              "label": "_v",
+              "part": "initial",
+              "begPos": 18.0,
+              "endPos": 30.0,
+              "t0": 0.0,
+              "t1": 0.1,
+              "perr": "initial_ok",
+              "monoTone": null
+            },
+            {
+              "label": "van",
+              "part": "final",
+              "begPos": 30.0,
+              "endPos": 69.0,
+              "t0": 0.1,
+              "t1": 0.49,
+              "perr": "ok",
+              "monoTone": "TONE2"
+            }
+          ]
+        }
+      ],
+      "silences": [
+        {
+          "label": "silv",
+          "begPos": 0.0,
+          "endPos": 18.0,
+          "t0": 0.0,
+          "t1": 0.0
+        },
+        {
+          "label": "silv",
+          "begPos": 69.0,
+          "endPos": 100.0,
+          "t0": 0.49,
+          "t1": 0.523
+        }
+      ],
+      "fillers": []
+    }
+  ]
+}

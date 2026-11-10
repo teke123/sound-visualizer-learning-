@@ -144,57 +144,6 @@ def calibrate_path(path, syllables: list[dict]) -> dict:
             "vowelSpace": vowel_space, "signal": signal.to_dict()}
 
 
-def compute_calibration(*, audio_id: str, syllables: list[str], user_id: str) -> dict:
-    """同步处理标定（占用执行器与 45 秒上限由调用方保证）。
-
-    在执行器线程内自建数据库会话：请求作用域会话会随 504/断连先行关闭，
-    线程不能依赖它的生命周期（与 run_pipeline 同款约束）。
-    成功：写个人音域 + 快照，标定音频即删；
-    失败：200 CALIBRATION_FAIL + 重录指引，不写音域。
-    """
-    db = get_session()
-    try:
-        audio = db.get(AudioRow, audio_id)
-        if audio is None or audio.deleted_at is not None:
-            return {"ok": False, "reason": "标定音频已失效，请重新上传后再试",
-                    "signal": None}
-        result = calibrate_path(audio_path(audio), syllables)
-        if not result.get("ok"):
-            return {"ok": False, "reason": result["reason"], "signal": result.get("signal")}
-        f_lo, f_hi, vowel_space = result["fLo"], result["fHi"], result["vowelSpace"]
-
-        row = (
-            db.query(PitchRangeRow)
-            .filter(PitchRangeRow.user_id == user_id)
-            .one_or_none()
-        )
-        if row is None:
-            row = PitchRangeRow(user_id=user_id)
-            db.add(row)
-        row.f_lo, row.f_hi = f_lo, f_hi
-        row.vowel_space = JSONText.dump(vowel_space)
-        row.algorithm_version = analysis.ALGORITHM_VERSION
-        row.deleted_at = None
-        row.updated_at = now()
-        snap = create_snapshot(db, user_id=user_id, f_lo=f_lo, f_hi=f_hi,
-                               vowel_space=vowel_space,
-                               created_from={"kind": "calibration", "audioId": audio.id})
-        row.basis_calibration_id = snap.id
-        # 标定音频算完即删（FR-1006）
-        mark_audio_deleted(db, audio)
-        db.commit()
-        return {
-            "ok": True,
-            "status": "personal",
-            "pitchRange": {"fLo": round(f_lo, 1), "fHi": round(f_hi, 1)},
-            "vowelSpaceReady": True,
-            "rangeSnapshotId": snap.id,
-            "updatedAt": row.updated_at.isoformat(),
-        }
-    finally:
-        db.close()
-
-
 def _signal_advice(signal) -> str:  # noqa: ANN001
     for dim in (signal.volume, signal.noise, signal.clipping, signal.duration, signal.silence):
         if dim and dim.get("advice"):

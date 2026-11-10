@@ -19,6 +19,7 @@ import QualityVerdict from './QualityVerdict.vue'
 import ScoreCard from './ScoreCard.vue'
 import PhenomenaList from './PhenomenaList.vue'
 import FourStepsList from './FourStepsList.vue'
+import PronunciationEvidence from './PronunciationEvidence.vue'
 
 const ToneCurveChart = defineAsyncComponent(() => import('@/renderers/ToneCurveChart.vue'))
 const FormantChart = defineAsyncComponent(() => import('@/renderers/FormantChart.vue'))
@@ -66,7 +67,7 @@ watch(
   <QCard v-if="result.curve" flat bordered class="result-section" aria-label="音高曲线对比">
     <QCardSection>
       <component :is="headingLevel ?? 'h2'">音高曲线对比</component>
-      <p class="curve-note">实线是这次录音，虚线是标准参考；已按你的音域换算到统一标度；点线段表示该片段置信度较低。</p>
+      <p class="curve-note">曲线按本次音域换算为五度值，展示各音节的音高变化。</p>
       <ToneCurveChart :curve="result.curve" :audio-id="audioId" :recording-id="recordingId" />
     </QCardSection>
   </QCard>
@@ -110,6 +111,7 @@ watch(
   </QCard>
 
   <!-- 现象与四步 -->
+  <PronunciationEvidence v-if="result.pronunciationEvidence" :evidence="result.pronunciationEvidence" />
   <PhenomenaList v-if="result.phenomena" :phenomena="result.phenomena" />
   <FourStepsList v-if="result.fourSteps" :steps="result.fourSteps" />
 </template>

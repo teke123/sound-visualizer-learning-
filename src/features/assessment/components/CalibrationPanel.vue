@@ -1,9 +1,10 @@
 <script setup lang="ts">
 /**
- * CalibrationPanel：音域标定对话框（FR-1006 / D-20，可跳过）。
+ * CalibrationPanel：个人标定对话框（FR-1006 / D-20，可跳过）。
  * 录音区引导标定与 P11 主动重新标定共用；
- * 流程：读取标定文本 → 录音（40 秒）→ 上传 purpose=calibration → POST 标定。
- * 未标定可直接「跳过标定，直接录音」，不影响评分与结果展示。
+ * 流程（个人标定流程改造方案）：创建/恢复会话 → 四个元音各 2 条（必要时第 3 条）
+ * → 一段音域短文 → 最终计算 → 展示音域结果。
+ * 每步录音可试听、重录、提交；刷新后从服务端恢复会话进度。
  */
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -42,19 +43,19 @@ function gotoLogin() {
 }
 
 onMounted(() => {
-  if (props.open) void calibration.loadText()
+  if (props.open) void calibration.openSession()
 })
 
 watch(
   () => props.open,
   (open) => {
-    if (open && !wasOpen.value) void calibration.loadText()
+    if (open && !wasOpen.value) void calibration.openSession()
     if (!open) calibration.reset()
     wasOpen.value = open
   },
 )
 
-// 录音结束（手动停止或 40 秒上限）只能从 recorder 状态感知：
+// 录音结束（手动停止或上限自动停止）只能从 recorder 状态感知：
 // 监听 phase 本身永远不会触发（phase 正是要靠这里推进）
 watch(
   () => calibration.recorder.status,
@@ -63,8 +64,37 @@ watch(
   },
 )
 
+const task = computed(() => calibration.currentTask.value)
+const session = computed(() => calibration.session.value)
+
+/** 当前元音任务的任务配置（展示文字与拼音） */
+const vowelTask = computed(() => {
+  if (task.value?.kind !== 'vowel') return null
+  return session.value?.vowels.find((v) => v.key === task.value?.vowel) ?? null
+})
+
+const taskPrompt = computed(() => {
+  if (!task.value) return ''
+  if (task.value.kind === 'pitch') return '请按页面文字用平常的音高连续朗读'
+  const ordinal = task.value.ordinal ?? 1
+  const extra = task.value.additionalTake ? '（前两条差异较大，请补录一条）' : ''
+  const info = vowelTask.value
+  return `第 ${ordinal} 条${extra}：自然、平稳地延长发音「${info?.displayText ?? ''} ${info?.pinyin ?? ''} ${info?.ipa ?? ''}」约 1 秒`
+})
+
+const isPitch = computed(() => task.value?.kind === 'pitch')
+
+/** 计算失败（会话仍在、可重试） */
+const calcFailed = computed(() =>
+  calibration.phase.value === 'computing' && session.value?.calcState === 'failed')
+
 async function submit() {
   const ok = await calibration.submit()
+  if (ok) emit('done')
+}
+
+async function retryCompletion() {
+  const ok = await calibration.requestCompletion()
   if (ok) emit('done')
 }
 </script>
@@ -81,52 +111,76 @@ async function submit() {
       class="calibration-panel"
       style="width: min(560px, 94vw)"
       role="dialog"
-      aria-label="音域标定"
+      aria-label="个人标定"
     >
       <QCardSection class="cal-content">
         <header class="cal-head">
           <div class="cal-head-text">
-            <h2>先做一次音域标定</h2>
-            <p>用于根据用户本人的音高和音质进行归一化处理</p>
+            <h2>先做一次个人标定</h2>
+            <p>四个元音各录两条，再读一段短文：用于按本人音域与元音空间归一化</p>
           </div>
           <QBtn flat round dense class="cal-close" icon="close" aria-label="关闭" @click="emit('dismiss')" />
         </header>
 
-        <!-- 读取标定文本 -->
-        <p v-if="calibration.phase.value === 'loading-text'" class="cal-loading">正在读取标定文本…</p>
+        <!-- 进度：四个元音 + 短文 -->
+        <div v-if="session" class="cal-progress" aria-label="标定进度">
+          <span
+            v-for="v in session.vowels"
+            :key="v.key"
+            class="cal-chip"
+            :class="{ done: v.done, current: task?.kind === 'vowel' && task?.vowel === v.key }"
+          >{{ v.displayText }}{{ v.done ? ' ✓' : '' }}</span>
+          <span
+            class="cal-chip"
+            :class="{ done: session.passageAccepted, current: task?.kind === 'pitch' }"
+          >短文{{ session.passageAccepted ? ' ✓' : '' }}</span>
+        </div>
 
-        <!-- 朗读 + 录音 -->
-        <template v-if="calibration.info.value && calibration.phase.value !== 'success'">
+        <!-- 读取会话 -->
+        <p v-if="calibration.phase.value === 'loading'" class="cal-loading">正在准备标定…</p>
+
+        <!-- 蓝牙耳机警告：HFP 窄带会丢失高频，标定与正式录音同样受影响 -->
+        <p v-if="calibration.recorder.inputBluetooth" class="cal-bluetooth-warn">
+          当前检测到蓝牙耳机麦克风（{{ calibration.recorder.inputLabel }}）：录音会切换到窄带通话模式、丢失高频信息，请改用手机自带麦克风或外接麦克风。
+        </p>
+
+        <!-- retry_take：当前这条录音未通过质检，重录本条 -->
+        <div v-if="calibration.failAdvice.value" class="cal-fail">
+          <p class="cal-fail-title">这条录音没有通过检查</p>
+          <p>{{ calibration.failAdvice.value }}</p>
+          <QBtn outline no-caps color="blue-grey-4" text-color="blue-grey-9" class="cal-btn" label="再试一次" @click="calibration.startRecording()" />
+        </div>
+
+        <!-- vowel_dispersed：该元音几条录音差异较大，需再录一条 -->
+        <div v-else-if="calibration.dispersedNotice.value" class="cal-fail">
+          <p class="cal-fail-title">这个元音的几次录音差异较大</p>
+          <p>请放松、用自然的音量平稳发音，再录一次。</p>
+          <QBtn outline no-caps color="blue-grey-4" text-color="blue-grey-9" class="cal-btn" label="再录一次" @click="calibration.startRecording()" />
+        </div>
+
+        <!-- 当前任务 -->
+        <template v-if="calibration.phase.value !== 'success' && task">
           <div class="cal-text">
-            <h3>请朗读下面这段文字</h3>
-            <p class="cal-passage">{{ calibration.info.value.text }}</p>
-            <p class="cal-note">用平常说话的音高自然朗读，不用刻意高或低。</p>
+            <h3>{{ isPitch ? '请朗读下面这段短文' : '元音发音' }}</h3>
+            <p v-if="isPitch" class="cal-passage">{{ session?.passageText }}</p>
+            <p class="cal-note">{{ taskPrompt }}<template v-if="isPitch">，不用刻意高或低。</template></p>
           </div>
 
-          <!-- 蓝牙耳机警告：HFP 窄带会丢失高频，标定与正式录音同样受影响 -->
-          <p v-if="calibration.recorder.inputBluetooth" class="cal-bluetooth-warn">
-            当前检测到蓝牙耳机麦克风（{{ calibration.recorder.inputLabel }}）：录音会切换到窄带通话模式、丢失高频信息，请改用手机自带麦克风或外接麦克风。
-          </p>
-
-          <div v-if="calibration.failAdvice.value" class="cal-fail">
-            <p class="cal-fail-title">这次标定没有成功</p>
-            <p>{{ calibration.failAdvice.value }}</p>
-            <QBtn outline no-caps color="blue-grey-4" text-color="blue-grey-9" class="cal-btn" label="再试一次" @click="calibration.startRecording()" />
-          </div>
-
-          <div v-else-if="calibration.phase.value === 'intro'" class="cal-actions">
+          <div v-if="calibration.phase.value === 'intro'" class="cal-actions">
             <QBtn
               unelevated
               no-caps
               color="primary"
               class="cal-btn primary"
-              label="● 开始朗读录音"
+              :label="isPitch ? '● 开始朗读录音' : '● 开始录音'"
               @click="calibration.startRecording()"
             />
           </div>
 
           <div v-else-if="calibration.phase.value === 'recording'" class="cal-recording">
-            <p class="cal-recording-hint">录音中…读完后点「停止」（最长 40 秒）</p>
+            <p class="cal-recording-hint">
+              录音中…{{ isPitch ? '读完后' : '发完音后' }}点「停止」（最长 {{ isPitch ? 40 : 10 }} 秒）
+            </p>
             <span class="cal-timer">{{ (calibration.recorder.elapsedMs / 1000).toFixed(1) }}s</span>
             <QBtn unelevated no-caps color="blue-grey-8" class="cal-btn stop" label="■ 停止" @click="calibration.recorder.stop()" />
           </div>
@@ -160,17 +214,36 @@ async function submit() {
               no-caps
               color="primary"
               class="cal-btn primary"
-              :label="calibration.busy.value ? '处理中…' : '提交标定'"
+              :label="calibration.busy.value ? '处理中…' : '提交本条录音'"
               :disable="calibration.busy.value"
               @click="submit"
             />
           </div>
         </template>
 
+        <!-- 最终计算中 -->
+        <div v-if="calibration.phase.value === 'computing'" class="cal-computing">
+          <p>正在计算个人标定结果…</p>
+          <p v-if="calcFailed" class="cal-fail-inline">计算没有成功：{{ session?.lastError ?? '请重试' }}</p>
+          <QBtn
+            v-if="calcFailed"
+            outline
+            no-caps
+            color="blue-grey-4"
+            text-color="blue-grey-9"
+            class="cal-btn"
+            label="重试计算"
+            @click="retryCompletion"
+          />
+        </div>
+
         <!-- 成功 -->
         <div v-if="calibration.phase.value === 'success'" class="cal-success">
           <p>
             标定完成{{ calibration.result.value ? `，你的音域约 ${Math.round(calibration.result.value.pitchRange.fLo)}–${Math.round(calibration.result.value.pitchRange.fHi)} Hz` : '' }}。
+          </p>
+          <p v-if="session" class="cal-success-detail">
+            {{ session.vowels.filter((v) => v.done).length }}/4 个元音锚点已建立，用于元音空间与声调五度值换算。
           </p>
           <QBtn unelevated no-caps color="primary" class="cal-btn primary" label="继续" @click="emit('done')" />
         </div>
@@ -180,7 +253,7 @@ async function submit() {
           <p class="cal-fail-title">{{ errorCopy(calibration.error.value).title }}</p>
           <p>{{ errorCopy(calibration.error.value).hint }}</p>
           <QBtn v-if="authFailed" outline no-caps color="blue-grey-4" text-color="blue-grey-9" class="cal-btn" label="去登录" @click="gotoLogin" />
-          <QBtn v-else outline no-caps color="blue-grey-4" text-color="blue-grey-9" class="cal-btn" label="重试" @click="calibration.loadText()" />
+          <QBtn v-else outline no-caps color="blue-grey-4" text-color="blue-grey-9" class="cal-btn" label="重试" @click="calibration.openSession()" />
         </div>
 
         <footer class="cal-foot">
@@ -223,6 +296,29 @@ async function submit() {
 
 .cal-close
   flex-shrink: 0
+
+.cal-progress
+  display: flex
+  gap: 8px
+  flex-wrap: wrap
+
+.cal-chip
+  border: 1px solid #cfd8dc
+  border-radius: 14px
+  padding: 3px 12px
+  font-size: 13px
+  color: #607d8b
+
+  &.done
+    background: #e8f5e9
+    border-color: #a5d6a7
+    color: #1b5e20
+
+  &.current
+    background: #e0f2f1
+    border-color: #4db6ac
+    color: #00695c
+    font-weight: 700
 
 .cal-loading
   color: #90a4ae
@@ -302,6 +398,23 @@ async function submit() {
   font-weight: 700
   color: #bf360c
 
+.cal-computing
+  background: #e3f2fd
+  border: 1px solid #90caf9
+  border-radius: 10px
+  padding: 14px
+  display: flex
+  flex-direction: column
+  gap: 8px
+  align-items: flex-start
+  p
+    margin: 0
+    color: #0d47a1
+    font-size: 14px
+
+.cal-fail-inline
+  color: #bf360c
+
 .cal-success
   background: #e8f5e9
   border: 1px solid #a5d6a7
@@ -314,6 +427,10 @@ async function submit() {
   p
     margin: 0
     color: #1b5e20
+
+.cal-success-detail
+  font-size: 13px
+  color: #2e7d32
 
 .cal-foot
   text-align: center

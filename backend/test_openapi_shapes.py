@@ -31,7 +31,7 @@ from app import config  # noqa: E402
 from app.acoustics import transcode  # noqa: E402
 from app.api.schemas import (  # noqa: E402
     AssessmentResult, AudioUploadResponse, AuthLoginResponse, ArchiveListResponse,
-    CalibrationFailResult, CalibrationOkResult, DeletedResponse, FeedbackResponse,
+    CalibrationSessionView, CalibrationTakeOutcome, DeletedResponse, FeedbackResponse,
     F0Response, FormantsResponse, HealthData, LevelDetail,
     LevelsResponse, MeContext, MeProgress, PitchCalibrationInfo, ProfileResponse,
     ProgressLevel, RecordingDeleted, RecordingWithResult, RegisterResponse, SearchResponse,
@@ -99,30 +99,34 @@ def expect(name: str, resp, data_model=None, *, enveloped=True,
     return body
 
 
-def wav_bytes(samples: np.ndarray) -> bytes:
+def wav_bytes(samples: np.ndarray, rate: int = transcode.SAMPLE_RATE) -> bytes:
     buf = io.BytesIO()
     with wave.open(buf, "wb") as w:
         w.setnchannels(1)
         w.setsampwidth(2)
-        w.setframerate(16000)
+        w.setframerate(rate)
         w.writeframes((np.clip(samples, -1, 1) * 32767).astype("<i2").tobytes())
     return buf.getvalue()
 
 
 def silence_bytes(seconds: float = 2.0) -> bytes:
-    n = int(16000 * seconds)
+    n = int(transcode.SAMPLE_RATE * seconds)
     return wav_bytes(np.zeros(n, dtype=np.float32)
                      + np.random.default_rng(1).standard_normal(n) * 1e-4)
 
 
 def corpus_wav_bytes(pinyin: str, speaker: str = "MV1") -> bytes:
-    """按带调拼音标注从真人标准音节语料库读取并拼接为 16kHz 单声道 WAV 字节。"""
+    """按带调拼音标注从真人标准音节语料库读取并拼接为 44.1kHz 单声道 WAV 字节。
+
+    采样率必须与语料一致：语料经转码回到 44.1k 后若按 16 kHz 标签写出，
+    上传再规范化时全部频率会被拉低到 0.363 倍，元音/声调特征失真。
+    """
     corpus = config.CORPUS_DIR
     if corpus is None or not corpus.is_dir():
         raise RuntimeError("请先在 .env 或环境变量配置 CORPUS_DIR")
     syls = [{"stem": s} for s in re.split(r"[|，,\s]+", pinyin.strip()) if s]
     chunks: list[np.ndarray] = []
-    gap = np.zeros(int(0.08 * 16000), dtype=np.float32)
+    gap = np.zeros(int(0.08 * transcode.SAMPLE_RATE), dtype=np.float32)
     tmp_dir = config.DATA_DIR / "tmp_test"
     tmp_dir.mkdir(parents=True, exist_ok=True)
     for idx, s in enumerate(syls):
@@ -134,7 +138,7 @@ def corpus_wav_bytes(pinyin: str, speaker: str = "MV1") -> bytes:
         dst.unlink(missing_ok=True)
         if idx + 1 < len(syls):
             chunks.append(gap)
-    return wav_bytes(np.concatenate(chunks) if chunks else np.zeros(16000, dtype=np.float32))
+    return wav_bytes(np.concatenate(chunks) if chunks else np.zeros(transcode.SAMPLE_RATE, dtype=np.float32))
 
 
 def upload(c: TestClient, audio: bytes, purpose: str, name: str) -> str:
@@ -297,40 +301,109 @@ def main() -> int:
                 if r.status_code == 200:
                     break
                 time.sleep(0.3)
-        body = expect("声母关提交（VOT）→ RecordingWithResult", r, RecordingWithResult)
-        vot = body["data"]["result"].get("vot") or {}
-        check("  result.vot 存在且 status=ok", vot.get("status") == "ok",
-              str(vot)[:200])
-        check("  vot.user/reference 含 onsetSec/voicingOnsetSec/votMs 且数值>=0",
-              all(
-                  isinstance(vot.get(side, {}).get(k), (int, float))
-                  and vot[side][k] >= 0
-                  and vot[side]["votMs"] > 0
-                  for side in ("user", "reference")
-                  for k in ("onsetSec", "voicingOnsetSec", "votMs")
-              ), str(vot)[:200])
-        check("  vot.referenceMediaId 非空", bool(vot.get("referenceMediaId")))
+        body = expect("声母关提交（发音证据）→ RecordingWithResult", r, RecordingWithResult)
+        evidence = body["data"]["result"].get("pronunciationEvidence")
+        check("  result.pronunciationEvidence 字段存在",
+              evidence is not None, str(evidence)[:200])
 
-        # ---- 标定 ----
+        # ---- 标定（多录音会话流程）----
         r = c.get("/api/pitch-calibration")
-        expect("pitch-calibration GET（未标定）→ PitchCalibrationInfo", r,
-               PitchCalibrationInfo)
+        body = expect("pitch-calibration GET（未标定）→ PitchCalibrationInfo", r,
+                      PitchCalibrationInfo)
+        tasks = body["data"].get("vowelTasks") or []
+        check("  任务配置：四元音各 2 条",
+              [v["key"] for v in tasks] == ["i", "u", "a", "ü"]
+              and all(v["targetTakes"] == 2 for v in tasks), str(tasks)[:120])
 
-        cal_id = upload(c, corpus_wav_bytes("ma1|po1|che1|mi3|bu4|nv3|ma1|ma2|ma3|ma4", "MV1"),
-                        "calibration", "cal.webm")
-        r = c.post("/api/pitch-calibration", json={"audioId": cal_id})
-        body = expect("pitch-calibration POST → CalibrationOkResult", r, CalibrationOkResult)
-        check("  标定结果 status=personal", body["data"]["status"] == "personal")
+        r = c.post("/api/pitch-calibration/sessions")
+        body = expect("标定会话创建 → CalibrationSessionView", r, CalibrationSessionView)
+        session_id = body["data"]["sessionId"]
+        next_task = body["data"]["nextTask"]
+        check("  初始待办 = 元音 i 第 1 条",
+              next_task and next_task["kind"] == "vowel" and next_task["vowel"] == "i",
+              str(next_task))
+
+        def submit_take(audio_id: str, kind: str, vowel: str | None = None, name: str = "t"):
+            r = c.post(f"/api/pitch-calibration/sessions/{session_id}/takes",
+                       json={"audioId": audio_id, "kind": kind, "vowel": vowel})
+            return expect(f"标定单条验收 {kind} {vowel or ''} → CalibrationTakeOutcome",
+                          r, CalibrationTakeOutcome)
+
+        # 元音 i：两条差异大的录音 → 补第三条 → 一致对保留、离群条替换
+        yi_id = upload(c, corpus_wav_bytes("yi1", "FV1"), "calibration", "cal-i1.webm")
+        body = submit_take(yi_id, "vowel", "i")
+        check("  元音 i 第 1 条 accepted", body["data"]["outcome"] == "accepted",
+              str(body["data"]["outcome"]))
+        ma_id = upload(c, corpus_wav_bytes("ma1", "FV1"), "calibration", "cal-i2.webm")
+        body = submit_take(ma_id, "vowel", "i")
+        check("  元音 i 两条差异大 → additional_take_required",
+              body["data"]["outcome"] == "additional_take_required",
+              str(body["data"]["outcome"]))
+        ma_id2 = upload(c, corpus_wav_bytes("ma1", "FV1"), "calibration", "cal-i3.webm")
+        body = submit_take(ma_id2, "vowel", "i")
+        check("  元音 i 第三条后选定一致对 → accepted",
+              body["data"]["outcome"] == "accepted", str(body["data"]["outcome"]))
+        statuses = {t["audioId"]: t["status"] for t in body["data"]["session"]["takes"]}
+        check("  未参与锚点的 yi1 录音标记 replaced", statuses.get(yi_id) == "replaced",
+              str(statuses))
+
+        # 元音 u/a/ü：同一语料音节各两条 → 直接通过；静音质检不过 → retry_take
+        for key, stem in (("u", "wu1"), ("a", "a1"), ("ü", "yu2")):
+            for n in (1, 2):
+                aid = upload(c, corpus_wav_bytes(stem, "FV1"), "calibration",
+                             f"cal-{key}{n}.webm")
+                body = submit_take(aid, "vowel", key)
+                check(f"  元音 {key} 第 {n} 条 accepted",
+                      body["data"]["outcome"] == "accepted", str(body["data"]["outcome"]))
+                if key == "u" and n == 1:
+                    sil_id = upload(c, silence_bytes(2), "calibration", "sil-cal.webm")
+                    body = submit_take(sil_id, "vowel", "u")
+                    check("  静音元音录音 → retry_take",
+                          body["data"]["outcome"] == "retry_take" and body["data"]["reason"],
+                          str(body["data"]["outcome"]))
+
+        # 短文
+        passage_id = upload(c, corpus_wav_bytes("ma1|ma2|ma3|ma4", "MV1"),
+                            "calibration", "cal-pitch.webm")
+        body = submit_take(passage_id, "pitch")
+        check("  短文验收通过且任务齐备",
+              body["data"]["outcome"] == "accepted"
+              and body["data"]["session"]["nextTask"] is None,
+              str(body["data"]["session"].get("nextTask")))
+
+        # 任务齐备后乱序提交 → 422
+        extra_id = upload(c, corpus_wav_bytes("ma1", "FV1"), "calibration", "cal-extra.webm")
+        r = c.post(f"/api/pitch-calibration/sessions/{session_id}/takes",
+                   json={"audioId": extra_id, "kind": "vowel", "vowel": "i"})
+        check("  任务完成后乱序提交 → 422", r.status_code == 422, r.text[:120])
+
+        # 最终计算：发起 → 轮询 GET 至 done
+        r = c.post(f"/api/pitch-calibration/sessions/{session_id}/complete")
+        body = expect("会话完成请求 → CalibrationSessionView", r, CalibrationSessionView)
+        for _ in range(80):
+            r = c.get(f"/api/pitch-calibration/sessions/{session_id}")
+            body = expect("会话查询 → CalibrationSessionView", r, CalibrationSessionView)
+            if body["data"]["calcState"] == "done":
+                break
+            time.sleep(0.3)
+        check("  calcState=done 且 result.pitchRange 有效",
+              body["data"]["calcState"] == "done"
+              and bool(body["data"]["result"])
+              and body["data"]["result"]["pitchRange"]["fLo"] > 0
+              and body["data"]["result"]["pitchRange"]["fHi"] > body["data"]["result"]["pitchRange"]["fLo"],
+              str(body["data"].get("result"))[:160])
+
+        r = c.post(f"/api/pitch-calibration/sessions/{session_id}/complete")
+        body2 = expect("重复完成请求（幂等）→ CalibrationSessionView", r, CalibrationSessionView)
+        check("  重复请求返回同一完成状态",
+              body2["data"]["status"] == "completed"
+              and body2["data"]["result"]["rangeSnapshotId"]
+              == body["data"]["result"]["rangeSnapshotId"])
 
         r = c.get("/api/pitch-calibration")
         body = expect("pitch-calibration GET（已标定）→ PitchCalibrationInfo", r,
                       PitchCalibrationInfo)
         check("  已标定带 pitchRange", bool(body["data"].get("pitchRange")))
-
-        sil_cal = upload(c, silence_bytes(3), "calibration", "sil-cal.webm")
-        r = c.post("/api/pitch-calibration", json={"audioId": sil_cal})
-        expect("pitch-calibration 静音 → CalibrationFailResult", r,
-               CalibrationFailResult, code="CALIBRATION_FAIL")
 
         # ---- 标定后提交 + 质量提示不拦截 ----
         rec2_audio = upload(c, corpus_wav_bytes("ma1", "MV1"),

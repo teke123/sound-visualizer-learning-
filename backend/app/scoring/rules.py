@@ -133,26 +133,27 @@ def _not_available_curve(snapshot: dict, note: str) -> dict:
 
 
 def analyze_user_curve(wav_path: str, provider: ProviderResult,
-                       snapshot: dict, standard_curve: dict | None) -> dict:
+                       snapshot: dict, standard_curve: dict | None, *, measured=None, track=None) -> dict:
     """结果主对比曲线：与标准示范同一条 F0 管线（filtered AC + 四步清洗 +
     degree 1-5 五度坐标），音域按受理时快照冻结
     （FR-1006）。整段录音有任一可绘制音节即返回 ok。"""
     from app.acoustics import f0_pipeline
 
     f_lo, f_hi = snapshot["fLo"], snapshot["fHi"]
-    if standard_curve is None:
-        return _not_available_curve(snapshot, "本关暂无标准曲线")
-    try:
-        track = f0_pipeline.extract_track(wav_path)
-    except f0_pipeline.F0PipelineError as e:
-        return _not_available_curve(snapshot, str(e))
+    if track is None:
+        try:
+            track = f0_pipeline.extract_track(wav_path)
+        except f0_pipeline.F0PipelineError as e:
+            return _not_available_curve(snapshot, str(e))
     bounds = ([(s.t0, s.t1) for s in provider.syllables]
               or [(0.0, track.duration)])
-    processed = f0_pipeline.process_syllables(track, bounds, f_lo, f_hi)
+    processed = ([s["_tone_segment"] for s in measured.syllables] if measured is not None
+                 else f0_pipeline.process_syllables(track, bounds, f_lo, f_hi))
     if not any((seg.get("quality") or {}).get("validFrames", 0) >= f0_pipeline.MIN_DRAW_RUN
                for seg in processed):
         return _not_available_curve(snapshot, "录音里没有提取到可用的音高曲线")
 
+    standard_curve = standard_curve or {}
     ref_segments = list(standard_curve.get("segments", []))
     _REF_FIELDS = ("frames", "t0", "t1", "analysisStart", "analysisEnd", "duration",
                    "analysisDuration", "comparisonPoints", "chao", "shape",

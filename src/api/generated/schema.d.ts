@@ -361,8 +361,85 @@ export interface paths {
         /** Get Calibration */
         get: operations["get_calibration_api_pitch_calibration_get"];
         put?: never;
-        /** Post Calibration */
-        post: operations["post_calibration_api_pitch_calibration_post"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/pitch-calibration/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Calibration Session
+         * @description 创建或返回当前用户进行中的标定会话（刷新/重开后由此恢复进度）。
+         */
+        post: operations["create_calibration_session_api_pitch_calibration_sessions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/pitch-calibration/sessions/{session_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Calibration Session */
+        get: operations["get_calibration_session_api_pitch_calibration_sessions__session_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/pitch-calibration/sessions/{session_id}/takes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit Calibration Take
+         * @description 提交单条标定录音并验收：accepted / retry_take / additional_take_required /
+         *     vowel_dispersed 及下一任务。
+         */
+        post: operations["submit_calibration_take_api_pitch_calibration_sessions__session_id__takes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/pitch-calibration/sessions/{session_id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Complete Calibration Session
+         * @description 任务齐备后启动最终计算；返回会话状态，由 GET 查询完成结果（幂等）。
+         */
+        post: operations["complete_calibration_session_api_pitch_calibration_sessions__session_id__complete_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1069,17 +1146,6 @@ export interface components {
             /** File */
             file: string;
         };
-        /** CalibrationBody */
-        CalibrationBody: {
-            /** Audioid */
-            audioId: string;
-        };
-        /** CalibrationFailResult */
-        CalibrationFailResult: {
-            /** Reason */
-            reason: string;
-            signal?: components["schemas"]["CalibrationFailSignal"] | null;
-        };
         /** CalibrationFailSignal */
         CalibrationFailSignal: {
             /** Verdict */
@@ -1096,6 +1162,20 @@ export interface components {
              * @enum {string}
              */
             status: "none" | "personal";
+        };
+        /** CalibrationNextTask */
+        CalibrationNextTask: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "vowel" | "pitch";
+            /** Vowel */
+            vowel?: string | null;
+            /** Ordinal */
+            ordinal?: number | null;
+            /** Additionaltake */
+            additionalTake?: boolean | null;
         };
         /** CalibrationOkResult */
         CalibrationOkResult: {
@@ -1114,6 +1194,35 @@ export interface components {
             /** Updatedat */
             updatedAt?: string | null;
         };
+        /** CalibrationSessionView */
+        CalibrationSessionView: {
+            /** Sessionid */
+            sessionId: string;
+            /** Textversion */
+            textVersion: string;
+            /** Passagetext */
+            passageText: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "completed";
+            /**
+             * Calcstate
+             * @enum {string}
+             */
+            calcState: "idle" | "processing" | "done" | "failed";
+            /** Lasterror */
+            lastError?: string | null;
+            /** Vowels */
+            vowels: components["schemas"]["CalibrationVowelProgress"][];
+            /** Passageaccepted */
+            passageAccepted: boolean;
+            nextTask?: components["schemas"]["CalibrationNextTask"] | null;
+            /** Takes */
+            takes: components["schemas"]["CalibrationTakeView"][];
+            result?: components["schemas"]["CalibrationOkResult"] | null;
+        };
         /** CalibrationSignalCheckAdvice */
         CalibrationSignalCheckAdvice: {
             /** Advice */
@@ -1126,6 +1235,56 @@ export interface components {
             /** Pinyin */
             pinyin: string;
         };
+        /** CalibrationTakeBody */
+        CalibrationTakeBody: {
+            /** Audioid */
+            audioId: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "vowel" | "pitch";
+            /** Vowel */
+            vowel?: string | null;
+        };
+        /** CalibrationTakeOutcome */
+        CalibrationTakeOutcome: {
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "accepted" | "retry_take" | "additional_take_required" | "vowel_dispersed";
+            /** Reason */
+            reason?: string | null;
+            signal?: components["schemas"]["CalibrationFailSignal"] | null;
+            take?: components["schemas"]["CalibrationTakeView"] | null;
+            session: components["schemas"]["CalibrationSessionView"];
+        };
+        /** CalibrationTakeView */
+        CalibrationTakeView: {
+            /** Audioid */
+            audioId: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "vowel" | "pitch";
+            /** Vowel */
+            vowel?: string | null;
+            /** Ordinal */
+            ordinal: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "accepted" | "replaced";
+            /** Measurements */
+            measurements: {
+                [key: string]: unknown;
+            };
+            /** Createdat */
+            createdAt?: string | null;
+        };
         /** CalibrationTextBody */
         CalibrationTextBody: {
             /** Textversion */
@@ -1134,6 +1293,23 @@ export interface components {
             text: string;
             /** Syllables */
             syllables: components["schemas"]["CalibrationSyllable"][];
+        };
+        /** CalibrationVowelProgress */
+        CalibrationVowelProgress: {
+            /** Key */
+            key: string;
+            /** Displaytext */
+            displayText: string;
+            /** Pinyin */
+            pinyin: string;
+            /** Ipa */
+            ipa: string;
+            /** Targettakes */
+            targetTakes: number;
+            /** Acceptedtakes */
+            acceptedTakes: number;
+            /** Done */
+            done: boolean;
         };
         /** CategoryBody */
         CategoryBody: {
@@ -1375,6 +1551,42 @@ export interface components {
              */
             message: string;
             data: components["schemas"]["AuthLoginResponse"];
+            /** Requestid */
+            requestId?: string | null;
+            /** Nextstep */
+            nextStep?: string | null;
+        };
+        /** Envelope[CalibrationSessionView] */
+        Envelope_CalibrationSessionView_: {
+            /**
+             * Code
+             * @default OK
+             */
+            code: string;
+            /**
+             * Message
+             * @default ok
+             */
+            message: string;
+            data: components["schemas"]["CalibrationSessionView"];
+            /** Requestid */
+            requestId?: string | null;
+            /** Nextstep */
+            nextStep?: string | null;
+        };
+        /** Envelope[CalibrationTakeOutcome] */
+        Envelope_CalibrationTakeOutcome_: {
+            /**
+             * Code
+             * @default OK
+             */
+            code: string;
+            /**
+             * Message
+             * @default ok
+             */
+            message: string;
+            data: components["schemas"]["CalibrationTakeOutcome"];
             /** Requestid */
             requestId?: string | null;
             /** Nextstep */
@@ -1681,25 +1893,6 @@ export interface components {
              */
             message: string;
             data: components["schemas"]["SearchResponse"];
-            /** Requestid */
-            requestId?: string | null;
-            /** Nextstep */
-            nextStep?: string | null;
-        };
-        /** Envelope[Union[CalibrationOkResult, CalibrationFailResult]] */
-        Envelope_Union_CalibrationOkResult__CalibrationFailResult__: {
-            /**
-             * Code
-             * @default OK
-             */
-            code: string;
-            /**
-             * Message
-             * @default ok
-             */
-            message: string;
-            /** Data */
-            data: components["schemas"]["CalibrationOkResult"] | components["schemas"]["CalibrationFailResult"];
             /** Requestid */
             requestId?: string | null;
             /** Nextstep */
@@ -2073,6 +2266,8 @@ export interface components {
             vowelSpaceReady?: boolean | null;
             /** Updatedat */
             updatedAt?: string | null;
+            /** Voweltasks */
+            vowelTasks?: components["schemas"]["VowelTaskConfig"][] | null;
         };
         /** PitchRange */
         PitchRange: {
@@ -2451,6 +2646,22 @@ export interface components {
             voicingOnsetSec: number;
             /** Votms */
             votMs: number;
+        };
+        /**
+         * VowelTaskConfig
+         * @description 标定任务配置：边缘元音展示文字与目标条数（个人标定流程改造方案）。
+         */
+        VowelTaskConfig: {
+            /** Key */
+            key: string;
+            /** Displaytext */
+            displayText: string;
+            /** Pinyin */
+            pinyin: string;
+            /** Ipa */
+            ipa: string;
+            /** Targettakes */
+            targetTakes: number;
         };
         /** WishBody */
         WishBody: {
@@ -3072,16 +3283,69 @@ export interface operations {
             };
         };
     };
-    post_calibration_api_pitch_calibration_post: {
+    create_calibration_session_api_pitch_calibration_sessions_post: {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_CalibrationSessionView_"];
+                };
+            };
+        };
+    };
+    get_calibration_session_api_pitch_calibration_sessions__session_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_CalibrationSessionView_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_calibration_take_api_pitch_calibration_sessions__session_id__takes_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CalibrationBody"];
+                "application/json": components["schemas"]["CalibrationTakeBody"];
             };
         };
         responses: {
@@ -3091,7 +3355,38 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Envelope_Union_CalibrationOkResult__CalibrationFailResult__"];
+                    "application/json": components["schemas"]["Envelope_CalibrationTakeOutcome_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    complete_calibration_session_api_pitch_calibration_sessions__session_id__complete_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_CalibrationSessionView_"];
                 };
             };
             /** @description Validation Error */

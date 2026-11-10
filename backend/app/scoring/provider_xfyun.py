@@ -78,15 +78,26 @@ def build_exam_text(evaluation_text: str, pinyin: str | None = None,
 
 
 def _read_pcm(wav_path: str) -> bytes:
+    """在评分服务边界生成 16 kHz 内存副本，分析音频保持 44.1 kHz。"""
     try:
         with wave.open(wav_path, "rb") as w:
             spec = (w.getnchannels(), w.getsampwidth(), w.getframerate())
-            if spec != (1, 2, 16000):
+            if spec[:2] != (1, 2):
                 raise ProviderError(
                     "bad_response",
-                    f"音频须为 16k/16bit/单声道 WAV，实际 {spec[2]}Hz/{spec[1] * 8}bit/"
+                    f"音频须为 16bit/单声道 WAV，实际 {spec[2]}Hz/{spec[1] * 8}bit/"
                     f"{spec[0]}ch: {wav_path}")
-            return w.readframes(w.getnframes())
+            raw = w.readframes(w.getnframes())
+            if spec[2] == 16000:
+                return raw
+            import math
+            import numpy as np
+            from scipy.signal import resample_poly
+
+            divisor = math.gcd(spec[2], 16000)
+            pcm = resample_poly(np.frombuffer(raw, dtype="<i2").astype(float),
+                                16000 // divisor, spec[2] // divisor)
+            return np.clip(np.rint(pcm), -32768, 32767).astype("<i2").tobytes()
     except ProviderError:
         raise
     except (wave.Error, OSError) as e:
@@ -462,7 +473,7 @@ def _result_from_parsed(parsed: dict) -> ProviderResult:
                 detail={"dpMessage": w["dpMessage"], "dpMessageName": w["dpMessageName"],
                         "phones": [
                             {k: p[k] for k in
-                             ("content", "part", "perrMsg", "perrMsgName", "perrLevelMsg", "monoTone")}
+                             ("content", "part", "begPos", "endPos", "dpMessage", "perrMsg", "perrMsgName", "perrLevelMsg", "monoTone")}
                             for p in syl.get("phones", [])
                         ]},
             ))
@@ -478,7 +489,7 @@ def _result_from_parsed(parsed: dict) -> ProviderResult:
                     detail={"dpMessage": syl["dpMessage"], "dpMessageName": syl["dpMessageName"],
                             "phones": [
                                 {k: p[k] for k in
-                                 ("content", "part", "perrMsg", "perrMsgName", "perrLevelMsg", "monoTone")}
+                                 ("content", "part", "begPos", "endPos", "dpMessage", "perrMsg", "perrMsgName", "perrLevelMsg", "monoTone")}
                                 for p in syl.get("phones", [])
                             ]},
                 ))
@@ -509,5 +520,7 @@ class XfyunProvider(ScoringProvider):
     version = "xfyun-ise-1.0"
 
     def evaluate(self, wav_path: str, evaluation_text: str,
-                 pinyin: str | None = None) -> ProviderResult:
-        return evaluate_raw(wav_path, evaluation_text, pinyin=pinyin)["result"]
+                 pinyin: str | None = None,
+                 category: str | None = None) -> ProviderResult:
+        return evaluate_raw(wav_path, evaluation_text, pinyin=pinyin,
+                            category=category)["result"]

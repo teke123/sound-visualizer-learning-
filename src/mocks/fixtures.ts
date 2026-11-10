@@ -369,3 +369,11 @@ export const CALIBRATION_TEXT = {
   textVersion: 'cal-v1',
 }
 
+/** 标定任务配置：边缘元音展示文字与目标条数（与后端 calibration_sessions.VOWEL_TASKS 对齐） */
+export const VOWEL_TASKS = [
+  { key: 'i', displayText: '衣', pinyin: 'yī', ipa: '[i]', targetTakes: 2 },
+  { key: 'u', displayText: '乌', pinyin: 'wū', ipa: '[u]', targetTakes: 2 },
+  { key: 'a', displayText: '啊', pinyin: 'ā', ipa: '[a]', targetTakes: 2 },
+  { key: 'ü', displayText: '迂', pinyin: 'yū', ipa: '[y]', targetTakes: 2 },
+] as const
+

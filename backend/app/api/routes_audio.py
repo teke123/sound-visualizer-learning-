@@ -1,10 +1,9 @@
 """音频、标定与检测路由（要求登录；D-05/D-19/D-20）。"""
 from __future__ import annotations
 
-from typing import Literal, Union
+from typing import Literal, Optional
 
 import asyncio
-import json
 
 from fastapi import APIRouter, Depends, Request, UploadFile, File, Form
 from pydantic import BaseModel
@@ -17,10 +16,12 @@ from app.archive import usecases as archive_uc
 from app.content import usecases as content_uc
 from app.detection import usecases as detection_uc
 from app.platform.envelope import ApiError, envelope
+from app.scoring import calibration_sessions as calib_sessions
 from app.scoring import usecases as scoring_uc
 
-from app.api.schemas import (AudioUploadResponse, CalibrationFailResult, CalibrationOkResult,
-                             Envelope, F0Response, FormantsResponse, PitchCalibrationInfo,
+from app.api.schemas import (AudioUploadResponse, CalibrationSessionView,
+                             CalibrationTakeOutcome, Envelope, F0Response,
+                             FormantsResponse, PitchCalibrationInfo,
                              RecordingDeleted, RecordingOnly, RecordingWithResult)
 
 router = APIRouter(prefix="/api", tags=["audio-detection"])
@@ -139,7 +140,7 @@ async def audio_f0_hum(request: Request, audio_id: str, flo: str | None = None,
     return serve_file(request, path, "audio/wav", cache_control="private, no-store")
 
 
-# ---------------- 标定（FR-1006，可跳过） ----------------
+# ---------------- 标定（FR-1006，可跳过；多录音会话流程） ----------------
 
 @router.get("/pitch-calibration", response_model=Envelope[PitchCalibrationInfo])
 async def get_calibration(request: Request, actor: Actor = Depends(get_actor)):
@@ -153,6 +154,7 @@ async def get_calibration(request: Request, actor: Actor = Depends(get_actor)):
         "textVersion": text_row.text_version,
         "status": effective["status"] if effective else "none",
         "vowelSpaceReady": bool(effective and effective.get("vowelSpace")),
+        "vowelTasks": calib_sessions.VOWEL_TASKS,
     }
     if effective:
         data["pitchRange"] = {"fLo": effective["fLo"], "fHi": effective["fHi"]}
@@ -160,48 +162,66 @@ async def get_calibration(request: Request, actor: Actor = Depends(get_actor)):
     return envelope(request, data)
 
 
-class CalibrationBody(BaseModel):
-    audioId: str
-
-
-@router.post("/pitch-calibration", response_model=Envelope[Union[CalibrationOkResult, CalibrationFailResult]])
-async def post_calibration(request: Request, body: CalibrationBody,
-                           actor: Actor = Depends(get_actor)):
+@router.post("/pitch-calibration/sessions", response_model=Envelope[CalibrationSessionView])
+async def create_calibration_session(request: Request,
+                                     actor: Actor = Depends(get_actor)):
+    """创建或返回当前用户进行中的标定会话（刷新/重开后由此恢复进度）。"""
     user = require_user(actor)
-    actor.rate_limit("calibration")
+    actor.rate_limit("calibration_session")
     text_row = content_uc.get_active_calibration_text(actor.db)
     if text_row is None:
         raise ApiError(500, "INTERNAL_ERROR", "标定文本未配置，请联系管理员")
-    audio = acoustics_uc.get_audio_for_read(
-        actor.db, audio_id=body.audioId, user_id=user.id,
-        purposes=("calibration",))
-    from app.platform.executor import executor
+    data = await asyncio.get_running_loop().run_in_executor(
+        None, lambda: calib_sessions.create_or_get_session(actor.db, user_id=user.id,
+                                                           text_row=text_row))
+    return envelope(request, data)
 
-    # 任务线程内自建会话（compute_calibration），不持有请求作用域 actor.db：
-    # 504/断连后请求会话先行关闭，线程继续用它写库是未定义行为
-    future = executor.try_submit(
-        scoring_uc.compute_calibration, audio_id=audio.id,
-        syllables=json.loads(text_row.syllables),
-        user_id=user.id)
-    if future is None:
-        raise ApiError(503, "SERVER_BUSY", "当前处理排队已满，请稍后重试",
-                       headers={"Retry-After": "5"})
-    # 超时只结束等待、绝不取消执行器任务：wait_for 的超时取消会顺着
-    # wrap_future 杀死排队中的任务（信号量槽永久泄漏），迟到的任务自行
-    # 收尾（与检测 wait_sync_window 同款约束）
-    wrapped = asyncio.wrap_future(future)
-    wrapped.add_done_callback(
-        lambda f: None if f.cancelled() else f.exception())
-    done, _ = await asyncio.wait({wrapped}, timeout=config.CALIBRATION_TIMEOUT_SECONDS)
-    if not done:
-        raise ApiError(504, "TIMEOUT", "标定处理超时，请重试") from None
-    result = wrapped.result()
-    if not result.get("ok"):
-        return envelope(request, {"reason": result["reason"],
-                                  "signal": result.get("signal")},
-                        code="CALIBRATION_FAIL",
-                        message=result["reason"], status=200)
+
+@router.get("/pitch-calibration/sessions/{session_id}",
+            response_model=Envelope[CalibrationSessionView])
+async def get_calibration_session(request: Request, session_id: str,
+                                  actor: Actor = Depends(get_actor)):
+    user = require_user(actor)
+    session = calib_sessions._owned_session(actor.db, user_id=user.id, session_id=session_id)
+    return envelope(request, calib_sessions.session_view(actor.db, session))
+
+
+class CalibrationTakeBody(BaseModel):
+    audioId: str
+    kind: Literal["vowel", "pitch"]
+    vowel: Optional[str] = None
+
+
+@router.post("/pitch-calibration/sessions/{session_id}/takes",
+             response_model=Envelope[CalibrationTakeOutcome])
+async def submit_calibration_take(request: Request, session_id: str,
+                                  body: CalibrationTakeBody,
+                                  actor: Actor = Depends(get_actor)):
+    """提交单条标定录音并验收：accepted / retry_take / additional_take_required /
+    vowel_dispersed 及下一任务。"""
+    user = require_user(actor)
+    actor.rate_limit("calibration_take")
+    # 单条验收含质检、共振峰测量与短文评分调用，放线程池执行
+    result = await asyncio.get_running_loop().run_in_executor(
+        None, lambda: calib_sessions.accept_take(
+            actor.db, user_id=user.id, session_id=session_id,
+            audio_id=body.audioId, kind=body.kind, vowel=body.vowel))
+    session = calib_sessions._owned_session(actor.db, user_id=user.id,
+                                            session_id=session_id)
+    result["session"] = calib_sessions.session_view(actor.db, session)
     return envelope(request, result)
+
+
+@router.post("/pitch-calibration/sessions/{session_id}/complete",
+             response_model=Envelope[CalibrationSessionView])
+async def complete_calibration_session(request: Request, session_id: str,
+                                       actor: Actor = Depends(get_actor)):
+    """任务齐备后启动最终计算；返回会话状态，由 GET 查询完成结果（幂等）。"""
+    user = require_user(actor)
+    actor.rate_limit("calibration_complete")
+    data = calib_sessions.request_completion(actor.db, user_id=user.id,
+                                             session_id=session_id)
+    return envelope(request, data)
 
 
 # ---------------- 检测提交与查询 ----------------

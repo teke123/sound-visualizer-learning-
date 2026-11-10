@@ -6,7 +6,7 @@
 """
 from __future__ import annotations
 
-from typing import Generic, List, Literal, Optional, TypeVar
+from typing import Any, Dict, Generic, List, Literal, Optional, TypeVar
 
 from pydantic import BaseModel, Field
 
@@ -267,6 +267,15 @@ class PitchRange(BaseModel):
     fHi: float
 
 
+class VowelTaskConfig(BaseModel):
+    """标定任务配置：边缘元音展示文字与目标条数（个人标定流程改造方案）。"""
+    key: str
+    displayText: str
+    pinyin: str
+    ipa: str
+    targetTakes: int
+
+
 class PitchCalibrationInfo(BaseModel):
     text: str
     textVersion: str
@@ -274,6 +283,7 @@ class PitchCalibrationInfo(BaseModel):
     pitchRange: Optional[PitchRange] = None
     vowelSpaceReady: Optional[bool] = None
     updatedAt: Optional[str] = None
+    vowelTasks: Optional[List[VowelTaskConfig]] = None
 
 
 class CalibrationOkResult(BaseModel):
@@ -297,9 +307,48 @@ class CalibrationFailSignal(BaseModel):
     duration: Optional[CalibrationSignalCheckAdvice] = None
 
 
-class CalibrationFailResult(BaseModel):
-    reason: str
+class CalibrationNextTask(BaseModel):
+    kind: Literal["vowel", "pitch"]
+    vowel: Optional[str] = None
+    ordinal: Optional[int] = None
+    additionalTake: Optional[bool] = None   # 达到目标条数后的一致性补录
+
+
+class CalibrationTakeView(BaseModel):
+    audioId: str
+    kind: Literal["vowel", "pitch"]
+    vowel: Optional[str] = None
+    ordinal: int
+    status: Literal["accepted", "replaced"]
+    measurements: Dict[str, Any]
+    createdAt: Optional[str] = None
+
+
+class CalibrationVowelProgress(VowelTaskConfig):
+    acceptedTakes: int
+    done: bool
+
+
+class CalibrationSessionView(BaseModel):
+    sessionId: str
+    textVersion: str
+    passageText: str
+    status: Literal["active", "completed"]
+    calcState: Literal["idle", "processing", "done", "failed"]
+    lastError: Optional[str] = None
+    vowels: List[CalibrationVowelProgress]
+    passageAccepted: bool
+    nextTask: Optional[CalibrationNextTask] = None
+    takes: List[CalibrationTakeView]
+    result: Optional[CalibrationOkResult] = None
+
+
+class CalibrationTakeOutcome(BaseModel):
+    outcome: Literal["accepted", "retry_take", "additional_take_required", "vowel_dispersed"]
+    reason: Optional[str] = None
     signal: Optional[CalibrationFailSignal] = None
+    take: Optional[CalibrationTakeView] = None
+    session: CalibrationSessionView
 
 
 # ------------------------------- 录音与结果 ---------------------------------

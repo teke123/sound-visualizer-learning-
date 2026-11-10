@@ -62,5 +62,8 @@ class ScoringProvider:
     version: str = "base-0"
 
     def evaluate(self, wav_path: str, evaluation_text: str,
-                 pinyin: str | None = None) -> ProviderResult:
+                 pinyin: str | None = None,
+                 category: str | None = None) -> ProviderResult:
+        """category：显式指定讯飞题型（如标定短文用 read_chapter）；
+        None 时由 Provider 使用配置的默认题型。"""
         raise NotImplementedError

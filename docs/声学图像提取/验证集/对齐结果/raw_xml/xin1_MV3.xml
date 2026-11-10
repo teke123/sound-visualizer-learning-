@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+  <xml_result>
+      <read_syllable lan="cn" type="study" version="7,0,0,1024">
+          <rec_paper>
+              <read_syllable beg_pos="0" content="心。" end_pos="119" except_info="0" fluency_score="0.000000" integrity_score="0.000000" phone_score="100.000000" time_len="119" tone_score="100.000000" total_score="100.000000">
+                  <sentence beg_pos="0" content="心" end_pos="119" time_len="119">
+                      <word beg_pos="0" content="心" end_pos="119" symbol="xin1" time_len="119">
+                          <syll beg_pos="0" content="silv" dp_message="0" end_pos="20" rec_node_type="silv" time_len="20">
+                              <phone beg_pos="0" content="silv" dp_message="0" end_pos="20" rec_node_type="silv" time_len="20"></phone>
+                          </syll>
+                          <syll beg_pos="20" content="心" dp_message="0" end_pos="86" rec_node_type="paper" symbol="xin1" time_len="66">
+                              <phone beg_pos="20" content="x" dp_message="0" end_pos="47" is_yun="0" perr_level_msg="0" perr_msg="0" rec_node_type="paper" time_len="27"></phone>
+                              <phone beg_pos="47" content="in" dp_message="0" end_pos="86" is_yun="1" mono_tone="TONE1" perr_level_msg="0" perr_msg="0" rec_node_type="paper" time_len="39"></phone>
+                          </syll>
+                          <syll beg_pos="86" content="silv" dp_message="0" end_pos="119" rec_node_type="silv" time_len="33">
+                              <phone beg_pos="86" content="silv" end_pos="119" time_len="33"></phone>
+                          </syll>
+                      </word>
+                  </sentence>
+              </read_syllable>
+          </rec_paper>
+      </read_syllable>
+  </xml_result>

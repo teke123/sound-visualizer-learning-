@@ -34,29 +34,31 @@ def check(name: str, ok: bool, detail: str = "") -> None:
     print(f"{'PASS' if ok else 'FAIL'}  {name}" + (f"  — {detail}" if detail and not ok else ""))
 
 
-def wav_bytes(samples: np.ndarray) -> bytes:
+def wav_bytes(samples: np.ndarray, rate: int = transcode.SAMPLE_RATE) -> bytes:
     buf = io.BytesIO()
     with wave.open(buf, "wb") as w:
         w.setnchannels(1)
         w.setsampwidth(2)
-        w.setframerate(16000)
+        w.setframerate(rate)
         w.writeframes((np.clip(samples, -1, 1) * 32767).astype("<i2").tobytes())
     return buf.getvalue()
 
 
 def silence_bytes(seconds: float = 2.0) -> bytes:
-    n = int(16000 * seconds)
+    n = int(transcode.SAMPLE_RATE * seconds)
     return wav_bytes(np.zeros(n, dtype=np.float32) + np.random.default_rng(1).standard_normal(n) * 1e-4)
 
 
 def corpus_wav_bytes(pinyin: str, speaker: str = "MV1") -> bytes:
-    """按带调拼音标注逐项定位语料库录音并拼接为 16kHz 单声道 WAV 字节。"""
+    """按带调拼音标注逐项定位语料库录音并拼接为 44.1kHz 单声道 WAV 字节。
+
+    采样率必须与语料一致，否则上传规范化后全部频率失真（详见 test_openapi_shapes.py）。"""
     corpus = config.CORPUS_DIR
     if corpus is None or not corpus.is_dir():
         raise RuntimeError("请先在 .env 或环境变量配置 CORPUS_DIR")
     stems = [s for s in re.split(r"[|，,\s]+", pinyin.strip()) if s]
     chunks: list[np.ndarray] = []
-    gap = np.zeros(int(0.08 * 16000), dtype=np.float32)
+    gap = np.zeros(int(0.08 * transcode.SAMPLE_RATE), dtype=np.float32)
     tmp_dir = config.DATA_DIR / "tmp_e2e"
     tmp_dir.mkdir(parents=True, exist_ok=True)
     for idx, stem in enumerate(stems):
@@ -67,7 +69,8 @@ def corpus_wav_bytes(pinyin: str, speaker: str = "MV1") -> bytes:
         dst.unlink(missing_ok=True)
         if idx + 1 < len(stems):
             chunks.append(gap)
-    return wav_bytes(np.concatenate(chunks) if chunks else np.zeros(16000, dtype=np.float32))
+    return wav_bytes(np.concatenate(chunks) if chunks
+                     else np.zeros(transcode.SAMPLE_RATE, dtype=np.float32))
 
 
 def main() -> int:
@@ -184,25 +187,56 @@ def main() -> int:
         r = c.get(f"/api/audio/{audio_id}/file", headers={"Range": "bytes=0-49"})
         check("audio file range 206", r.status_code == 206 and len(r.content) == 50)
 
-        # 5 标定（FR-1006）
-        r = c.post("/api/audio/uploads", data={"purpose": "calibration"},
-                   files={"file": ("cal.webm", cal_audio, "audio/webm")})
-        cal_audio_id = r.json()["data"]["audioId"]
-        r = c.post("/api/pitch-calibration", json={"audioId": cal_audio_id})
+        # 5 标定（FR-1006，多录音会话流程）
+        r = c.post("/api/pitch-calibration/sessions")
         body = r.json()
-        check("calibration ok (personal)",
-              r.status_code == 200 and body["code"] == "OK" and body["data"]["status"] == "personal",
-              r.text[:200])
-        f_lo = body["data"]["pitchRange"]["fLo"]
-        check("pitch range plausible male", 70 <= f_lo <= 180, str(f_lo))
+        check("calibration session created",
+              r.status_code == 200 and body["code"] == "OK"
+              and body["data"]["nextTask"]["vowel"] == "i", r.text[:200])
+        session_id = body["data"]["sessionId"]
 
-        # 标定失败路径：静音
+        def submit_cal_take(audio_id: str, kind: str, vowel: str | None = None):
+            return c.post(f"/api/pitch-calibration/sessions/{session_id}/takes",
+                          json={"audioId": audio_id, "kind": kind, "vowel": vowel})
+
+        for key, stem in (("i", "yi1"), ("u", "wu1"), ("a", "a1"), ("ü", "yu2")):
+            for n in (1, 2):
+                up = c.post("/api/audio/uploads", data={"purpose": "calibration"},
+                            files={"file": (f"cal-{key}{n}.webm",
+                                            corpus_wav_bytes(stem, "FV1"), "audio/webm")})
+                r = submit_cal_take(up.json()["data"]["audioId"], "vowel", key)
+                check(f"vowel take {key} #{n} accepted",
+                      r.status_code == 200
+                      and r.json()["data"]["outcome"] == "accepted", r.text[:200])
+
+        # 质检不过：静音 → retry_take，进度保留
+        up = c.post("/api/audio/uploads", data={"purpose": "calibration"},
+                    files={"file": ("silence.webm", silence_bytes(2), "audio/webm")})
+        r = submit_cal_take(up.json()["data"]["audioId"], "vowel", "u")
+        check("vowel silence → retry_take",
+              r.status_code == 200 and r.json()["data"]["outcome"] == "retry_take",
+              r.text[:200])
+
         r = c.post("/api/audio/uploads", data={"purpose": "calibration"},
-                   files={"file": ("silence.webm", silence_bytes(3), "audio/webm")})
-        sid_audio = r.json()["data"]["audioId"]
-        r = c.post("/api/pitch-calibration", json={"audioId": sid_audio})
-        check("calibration silence → 200 CALIBRATION_FAIL",
-              r.status_code == 200 and r.json()["code"] == "CALIBRATION_FAIL")
+                   files={"file": ("cal-pitch.webm", cal_audio, "audio/webm")})
+        r = submit_cal_take(r.json()["data"]["audioId"], "pitch")
+        check("pitch passage accepted",
+              r.status_code == 200 and r.json()["data"]["outcome"] == "accepted"
+              and r.json()["data"]["session"]["nextTask"] is None, r.text[:200])
+
+        r = c.post(f"/api/pitch-calibration/sessions/{session_id}/complete")
+        check("calibration complete accepted",
+              r.status_code == 200 and r.json()["code"] == "OK", r.text[:200])
+        for _ in range(80):
+            body = c.get(f"/api/pitch-calibration/sessions/{session_id}").json()
+            if body["data"]["calcState"] == "done":
+                break
+            time.sleep(0.3)
+        check("calibration done with personal range",
+              body["data"]["calcState"] == "done" and bool(body["data"]["result"]),
+              str(body["data"].get("calcState")))
+        f_lo = body["data"]["result"]["pitchRange"]["fLo"]
+        check("pitch range plausible male", 70 <= f_lo <= 180, str(f_lo))
 
         # 6 质量提示只作提示：静音录音仍评分并展示曲线/质量建议（FR-1301）
         sil_rec = c.post("/api/audio/uploads", data={"purpose": "recording"},

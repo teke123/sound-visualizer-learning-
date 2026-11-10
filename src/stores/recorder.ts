@@ -25,7 +25,8 @@ export type RecorderStatus =
 
 type PcmListener = (samples: Float32Array, startSample: number) => void
 
-export const RECORD_MAX_MS = { recording: 15_000, calibration: 40_000 } as const
+/** 录音上限：正式录音 15s；标定短文 40s；标定单条元音 10s（目标发音约 0.5–1s） */
+export const RECORD_MAX_MS = { recording: 15_000, calibration: 40_000, calibrationVowel: 10_000 } as const
 
 export const useRecorderStore = defineStore('recorder', () => {
   const status = ref<RecorderStatus>('idle')
