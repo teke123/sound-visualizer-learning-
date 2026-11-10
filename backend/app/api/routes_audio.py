@@ -171,9 +171,8 @@ async def create_calibration_session(request: Request,
     text_row = content_uc.get_active_calibration_text(actor.db)
     if text_row is None:
         raise ApiError(500, "INTERNAL_ERROR", "标定文本未配置，请联系管理员")
-    data = await asyncio.get_running_loop().run_in_executor(
-        None, lambda: calib_sessions.create_or_get_session(actor.db, user_id=user.id,
-                                                           text_row=text_row))
+    data = calib_sessions.create_or_get_session(actor.db, user_id=user.id,
+                                                text_row=text_row)
     return envelope(request, data)
 
 
@@ -200,13 +199,22 @@ async def submit_calibration_take(request: Request, session_id: str,
     """提交单条标定录音并验收：accepted / retry_take / additional_take_required /
     vowel_dispersed 及下一任务。"""
     user = require_user(actor)
+    user_id = user.id
     actor.rate_limit("calibration_take")
     # 单条验收含质检、共振峰测量与短文评分调用，放线程池执行
-    result = await asyncio.get_running_loop().run_in_executor(
-        None, lambda: calib_sessions.accept_take(
-            actor.db, user_id=user.id, session_id=session_id,
-            audio_id=body.audioId, kind=body.kind, vowel=body.vowel))
-    session = calib_sessions._owned_session(actor.db, user_id=user.id,
+    def accept_in_worker():
+        from app.db import get_session
+        worker_db = get_session()
+        try:
+            return calib_sessions.accept_take(
+                worker_db, user_id=user_id, session_id=session_id,
+                audio_id=body.audioId, kind=body.kind, vowel=body.vowel)
+        finally:
+            worker_db.close()
+
+    result = await asyncio.get_running_loop().run_in_executor(None, accept_in_worker)
+    actor.db.rollback()
+    session = calib_sessions._owned_session(actor.db, user_id=user_id,
                                             session_id=session_id)
     result["session"] = calib_sessions.session_view(actor.db, session)
     return envelope(request, result)

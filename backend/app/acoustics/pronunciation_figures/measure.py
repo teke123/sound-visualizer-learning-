@@ -21,6 +21,14 @@ from app.acoustics.imagery.common import (PHONE_IPA, Alignment, PhoneSeg, final_
                                           initial_class, nasal_coda, read_mono)
 
 SR = transcode.SAMPLE_RATE
+DISPLAY_MARGIN_SEC = 0.100
+
+
+def hz_to_bark(frequency):
+    hz = np.asarray(frequency, dtype=float)
+    return 13 * np.arctan(.00076 * hz) + 3.5 * np.arctan((hz / 7500) ** 2)
+
+
 ANALYSIS_TOP_HZ = 12000.0
 SIBILANT_BAND_START_HZ = 2000.0
 FRICATION_BAND = (3000.0, 10000.0)
@@ -80,7 +88,7 @@ class Recording:
     aln: Alignment
     f0_range: tuple[float, float] | None = None  # 五度音域（1 度、5 度对应的 Hz）
     f0_range_source: str | None = None
-    vowel_norm: dict | None = None              # 个人元音空间，含 overall 与 i/u/a/y 锚点
+    vowel_norm: dict | None = None              # 个人标定结果，含 overall 与 i/u/a/ü 锚点
     formant_ceiling_hz: float | None = None
     source_sample_rate: int = SR
     signal_quality: dict | None = None
@@ -181,6 +189,7 @@ class Analysis:
     _snd: object = None
     _harmonicity: tuple[np.ndarray, np.ndarray] | None = None
     spectrogram: tuple | None = None
+    narrow_spectrogram: tuple | None = None
     noise_envelopes: dict = field(default_factory=dict)
     formant_reasons: np.ndarray | None = None
     creaky_intervals: list[tuple[float, float]] = field(default_factory=list)
@@ -305,9 +314,8 @@ def analyze(rec: Recording, *, track: f0_pipeline.PitchTrack | None = None) -> A
     pulses = np.array([call(pp, "Get time from index", i)
                        for i in range(1, int(call(pp, "Get number of points")) + 1)])
 
-    speech = level_t[level_db > SPEECH_LEVEL_DB]
-    speech_t0 = min(float(speech[0]), rec.aln.syllables[0].t0) if speech.size else 0.0
-    speech_t1 = max(float(speech[-1]), rec.aln.syllables[-1].t1) if speech.size else duration
+    speech_t0 = max(0.0, min(s.t0 for s in rec.aln.syllables) - DISPLAY_MARGIN_SEC)
+    speech_t1 = min(duration, max(s.t1 for s in rec.aln.syllables) + DISPLAY_MARGIN_SEC)
 
     a = Analysis(rec, duration, track, f0_range, range_source, sex, level_t, level_db,
                  formant_t, formants, ceiling, pulses, pulse_floor, speech_t0, speech_t1,
@@ -315,7 +323,12 @@ def analyze(rec: Recording, *, track: f0_pipeline.PitchTrack | None = None) -> A
     sg = snd.to_spectrogram(window_length=0.005, time_step=0.002,
                             frequency_step=40.0, maximum_frequency=ANALYSIS_TOP_HZ)
     db = 10 * np.log10(np.maximum(sg.values, 1e-20))
-    a.spectrogram = (np.asarray(sg.xs()), np.asarray(sg.ys()), db - db.max())
+    peak_db = db.max()
+    a.spectrogram = (np.asarray(sg.xs()), np.asarray(sg.ys()), db - peak_db)
+    narrow = snd.to_spectrogram(window_length=0.0125, time_step=0.005,
+                                frequency_step=20.0, maximum_frequency=ANALYSIS_TOP_HZ)
+    narrow_db = 10 * np.log10(np.maximum(narrow.values, 1e-20))
+    a.narrow_spectrogram = (np.asarray(narrow.xs()), np.asarray(narrow.ys()), narrow_db - peak_db)
     a.creaky_intervals = _creaky_intervals(a)
     for i in range(len(rec.aln.syllables)):
         a.syllables.append(_measure_syllable(a, i))
@@ -746,6 +759,11 @@ def _measure_syllable(a: Analysis, i: int) -> dict:
              "steady_hz": steady_hz, "trajectory_length_hz": _rnd(distance, 0),
              "trajectory_angle_degree": _rnd(angle, 1),
              "sample_reasons": sample_reasons}
+    plotted_f1 = hz_to_bark(samples[0])
+    plotted_distance = hz_to_bark(samples[1]) - plotted_f1
+    plotted_distance[samples[1] <= samples[0]] = np.nan
+    vowel["F1_bark"] = [_rnd(v, 2) for v in plotted_f1]
+    vowel["F2_minus_F1_bark"] = [_rnd(v, 2) for v in plotted_distance]
     norm = (a.rec.vowel_norm or {}).get("overall", a.rec.vowel_norm or {})
     if norm and norm.get("f1Std", 0) > 0 and norm.get("f2Std", 0) > 0 and np.isfinite(samples[:2, 5]).all():
         vowel["mid_z"] = [_rnd((samples[0, 5] - norm["f1Mean"]) / norm["f1Std"], 2),

@@ -374,15 +374,20 @@ def request_completion(db: Session, *, user_id: str, session_id: str) -> dict:
     if incomplete or _pitch_take([t for t in takes if t.status == "accepted"]) is None:
         missing = "、".join(incomplete) if incomplete else "音域短文"
         raise ApiError(422, "VALIDATION_ERROR", f"标定任务尚未完成（缺 {missing}）")
-    session.calc_state = "processing"
-    session.last_error = None
-    _touch_session(session)
+    claimed = (db.query(CalibrationSessionRow)
+               .filter(CalibrationSessionRow.id == session.id,
+                       CalibrationSessionRow.status == "active",
+                       CalibrationSessionRow.calc_state.in_(("idle", "failed")))
+               .update({"calc_state": "processing", "last_error": None,
+                        "updated_at": now()}, synchronize_session="fetch"))
+    db.commit()
+    if not claimed:
+        return session_view(db, session)
     if executor.try_submit(compute_session_calibration, session_id=session.id) is None:
         session.calc_state = "idle"
         db.commit()
         raise ApiError(503, "SERVER_BUSY", "当前处理排队已满，请稍后重试",
                        headers={"Retry-After": "5"})
-    db.commit()
     return session_view(db, session)
 
 

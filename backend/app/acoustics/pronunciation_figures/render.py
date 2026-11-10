@@ -8,7 +8,7 @@ import numpy as np
 
 from app.acoustics.imagery.common import setup_matplotlib
 from app.acoustics.f0_pipeline import hz_to_degree
-from .measure import Analysis, SR
+from .measure import Analysis, SR, hz_to_bark
 
 _LOCK = RLock()
 FORMANT_COLORS = ("#0066cc", "#cc0000", "#008844")
@@ -48,11 +48,16 @@ def select_kinds(a: Analysis, goal: str = "general", limit: int = 4) -> list[str
     return [k for k in priorities.get(goal, priorities["general"]) if k in available][:limit]
 
 
-def _spec(ax, a, origin, end, top=5000):
-    t, f, db = a.spectrogram
-    ax.pcolormesh(t-origin, f/1000, db, cmap="Greys", vmin=-50, vmax=0,
-                  shading="nearest", rasterized=True)
-    ax.set(xlim=(0, end-origin), ylim=(0, min(top, a.bandwidth_hz)/1000), ylabel="频率 (kHz)")
+def _spec(ax, a, origin, end, top=5000, *, kind="broad", start=None, scale=1):
+    start = origin if start is None else start
+    t, f, db = a.spectrogram if kind == "broad" else a.narrow_spectrogram
+    frequency = f <= min(top, a.bandwidth_hz)
+    time = (t >= start) & (t <= end)
+    ax.pcolormesh((t[time]-origin)*scale, f[frequency]/1000, db[np.ix_(frequency, time)],
+                  cmap="Greys", vmin=-50, vmax=0, shading="nearest", rasterized=True)
+    ax.set(xlim=((start-origin)*scale, (end-origin)*scale),
+           ylim=(0, min(top, a.bandwidth_hz)/1000),
+           ylabel=("宽带" if kind == "broad" else "窄带") + "频率 (kHz)")
 
 
 def _formants(ax, a, t0, t1, origin, count=3):
@@ -111,8 +116,8 @@ def _phases(ax, s, origin, end):
 
 
 def _overview(fig, a):
-    axes = fig.subplots(3, 1, sharex=True, gridspec_kw={"height_ratios": [1, 2, 1.2]})
-    ax_wave, ax_spec, ax_tone = axes
+    axes = fig.subplots(4, 1, sharex=True, gridspec_kw={"height_ratios": [1, 1.7, 1.4, 1.1]})
+    ax_wave, ax_spec, ax_narrow, ax_tone = axes
     origin, end = a.speech_t0, a.speech_t1
     t = np.arange(len(a.rec.x))/SR
     mask = (t >= origin) & (t <= end)
@@ -120,8 +125,9 @@ def _overview(fig, a):
     ax_wave.set_ylabel("振幅")
     level_ax = ax_wave.twinx()
     level_ax.plot(a.level_t-origin, a.level_db, color="#cc6743", lw=1.5, alpha=.8)
-    level_ax.set(ylabel="相对强度 (dB)", ylim=(-60, 12))
+    level_ax.set(ylabel="相对强度 (dB)", ylim=(-60, 12), xlim=(0, end-origin))
     _spec(ax_spec, a, origin, end)
+    _spec(ax_narrow, a, origin, end, kind="narrow")
     for s in a.syllables:
         syl = a.aln.syllables[s["index"]]
         for phone in (s["initial"], s["final"]):
@@ -130,11 +136,15 @@ def _overview(fig, a):
                              f'{phone["label"]} [{phone["ipa"]}] {phone["duration_ms"]:.0f} ms',
                              ha="center", transform=ax_wave.get_xaxis_transform(), fontsize=10)
                 ax_spec.axvline(phone["t0"]-origin, color="#ac5b82", ls=":", lw=1.2)
+                ax_narrow.axvline(phone["t0"]-origin, color="#ac5b82", ls=":", lw=1.2)
         ax_spec.axvline(s["final"]["t1"]-origin, color="#ac5b82", ls=":", lw=1.2)
+        ax_narrow.axvline(s["final"]["t1"]-origin, color="#ac5b82", ls=":", lw=1.2)
         ax_wave.text((syl.t0+syl.t1)/2-origin, 1.24, f'{s["text"]} {s["symbol"]}',
                      ha="center", transform=ax_wave.get_xaxis_transform(), fontsize=11, weight="bold")
         _phases(ax_spec, s, origin, s["voicing_end_s"])
+        _phases(ax_narrow, s, origin, s["voicing_end_s"])
         _event_lines(ax_spec, s, origin)
+        _event_lines(ax_narrow, s, origin)
         v = s["vowel"]
         _formants(ax_spec, a, v["t0"], v["t1"], origin)
         frames = s["_tone_frames"]
@@ -143,6 +153,7 @@ def _overview(fig, a):
         ax_tone.plot(x, y, color="#bb2026", lw=2)
         for left, right in s["timeline"]["creaky_intervals_s"]:
             ax_spec.axvspan(left-origin, right-origin, color="#c58c9d", alpha=.13)
+            ax_narrow.axvspan(left-origin, right-origin, color="#c58c9d", alpha=.13)
     ax_tone.set(ylabel="五度值", xlabel="相对语音起点 (s)", ylim=(.5, 5.5), yticks=[1, 2, 3, 4, 5])
     lo, hi = a.f0_range
     other = ax_tone.secondary_yaxis("right", functions=(lambda degree: np.exp(np.log(lo)+(np.asarray(degree)-1)/4*np.log(hi/lo)),
@@ -154,7 +165,7 @@ def _overview(fig, a):
 def _tone_vowel(fig, a, reference=None):
     axes = fig.subplots(len(a.syllables), 2, squeeze=False)
     space = a.rec.vowel_norm or {}
-    anchors = [(key, space.get(key)) for key in ("i", "ü", "a", "u")]
+    anchors = [(key, space.get(key)) for key in ("i", "a", "u")]
     for row, s in enumerate(a.syllables):
         tone_ax, vowel_ax = axes[row]
         tone = s["tone"]
@@ -168,8 +179,10 @@ def _tone_vowel(fig, a, reference=None):
                     title=f'{s["symbol"]} · 调值 {tone["chao"] or ""}')
         tone_ax.text(.03, .04, f'音域 {a.f0_range[0]:.0f}–{a.f0_range[1]:.0f} Hz',
                      transform=tone_ax.transAxes, fontsize=11)
-        xy = [(p["f2Mean"], p["f1Mean"]) for _, p in anchors if p and "f2Mean" in p and "f1Mean" in p]
-        if len(xy) == 4:
+        xy = [(float(hz_to_bark(p["f2Mean"]) - hz_to_bark(p["f1Mean"])),
+               float(hz_to_bark(p["f1Mean"])))
+              for _, p in anchors if p and "f2Mean" in p and "f1Mean" in p]
+        if len(xy) == 3:
             polygon = np.asarray(xy + [xy[0]])
             vowel_ax.plot(polygon[:, 0], polygon[:, 1], color="#9299a0", ls="--", lw=1.5)
             for (name, _), (x, y) in zip(anchors, xy):
@@ -180,27 +193,31 @@ def _tone_vowel(fig, a, reference=None):
             f1 = f1.copy(); f2 = f2.copy()
             f1[:3] = np.nan; f1[8:] = np.nan
             f2[:3] = np.nan; f2[8:] = np.nan
-        vowel_ax.plot(f2, f1, color="#bb2026", lw=2.4)
-        valid = np.flatnonzero(np.isfinite(f1) & np.isfinite(f2))
+        x = hz_to_bark(f2) - hz_to_bark(f1)
+        y = hz_to_bark(f1)
+        x[f2 <= f1] = np.nan
+        vowel_ax.plot(x, y, color="#bb2026", lw=2.4)
+        valid = np.flatnonzero(np.isfinite(x) & np.isfinite(y))
         if len(valid):
-            vowel_ax.plot(f2[valid[0]], f1[valid[0]], "o", color="#bb2026", ms=7)
+            vowel_ax.plot(x[valid[0]], y[valid[0]], "o", color="#bb2026", ms=7)
         if len(valid) > 1:
-            vowel_ax.annotate("", xy=(f2[valid[-1]], f1[valid[-1]]),
-                              xytext=(f2[valid[-2]], f1[valid[-2]]),
+            vowel_ax.annotate("", xy=(x[valid[-1]], y[valid[-1]]),
+                              xytext=(x[valid[-2]], y[valid[-2]]),
                               arrowprops={"arrowstyle": "->", "color": "#bb2026", "lw": 2.2})
-        vowel_ax.set(xlim=(3300, 500), ylim=(1200, 200), xlabel="F2 (Hz)", ylabel="F1 (Hz)", title="个人元音空间")
+        vowel_ax.set(xlim=(15, 0), ylim=(11, 1.5), xlabel="F2−F1 (Bark)",
+                     ylabel="F1 (Bark)", title="个人元音空间")
 
 
 def _plosive(fig, a):
     indices = [i for i, s in enumerate(a.syllables) if s["initial_class"] in {"stop", "affricate"}]
-    axes = fig.subplots(3*len(indices), 1, squeeze=False)[:, 0]
+    axes = fig.subplots(4*len(indices), 1, squeeze=False)[:, 0]
     for row, i in enumerate(indices):
         s = a.syllables[i]
         c = s["consonant"] or {}
         origin = c.get("release_s") or a.aln.syllables[i].t0
-        end = min(a.duration, max(c.get("voicing_onset_s") or origin+.10, origin+.10) + .05)
-        left = max(0, origin-.03)
-        ax_wave, ax_spec, ax_band = axes[row*3:row*3+3]
+        end = min(a.speech_t1, max(c.get("voicing_onset_s") or origin+.10, origin+.10) + .05)
+        left = max(a.speech_t0, origin-.03)
+        ax_wave, ax_spec, ax_narrow, ax_band = axes[row*4:row*4+4]
         t = np.arange(len(a.rec.x))/SR
         mask = (t >= left) & (t <= end)
         ax_wave.plot((t[mask]-origin)*1000, a.rec.x[mask], color="#303940", lw=.8)
@@ -211,10 +228,8 @@ def _plosive(fig, a):
             if c.get(key) is not None:
                 details.append(f'{label} {c[key]:.0f} ms')
         ax_wave.set(ylabel="振幅", title=" · ".join(details))
-        t_spec, f_spec, db_spec = a.spectrogram
-        ax_spec.pcolormesh((t_spec-origin)*1000, f_spec/1000, db_spec, cmap="Greys", vmin=-50, vmax=0,
-                           shading="nearest", rasterized=True)
-        ax_spec.set(ylabel="频率 (kHz)", ylim=(0, min(12, a.bandwidth_hz/1000)))
+        _spec(ax_spec, a, origin, end, top=12000, start=left, scale=1000)
+        _spec(ax_narrow, a, origin, end, top=5000, kind="narrow", start=left, scale=1000)
         from .measure import _band_level, _grid
         bt = _grid(left, end, .002)
         high = _band_level(a.rec.x, bt, .010, (2500, min(10000, a.bandwidth_hz)))
@@ -243,11 +258,12 @@ def _plosive(fig, a):
             if stop <= start:
                 continue
             x0, x1 = (start-origin)*1000, (stop-origin)*1000
-            ax_spec.axvspan(x0, x1, ymin=.94, ymax=1, color=color, alpha=.75)
+            for ax in (ax_spec, ax_narrow):
+                ax.axvspan(x0, x1, ymin=.94, ymax=1, color=color, alpha=.75)
             if x1-x0 >= 25:
                 ax_spec.text((x0+x1)/2, .97, label, ha="center", va="center",
                              transform=ax_spec.get_xaxis_transform(), fontsize=10)
-        for ax in (ax_wave, ax_spec, ax_band):
+        for ax in (ax_wave, ax_spec, ax_narrow, ax_band):
             for key, color in (("release_s", "#a35b00"), ("frication_end_s", "#865f9c"), ("voicing_onset_s", "#12805a")):
                 if c.get(key) is not None:
                     ax.axvline((c[key]-origin)*1000, color=color, ls="--", lw=1.4)
@@ -278,28 +294,32 @@ def _sibilant(fig, a):
 
 def _nasal(fig, a):
     indices = [i for i, s in enumerate(a.syllables) if s["initial_class"] == "nasal" or s["nasal_coda"]]
-    axes = fig.subplots(2*len(indices), 1, squeeze=False)[:, 0]
+    axes = fig.subplots(3*len(indices), 1, squeeze=False)[:, 0]
     for row, i in enumerate(indices):
         s = a.syllables[i]
         syll = a.aln.syllables[i]
-        origin, end = syll.t0, s["voicing_end_s"]
-        upper, lower = axes[row*2:row*2+2]
+        origin, end = syll.t0, min(a.speech_t1, s["voicing_end_s"])
+        upper, narrow, lower = axes[row*3:row*3+3]
         _spec(upper, a, origin, end, top=4000)
+        _spec(narrow, a, origin, end, top=4000, kind="narrow")
         _formants(upper, a, s["vowel"]["t0"], s["vowel"]["t1"], origin)
         nasal = s["nasal_coda"] or {}
         if s["initial_class"] == "nasal":
-            upper.axvspan(0, syll.initial.t1-origin, color="#9973ae", alpha=.15)
-            upper.axvspan(0, syll.initial.t1-origin, ymin=.94, ymax=1, color="#9973ae", alpha=.65)
+            for ax in (upper, narrow):
+                ax.axvspan(0, syll.initial.t1-origin, color="#9973ae", alpha=.15)
+                ax.axvspan(0, syll.initial.t1-origin, ymin=.94, ymax=1, color="#9973ae", alpha=.65)
             upper.text((syll.initial.t1-origin)/2, .97, "鼻声母", ha="center", va="center",
                        transform=upper.get_xaxis_transform(), fontsize=10)
         if nasal.get("murmur_t0") is not None:
-            upper.axvspan(nasal["murmur_t0"]-origin, end-origin, color="#9973ae", alpha=.15)
-            upper.axvspan(nasal["murmur_t0"]-origin, end-origin, ymin=.94, ymax=1,
-                          color="#9973ae", alpha=.65)
+            for ax in (upper, narrow):
+                ax.axvspan(nasal["murmur_t0"]-origin, end-origin, color="#9973ae", alpha=.15)
+                ax.axvspan(nasal["murmur_t0"]-origin, end-origin, ymin=.94, ymax=1,
+                           color="#9973ae", alpha=.65)
             upper.text((nasal["murmur_t0"]+end)/2-origin, .97,
                        f'鼻尾 {nasal["murmur_ms"]:.0f} ms', ha="center", va="center",
                        transform=upper.get_xaxis_transform(), fontsize=10)
         _event_lines(upper, s, origin)
+        _event_lines(narrow, s, origin)
         upper.set_title(s["symbol"])
         series = s.get("nasal_dynamics")
         if series:
@@ -323,17 +343,19 @@ def _nasal(fig, a):
 
 def _approximant(fig, a):
     indices = [i for i, s in enumerate(a.syllables) if s["initial_class"] in {"lateral", "approximant"}]
-    axes = fig.subplots(2*len(indices), 1, squeeze=False)[:, 0]
+    axes = fig.subplots(3*len(indices), 1, squeeze=False)[:, 0]
     for row, i in enumerate(indices):
         s = a.syllables[i]
         syll = a.aln.syllables[i]
         c = s["consonant"]
         origin = syll.t0
-        end = min(a.duration, s["vowel"]["t0"] + .5*s["vowel"]["duration_ms"]/1000 + .05)
-        upper, lower = axes[row*2:row*2+2]
+        end = min(a.speech_t1, s["vowel"]["t0"] + .5*s["vowel"]["duration_ms"]/1000 + .05)
+        upper, narrow, lower = axes[row*3:row*3+3]
         _spec(upper, a, origin, end)
+        _spec(narrow, a, origin, end, kind="narrow")
         _formants(upper, a, origin, end, origin)
         upper.axvline(syll.initial.t1-origin, color="#8e5e7c", ls="--", lw=1.4)
+        narrow.axvline(syll.initial.t1-origin, color="#8e5e7c", ls="--", lw=1.4)
         upper.set_title(s["symbol"])
         key = "F3_min_hz" if syll.initial.label == "r" else "F1_boundary_change_hz"
         label = "F3 谷值" if syll.initial.label == "r" else "ΔF1"
@@ -356,9 +378,9 @@ def render(learner: Analysis, reference: Analysis | None = None, *, kinds=None) 
         with plt.rc_context({"font.size": 12, "axes.titlesize": 13, "axes.labelsize": 12}):
             for kind in kinds:
                 rows = max(1, len(learner.syllables))
-                size = (12, {"overview": 8, "tone_vowel": 4.5*rows,
-                             "plosive": 8*rows, "sibilant": 5*rows,
-                             "nasal": 7*rows, "approximant": 7*rows}[kind])
+                size = (12, {"overview": 9, "tone_vowel": 4.5*rows,
+                             "plosive": 9*rows, "sibilant": 5*rows,
+                             "nasal": 8*rows, "approximant": 8*rows}[kind])
                 fig = plt.figure(figsize=size, layout="constrained")
                 try:
                     if kind == "overview": _overview(fig, learner)

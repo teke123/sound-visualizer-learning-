@@ -73,24 +73,16 @@ const vowelTask = computed(() => {
   return session.value?.vowels.find((v) => v.key === task.value?.vowel) ?? null
 })
 
-const taskPrompt = computed(() => {
-  if (!task.value) return ''
-  if (task.value.kind === 'pitch') return '请按页面文字用平常的音高连续朗读'
-  const ordinal = task.value.ordinal ?? 1
-  const extra = task.value.additionalTake ? '（前两条差异较大，请补录一条）' : ''
-  const info = vowelTask.value
-  return `第 ${ordinal} 条${extra}：自然、平稳地延长发音「${info?.displayText ?? ''} ${info?.pinyin ?? ''} ${info?.ipa ?? ''}」约 1 秒`
-})
-
 const isPitch = computed(() => task.value?.kind === 'pitch')
 
 /** 计算失败（会话仍在、可重试） */
 const calcFailed = computed(() =>
   calibration.phase.value === 'computing' && session.value?.calcState === 'failed')
 
+/** 全部任务完成（计算成功）才关闭对话框；单条提交成功只更新进度 */
 async function submit() {
   const ok = await calibration.submit()
-  if (ok) emit('done')
+  if (ok && calibration.phase.value === 'success') emit('done')
 }
 
 async function retryCompletion() {
@@ -116,7 +108,7 @@ async function retryCompletion() {
       <QCardSection class="cal-content">
         <header class="cal-head">
           <div class="cal-head-text">
-            <h2>先做一次个人标定</h2>
+            <h2>个人标定</h2>
             <p>四个元音各录两条，再读一段短文：用于按本人音域与元音空间归一化</p>
           </div>
           <QBtn flat round dense class="cal-close" icon="close" aria-label="关闭" @click="emit('dismiss')" />
@@ -129,12 +121,15 @@ async function retryCompletion() {
             :key="v.key"
             class="cal-chip"
             :class="{ done: v.done, current: task?.kind === 'vowel' && task?.vowel === v.key }"
-          >{{ v.displayText }}{{ v.done ? ' ✓' : '' }}</span>
+          >{{ v.displayText }} {{ v.done ? '✓' : `${v.acceptedTakes}/${v.targetTakes}` }}</span>
           <span
             class="cal-chip"
             :class="{ done: session.passageAccepted, current: task?.kind === 'pitch' }"
           >短文{{ session.passageAccepted ? ' ✓' : '' }}</span>
         </div>
+
+        <!-- 提交成功的可见反馈 -->
+        <p v-if="calibration.notice.value" class="cal-notice">{{ calibration.notice.value }}</p>
 
         <!-- 读取会话 -->
         <p v-if="calibration.phase.value === 'loading'" class="cal-loading">正在准备标定…</p>
@@ -161,9 +156,20 @@ async function retryCompletion() {
         <!-- 当前任务 -->
         <template v-if="calibration.phase.value !== 'success' && task">
           <div class="cal-text">
-            <h3>{{ isPitch ? '请朗读下面这段短文' : '元音发音' }}</h3>
-            <p v-if="isPitch" class="cal-passage">{{ session?.passageText }}</p>
-            <p class="cal-note">{{ taskPrompt }}<template v-if="isPitch">，不用刻意高或低。</template></p>
+            <template v-if="isPitch">
+              <h3>请朗读下面这段短文</h3>
+              <p class="cal-passage">{{ session?.passageText }}</p>
+              <p class="cal-note">按页面文字用平常的音高连续朗读，不用刻意高或低。</p>
+            </template>
+            <template v-else>
+              <p class="cal-vowel">
+                {{ vowelTask?.displayText }}
+                <span class="cal-vowel-pinyin">{{ vowelTask?.pinyin }} {{ vowelTask?.ipa }}</span>
+              </p>
+              <p class="cal-note">
+                自然、平稳地延长发音，约 1 秒<template v-if="task?.additionalTake">；前两条录音差异较大，请再录一条</template>。
+              </p>
+            </template>
           </div>
 
           <div v-if="calibration.phase.value === 'intro'" class="cal-actions">
@@ -243,7 +249,7 @@ async function retryCompletion() {
             标定完成{{ calibration.result.value ? `，你的音域约 ${Math.round(calibration.result.value.pitchRange.fLo)}–${Math.round(calibration.result.value.pitchRange.fHi)} Hz` : '' }}。
           </p>
           <p v-if="session" class="cal-success-detail">
-            {{ session.vowels.filter((v) => v.done).length }}/4 个元音锚点已建立，用于元音空间与声调五度值换算。
+            {{ session.vowels.filter((v) => v.done).length }}/4 个元音已完成标定；元音空间图使用 i/u/a，音域用于声调五度值换算。
           </p>
           <QBtn unelevated no-caps color="primary" class="cal-btn primary" label="继续" @click="emit('done')" />
         </div>
@@ -343,6 +349,29 @@ async function retryCompletion() {
   margin: 0
   font-size: 13px
   color: #00796b
+
+/* 元音任务主展示：目标元音大字居中 */
+.cal-vowel
+  margin: 4px 0 8px
+  text-align: center
+  font-size: 30px
+  font-weight: 700
+  color: #004d40
+
+.cal-vowel-pinyin
+  font-size: 15px
+  font-weight: 400
+  color: #00796b
+
+/* 单条提交成功反馈 */
+.cal-notice
+  margin: 0
+  background: #e8f5e9
+  border: 1px solid #a5d6a7
+  border-radius: 10px
+  padding: 8px 14px
+  font-size: 13px
+  color: #1b5e20
 
 .cal-bluetooth-warn
   margin: 0

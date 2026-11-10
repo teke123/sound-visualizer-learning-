@@ -32,8 +32,7 @@ def _formant_track(x: np.ndarray, sr: int, ceiling: float) -> parselmouth.Forman
 
 
 def _sample_window(fm: parselmouth.Formant, start: float, end: float) -> np.ndarray:
-    times = np.arange(start + STEADY_LO * (end - start),
-                      start + STEADY_HI * (end - start), .005)
+    times = np.arange(start, end, .005)
     return np.asarray([[fm.get_value_at_time(k, t) for k in (1, 2, 3)] for t in times])
 
 
@@ -101,7 +100,7 @@ def calibrate_personal_vowel_space(takes: dict[str, list[dict]]) -> dict:
     takes：元音 → 参与计算的录音列表，每条 {"x", "sr", "steady"}；
     steady 为 measure_vowel_take 给出的稳态区（秒）。
     每条录音跨候选上限复测共振峰，逐上限按拓扑约束与轨迹平稳度选优；
-    锚点输出跨录音的 F1/F2/F3 均值与标准差。
+    锚点输出跨录音的 F1/F2/F3 均值、标准差与录音数。
     """
     missing = [v for v in ANCHORS if not takes.get(v)]
     if missing:
@@ -141,6 +140,7 @@ def calibrate_personal_vowel_space(takes: dict[str, list[dict]]) -> dict:
         for k in (1, 2, 3):
             stats[f"f{k}Mean"] = round(float(medians[:, k - 1].mean()), 1)
             stats[f"f{k}Std"] = round(float(medians[:, k - 1].std()), 1)
+        stats["sampleCount"] = len(samples)
         anchors[vowel] = stats
     centers = np.asarray([[anchors[v]["f1Mean"], anchors[v]["f2Mean"]] for v in ANCHORS])
     anchors["overall"] = {"f1Mean": round(float(centers[:, 0].mean()), 1),

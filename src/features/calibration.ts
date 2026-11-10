@@ -41,6 +41,8 @@ export function useCalibration() {
   const failAdvice = ref<string | null>(null)
   /** vowel_dispersed 提示：几条录音差异大，需要重录该元音 */
   const dispersedNotice = ref(false)
+  /** 提交成功的可见反馈（该条已记录 / 该元音已完成 / 短文已提交） */
+  const notice = ref<string | null>(null)
   /** 成功结果（音域区间 + 四个元音完成状态展示） */
   const result = ref<CalibrationSessionView['result'] | null>(null)
   const busy = computed(() => phase.value === 'uploading' || phase.value === 'submitting')
@@ -66,6 +68,7 @@ export function useCalibration() {
     error.value = null
     failAdvice.value = null
     dispersedNotice.value = false
+    notice.value = null
     result.value = null
     try {
       const res = await detectionApi.createCalibrationSession()
@@ -73,6 +76,10 @@ export function useCalibration() {
       if (res.data.status === 'completed' && res.data.result) {
         result.value = res.data.result
         phase.value = 'success'
+      } else if (res.data.calcState === 'failed') {
+        phase.value = 'computing'
+      } else if (res.data.calcState === 'processing' || !res.data.nextTask) {
+        await requestCompletion()
       } else {
         phase.value = 'intro'
       }
@@ -85,6 +92,7 @@ export function useCalibration() {
   async function startRecording(): Promise<void> {
     failAdvice.value = null
     dispersedNotice.value = false
+    notice.value = null
     const maxMs = currentTask.value?.kind === 'pitch'
       ? RECORD_MAX_MS.calibration
       : RECORD_MAX_MS.calibrationVowel
@@ -134,7 +142,8 @@ export function useCalibration() {
       recorder.release()
       return true
     }
-    // 超时仍未完成：停在 computing，用户可手动重试
+    error.value = new Error('标定计算仍在进行，请稍后重新查看')
+    phase.value = 'failed'
     return false
   }
 
@@ -171,7 +180,20 @@ export function useCalibration() {
         phase.value = 'intro'
         return false
       }
-      // accepted / additional_take_required：任务齐备则发起最终计算
+      // accepted / additional_take_required：生成可见反馈
+      const taskVowel = task.kind === 'vowel'
+        ? session.value?.vowels.find((v) => v.key === task.vowel)
+        : null
+      if (data.outcome === 'additional_take_required') {
+        notice.value = `「${taskVowel?.displayText ?? task.vowel}」的录音差异较大，请再录一条`
+      } else if (task.kind === 'pitch') {
+        notice.value = '短文录音已提交'
+      } else if (taskVowel?.done) {
+        notice.value = `「${taskVowel.displayText}」已完成`
+      } else {
+        notice.value = `「${taskVowel?.displayText ?? task.vowel}」已提交`
+      }
+      // 任务齐备则发起最终计算
       if (!session.value.nextTask) return await requestCompletion()
       phase.value = 'intro'
       return true
@@ -189,6 +211,7 @@ export function useCalibration() {
     error.value = null
     failAdvice.value = null
     dispersedNotice.value = false
+    notice.value = null
     result.value = null
     session.value = null
   }
@@ -201,6 +224,7 @@ export function useCalibration() {
     error,
     failAdvice,
     dispersedNotice,
+    notice,
     busy,
     recorder,
     openSession,
