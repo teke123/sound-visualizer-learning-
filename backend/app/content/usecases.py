@@ -594,7 +594,8 @@ def set_level_published(db: Session, level_id: str, published: bool) -> dict:
     if level is None:
         raise ApiError(404, "NOT_FOUND", "关卡不存在")
     if published:
-        missing = precheck_level(db, JSONText.load(level.content, {}))
+        # content JSON 已拆列存储，预检查必须用列 + 关联拼回的完整内容文档
+        missing = precheck_level(db, level_full_content(db, level))
         if missing:
             raise ApiError(422, "VALIDATION_ERROR",
                            "关卡内容不完整：" + "；".join(missing),

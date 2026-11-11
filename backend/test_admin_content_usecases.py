@@ -162,7 +162,7 @@ def main() -> int:
 
         # ---- 关卡开放完整性检查 ----
         original_updated_at = lv.updated_at
-        missing = content_uc.precheck_level(db, {})
+        missing = content_uc.precheck_level(db, content_uc.level_full_content(db, lv))
         expect_api_error("不完整关卡开放 → 422，列出全部缺失项",
                          lambda: content_uc.set_level_published(db, lv.id, True),
                          422, "VALIDATION_ERROR", "；".join(missing))
@@ -182,8 +182,7 @@ def main() -> int:
                           "sampleMediaId": mp3_id, "fourStepTemplates": ["反馈"]},
             "professional": {"description": "发音说明"},
         }
-        lv.content = JSONText.dump(valid_content)
-        db.commit()
+        content_uc.save_level(db, lv.id, valid_content)  # 走保存路径拆列存储
         check("完整关卡允许开放",
               content_uc.set_level_published(db, lv.id, True)
               == {"levelId": lv.id, "published": True})
@@ -192,7 +191,7 @@ def main() -> int:
         asset = db.get(MediaAssetRow, mp3_id)
         asset.deleted_at = now()
         db.commit()
-        missing = content_uc.precheck_level(db, valid_content)
+        missing = content_uc.precheck_level(db, content_uc.level_full_content(db, lv))
         check("预检查拒绝软删媒体", missing == [f"媒体不存在：{mp3_id}"])
         original_updated_at = lv.updated_at
         try:
@@ -264,12 +263,12 @@ def main() -> int:
                          lambda: content_uc.rename_category(db, 9999, name="x"),
                          404, "NOT_FOUND", "分类不存在")
 
-        art.content = JSONText.dump({"category": "进阶发音"})
+        art.category_id = cat_id
         db.commit()
         expect_api_error("分类仍被文章使用 → 409",
                          lambda: content_uc.delete_category(db, cat_id),
                          409, "INVALID_STATE", "仍有 1 篇文章使用该分类")
-        art.content = JSONText.dump({"category": "其他"})
+        art.category_id = None
         db.commit()
         check("删分类（无文章使用）",
               content_uc.delete_category(db, cat_id) == {"deleted": True}
@@ -288,10 +287,11 @@ def main() -> int:
               feedback_uc.handle_feedback(db, feedback_id=wish_id, status="adopted",
                                           admin_actor="admin")
               == {"feedbackId": wish_id, "status": "adopted"})
-        check("wish 重复处理仍 200（保持原路由行为）",
-              feedback_uc.handle_feedback(db, feedback_id=wish_id, status="rejected",
-                                          admin_actor="admin")
-              == {"feedbackId": wish_id, "status": "rejected"})
+        expect_api_error("wish 重复处理 → 409（与反馈共用同一处理用例）",
+                         lambda: feedback_uc.handle_feedback(db, feedback_id=wish_id,
+                                                             status="rejected",
+                                                             admin_actor="admin"),
+                         409, "INVALID_STATE", "该反馈已处理")
         expect_api_error("wish 不存在 → 404",
                          lambda: feedback_uc.handle_feedback(
                              db, feedback_id="fb_none", status="adopted",
