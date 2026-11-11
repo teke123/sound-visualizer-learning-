@@ -1,5 +1,5 @@
-"""archive 用例：档案查询、进度只读派生、
-数据清理编排（删除录音 / 清空档案 / 注销清空）。"""
+"""archive 用例：档案查询、进度只读派生、录音删除。注销清理在 identity.delete_account，
+由外键级联一次完成。"""
 from __future__ import annotations
 
 import base64
@@ -10,19 +10,16 @@ from sqlalchemy.orm import Session
 
 from app.acoustics.models import AudioRow
 from app.acoustics.usecases import mark_deleted as mark_audio_deleted
-from app.content.models import LevelRow
 from app.db import JSONText, now
-from app.detection.models import AssessmentResultRow, RecordingRow
-from app.feedback.models import FeedbackRow
+from app.detection.models import RecordingRow
 from app.platform.envelope import ApiError
 from app.identity.models import UserRow
-from app.scoring.models import PitchRangeSnapshotRow, ScoreCacheRow
 
 
 # ---------------- 档案 ----------------
 
-def recording_summary(rec: RecordingRow, result: AssessmentResultRow | None) -> dict:
-    payload = JSONText.load(result.payload, {}) if result else {}
+def recording_summary(rec: RecordingRow) -> dict:
+    payload = JSONText.load(rec.result_payload, {}) if rec.result_payload else {}
     quality = payload.get("quality") or {}
     return {
         "recordingId": rec.id,
@@ -71,11 +68,7 @@ def my_recordings(db: Session, *, user: UserRow, level_id: str | None,
     rows = q.limit(limit + 1).all()
     has_more = len(rows) > limit
     rows = rows[:limit]
-    items = []
-    for rec in rows:
-        result = db.query(AssessmentResultRow).filter(
-            AssessmentResultRow.recording_id == rec.id).one_or_none()
-        items.append(recording_summary(rec, result))
+    items = [recording_summary(rec) for rec in rows]
     next_cursor = _page_cursor(rows[-1]) if has_more and rows else None
     return {"recordings": items, "nextCursor": next_cursor}
 
@@ -83,8 +76,8 @@ def my_recordings(db: Session, *, user: UserRow, level_id: str | None,
 # ---------------- 删除 ----------------
 
 def delete_recording(db: Session, rec: RecordingRow) -> None:
-    """单删：立即逻辑失效；独占 audio 同时失效；
-    反馈去引用。重复删除幂等。"""
+    """单删：立即逻辑失效；独占 audio 同时失效（音频文件异步物理删除）。
+    重复删除幂等。"""
     if rec.deleted_at is not None:
         return
     rec.deleted_at = now()
@@ -95,10 +88,6 @@ def delete_recording(db: Session, rec: RecordingRow) -> None:
         audio = db.get(AudioRow, rec.audio_id)
         if audio is not None:
             mark_audio_deleted(db, audio)
-    for fb in db.query(FeedbackRow).filter(FeedbackRow.recording_id == rec.id).all():
-        fb.recording_id = None
-    for sc in db.query(ScoreCacheRow).filter(ScoreCacheRow.audio_id == rec.audio_id).all():
-        db.delete(sc)
     db.flush()
 
 
@@ -111,35 +100,6 @@ def clear_archive(db: Session, *, user: UserRow) -> dict:
         delete_recording(db, rec)
     db.commit()
     return {"deleted": len(rows)}
-
-
-def purge_user_data(db: Session, *, user_id: str) -> None:
-    """注销清理（D-17/FR-108）：录音、结果、音频、缓存、事件/进度、音域。
-    注销即不可逆：检测结果快照与音域快照一并物理删除。"""
-    recs = db.query(RecordingRow).filter(RecordingRow.user_id == user_id).all()
-    for rec in recs:
-        if rec.deleted_at is None:
-            rec.deleted_at = now()
-        audio = db.get(AudioRow, rec.audio_id)
-        if audio is not None and audio.deleted_at is None:
-            mark_audio_deleted(db, audio)
-    rec_ids = [rec.id for rec in recs]
-    if rec_ids:  # 检测结果快照表无 user_id，按该用户全部录音（含已软删）反查删除
-        db.query(AssessmentResultRow).filter(
-            AssessmentResultRow.recording_id.in_(rec_ids)).delete(
-            synchronize_session=False)
-    # 音域快照表自带 user_id，直接物理删除；录音行上的 range_snapshot_id 悬空引用可接受
-    db.query(PitchRangeSnapshotRow).filter(
-        PitchRangeSnapshotRow.user_id == user_id).delete(
-        synchronize_session=False)
-    db.query(ScoreCacheRow).filter(ScoreCacheRow.user_id == user_id).delete(
-        synchronize_session=False)
-    from app.scoring.usecases import delete_owner_ranges
-
-    delete_owner_ranges(db, user_id=user_id)
-    for fb in db.query(FeedbackRow).filter(FeedbackRow.user_id == user_id).all():
-        fb.recording_id = None
-    db.flush()
 
 
 # ---------------- 进度派生 ----------------

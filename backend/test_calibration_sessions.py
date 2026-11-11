@@ -5,6 +5,7 @@
 """
 from __future__ import annotations
 
+import datetime as dt
 import sys
 import types
 import wave
@@ -106,6 +107,11 @@ def db(tmp_path):
     Base.metadata.create_all(eng)
     maker = sessionmaker(bind=eng, expire_on_commit=False)
     session = maker()
+    from app.identity.models import UserRow
+
+    session.add(UserRow(id="u1", username="u1", password_hash="unused",
+                        created_at=dt.datetime.now()))
+    session.commit()
     yield session
     session.close()
 
@@ -122,7 +128,7 @@ def test_vowel_outcome_retires_outlier(db):
     db.commit()
     rows = [take_row("i", 1, 300.0, 2300.0), take_row("i", 2, 800.0, 1200.0),
             take_row("i", 3, 320.0, 2330.0)]
-    db.add_all([_real_take(session.id, r) for r in rows])
+    db.add_all([_real_take(db, session.id, r) for r in rows])
     db.commit()
 
     outcome = cs._vowel_outcome(db, session, rows[2])
@@ -133,10 +139,14 @@ def test_vowel_outcome_retires_outlier(db):
     assert statuses["au_i3"] == "accepted"
 
 
-def _real_take(session_id: str, stub) -> object:
+def _real_take(db, session_id: str, stub) -> object:
     from app.scoring.models import CalibrationTakeRow
+    from app.acoustics.models import AudioRow
     from app.db import now as db_now
 
+    db.add(AudioRow(id=stub.audio_id, user_id="u1", purpose="calibration",
+                    storage_path="unused", duration_sec=1.0,
+                    pcm_sha256=stub.audio_id, created_at=db_now()))
     return CalibrationTakeRow(session_id=session_id, audio_id=stub.audio_id,
                               kind=stub.kind, vowel=stub.vowel,
                               ordinal=stub.ordinal, status="accepted",
@@ -154,7 +164,7 @@ def test_vowel_outcome_dispersed_replaces_worst(db):
     db.add(session)
     rows = [take_row("a", 1, 800.0, 1200.0), take_row("a", 2, 1000.0, 950.0),
             take_row("a", 3, 3000.0, 300.0)]
-    db.add_all([_real_take(session.id, r) for r in rows])
+    db.add_all([_real_take(db, session.id, r) for r in rows])
     db.commit()
     outcome = cs._vowel_outcome(db, session, rows[2])
     assert outcome == "vowel_dispersed"

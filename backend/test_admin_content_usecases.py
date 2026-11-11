@@ -33,7 +33,7 @@ from app.content.models import (  # noqa: E402
 )
 from app.db import JSONText, Base, now  # noqa: E402
 from app.feedback import usecases as feedback_uc  # noqa: E402
-from app.feedback.models import WishRow  # noqa: E402
+from app.feedback.models import FeedbackRow  # noqa: E402
 from app.ids import new_id  # noqa: E402
 from app.platform.deletion_log import deletion_log  # noqa: E402
 from app.platform.envelope import ApiError  # noqa: E402
@@ -222,28 +222,28 @@ def main() -> int:
               content_uc.delete_category(db, cat_id) == {"deleted": True}
               and db.get(CategoryRow, cat_id) is None)
 
-        # ---- 希望增加处理（feedback 用例） ----
-        wish_id = new_id("w_")
-        db.add(WishRow(id=wish_id, user_id="u1", content="希望增加 er 音",
-                       status="pending", created_at=now()))
+        # ---- 希望增加处理（与反馈共用一张表，kind 判别） ----
+        wish_id = new_id("fb_")
+        db.add(FeedbackRow(id=wish_id, user_id="u1", kind="wish", content="希望增加 er 音",
+                           status="pending", created_at=now()))
         db.commit()
         expect_api_error("wish 状态非法 → 422",
-                         lambda: feedback_uc.handle_wish(
-                             db, wish_id=wish_id, status="later", admin_actor="admin"),
-                         422, "VALIDATION_ERROR", "状态只允许 adopted / rejected")
+                         lambda: feedback_uc.handle_feedback(
+                             db, feedback_id=wish_id, status="later", admin_actor="admin"),
+                         422, "VALIDATION_ERROR", "处理状态只允许 adopted / rejected")
         check("wish 处理 adopted",
-              feedback_uc.handle_wish(db, wish_id=wish_id, status="adopted",
-                                      admin_actor="admin")
-              == {"wishId": wish_id, "status": "adopted"})
+              feedback_uc.handle_feedback(db, feedback_id=wish_id, status="adopted",
+                                          admin_actor="admin")
+              == {"feedbackId": wish_id, "status": "adopted"})
         check("wish 重复处理仍 200（保持原路由行为）",
-              feedback_uc.handle_wish(db, wish_id=wish_id, status="rejected",
-                                      admin_actor="admin")
-              == {"wishId": wish_id, "status": "rejected"})
+              feedback_uc.handle_feedback(db, feedback_id=wish_id, status="rejected",
+                                          admin_actor="admin")
+              == {"feedbackId": wish_id, "status": "rejected"})
         expect_api_error("wish 不存在 → 404",
-                         lambda: feedback_uc.handle_wish(
-                             db, wish_id="w_none", status="adopted",
+                         lambda: feedback_uc.handle_feedback(
+                             db, feedback_id="fb_none", status="adopted",
                              admin_actor="admin"),
-                         404, "NOT_FOUND", "希望增加记录不存在")
+                         404, "NOT_FOUND", "反馈不存在")
     finally:
         db.close()
 

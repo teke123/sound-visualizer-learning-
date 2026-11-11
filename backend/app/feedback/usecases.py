@@ -1,4 +1,5 @@
-"""feedback 用例：登录用户提交（限流在路由层）、本人引用校验、后台处理。"""
+"""feedback 用例：登录用户提交（限流在路由层）、本人引用校验、后台处理。
+反馈（issue）与「希望增加」（wish）共用一张表，kind 判别。"""
 from __future__ import annotations
 
 from sqlalchemy.orm import Session
@@ -6,9 +7,9 @@ from sqlalchemy.orm import Session
 from app.db import now
 from app.ids import new_id
 from app.platform.envelope import ApiError
-from app.feedback.models import FeedbackRow, WishRow
+from app.feedback.models import FeedbackRow
 
-VALID_TYPES = {"clarity", "result_match", "content_error", "wish_more"}
+VALID_TYPES = {"clarity", "result_match", "content_error"}
 VALID_SUBTYPES = {"text", "audio", "image", "subtitle"}
 
 
@@ -39,7 +40,7 @@ def submit_feedback(db: Session, *, user_id: str, body: dict) -> dict:
             raise ApiError(404, "NOT_FOUND", "关联的关卡不存在")
 
     row = FeedbackRow(
-        id=new_id("fb_"), user_id=user_id,
+        id=new_id("fb_"), user_id=user_id, kind="issue",
         source_page=source_page[:32], type=ftype, subtype=subtype,
         content=(body.get("content") or "")[:2000],
         article_slug=body.get("articleSlug"), level_id=level_id,
@@ -56,14 +57,14 @@ def submit_wish(db: Session, *, user_id: str, body: dict) -> dict:
     content = (body.get("content") or "").strip()
     if not content:
         raise ApiError(422, "VALIDATION_ERROR", "请写清希望增加的音或字")
-    row = WishRow(
-        id=new_id("w_"), user_id=user_id,
+    row = FeedbackRow(
+        id=new_id("fb_"), user_id=user_id, kind="wish",
         content=content[:200], search_query=(body.get("searchQuery") or "")[:255],
         status="pending", created_at=now(),
     )
     db.add(row)
     db.commit()
-    return {"wishId": row.id}
+    return {"feedbackId": row.id}
 
 
 def handle_feedback(db: Session, *, feedback_id: str, status: str,
@@ -80,17 +81,3 @@ def handle_feedback(db: Session, *, feedback_id: str, status: str,
     row.handled_at = now()
     db.commit()
     return {"feedbackId": row.id, "status": row.status}
-
-
-def handle_wish(db: Session, *, wish_id: str, status: str,
-                admin_actor: str) -> dict:
-    row = db.get(WishRow, wish_id)
-    if row is None:
-        raise ApiError(404, "NOT_FOUND", "希望增加记录不存在")
-    if status not in ("adopted", "rejected"):
-        raise ApiError(422, "VALIDATION_ERROR", "状态只允许 adopted / rejected")
-    row.status = status
-    row.handled_by = admin_actor
-    row.handled_at = now()
-    db.commit()
-    return {"wishId": row.id, "status": row.status}

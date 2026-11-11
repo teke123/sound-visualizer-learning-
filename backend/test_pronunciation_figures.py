@@ -245,9 +245,9 @@ def test_pipeline_persists_evidence_and_cache_keeps_boundaries(pa, tmp_path, mon
     from app.acoustics.models import AudioRow
     from app.content.models import LevelRow
     from app.identity.models import UserRow
-    from app.detection.models import RecordingRow, AssessmentResultRow
+    from app.detection.models import RecordingRow
     from app.detection import usecases
-    from app.scoring.models import PitchRangeSnapshotRow
+    from app.scoring.models import PitchRangeRow
     from app.scoring.provider import ProviderResult, SyllableEval
     from app.api.schemas import AssessmentResult
     engine = create_engine('sqlite://')
@@ -266,12 +266,13 @@ def test_pipeline_persists_evidence_and_cache_keeps_boundaries(pa, tmp_path, mon
     extract = Mock(wraps=f0_pipeline.extract_track)
     monkeypatch.setattr(f0_pipeline, 'extract_track', extract)
     with sessions() as db:
-        db.add(UserRow(id='user', username='user', username_lower='user', password_hash='unused', created_at=now()))
+        db.add(UserRow(id='user', username='user', password_hash='unused', created_at=now()))
         db.add(LevelRow(id='level', order=1, layer='initial', published=True, created_at=now(), updated_at=now(),
-                        content=JSONText.dump({'targetSound':'p', 'detection':{'evaluationText':syll.text, 'evaluationPinyin':syll.symbol}})))
+                        target_sound='p',
+                        content=JSONText.dump({'detection':{'evaluationText':syll.text, 'evaluationPinyin':syll.symbol}})))
         db.add(AudioRow(id='audio', user_id='user', purpose='recording', storage_path='unused', duration_sec=pa.duration,
                         pcm_sha256='testhash', created_at=now()))
-        db.add(PitchRangeSnapshotRow(id='range', user_id='user', f_lo=pa.f0_range[0], f_hi=pa.f0_range[1],
+        db.add(PitchRangeRow(id='range', user_id='user', kind='submission_snapshot', f_lo=pa.f0_range[0], f_hi=pa.f0_range[1],
                algorithm_version='test', created_from=JSONText.dump({'kind':'recording_adaptive'}), created_at=now()))
         for i in range(2):
             db.add(RecordingRow(id=f'rec{i}', user_id='user', audio_id='audio', level_id='level',
@@ -282,7 +283,7 @@ def test_pipeline_persists_evidence_and_cache_keeps_boundaries(pa, tmp_path, mon
         usecases.run_pipeline(f'rec{i}')
         with sessions() as db:
             assert db.get(RecordingRow, f'rec{i}').status == 'completed'
-            result = JSONText.load(db.query(AssessmentResultRow).filter_by(recording_id=f'rec{i}').one().payload)
+            result = JSONText.load(db.get(RecordingRow, f'rec{i}').result_payload)
             AssessmentResult.model_validate(result)
             evidence = result['pronunciationEvidence']
             assert evidence['status'] == 'ready'

@@ -217,18 +217,18 @@ def get_f0_hum(db: Session, row: AudioRow,
                recording_id: str | None = None, side: str = "user") -> Path:
     """复用本次评测快照中的绘图帧和五度值，按原始时间合成。"""
     from app.content.models import MediaAssetRow
-    from app.detection.models import AssessmentResultRow, RecordingRow
+    from app.detection.models import RecordingRow
 
-    query = (db.query(RecordingRow, AssessmentResultRow)
-             .join(AssessmentResultRow, AssessmentResultRow.recording_id == RecordingRow.id)
+    query = (db.query(RecordingRow)
              .filter(RecordingRow.audio_id == row.id, RecordingRow.user_id == row.user_id,
-                     RecordingRow.deleted_at.is_(None)))
+                     RecordingRow.deleted_at.is_(None),
+                     RecordingRow.result_payload.is_not(None)))
     if recording_id:
         query = query.filter(RecordingRow.id == recording_id)
     found = query.order_by(RecordingRow.created_at.desc()).first()
     if found is None:
         raise ApiError(404, "NOT_FOUND", "评测曲线不存在")
-    curve = JSONText.load(found[1].payload, {}).get("curve") or {}
+    curve = JSONText.load(found.result_payload, {}).get("curve") or {}
     duration = row.duration_sec
     if side == "reference":
         asset = db.get(MediaAssetRow, curve.get("sampleMediaId")) if curve.get("sampleMediaId") else None

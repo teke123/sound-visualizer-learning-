@@ -15,7 +15,7 @@ from app import config
 from app.acoustics import usecases as acoustics_uc
 from app.acoustics.models import AudioRow, FeatureCacheRow
 from app.content.models import LevelRow, MediaAssetRow
-from app.detection.models import RecordingRow, AssessmentResultRow
+from app.detection.models import RecordingRow
 from app.db import JSONText, now
 from app.platform.envelope import ApiError
 from sqlalchemy import create_engine
@@ -106,7 +106,7 @@ class HumSnapshotRegressions(unittest.TestCase):
         self.data_patch = patch.object(config, "DATA_DIR", Path(self.tmp.name))
         self.data_patch.start()
         self.engine = create_engine("sqlite://")
-        for model in (AudioRow, FeatureCacheRow, LevelRow, MediaAssetRow, RecordingRow, AssessmentResultRow):
+        for model in (AudioRow, FeatureCacheRow, LevelRow, MediaAssetRow, RecordingRow):
             model.__table__.create(self.engine)
         self.db = Session(self.engine)
         self.audio = AudioRow(id="au_test", user_id="u1", purpose="recording",
@@ -121,9 +121,8 @@ class HumSnapshotRegressions(unittest.TestCase):
                                     "reference": {"frames": self.frames}}]}
         self.db.add_all([self.audio, self.asset, RecordingRow(
             id="rec_test", user_id="u1", audio_id=self.audio.id, level_id="L01", submission_id="s1",
-            submission_payload_hash="h1", status="completed", deadline_at=now(), created_at=now()),
-            AssessmentResultRow(id="res_test", recording_id="rec_test",
-                                payload=JSONText.dump({"curve": self.curve}), created_at=now())])
+            submission_payload_hash="h1", status="completed", deadline_at=now(), created_at=now(),
+            result_payload=JSONText.dump({"curve": self.curve}))])
         self.db.commit()
 
     def tearDown(self):

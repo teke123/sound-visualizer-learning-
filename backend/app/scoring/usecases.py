@@ -11,7 +11,7 @@ from app.acoustics.usecases import audio_path, mark_deleted as mark_audio_delete
 from app.db import JSONText, get_session, now
 from app.ids import new_id
 from app.pinyin_utils import annotated_syllables, main_vowel
-from app.scoring.models import PitchRangeRow, PitchRangeSnapshotRow, ScoreCacheRow
+from app.scoring.models import PitchRangeRow, ScoreCacheRow
 from app.scoring.provider import ProviderError
 from app.scoring.provider_mock import MockProvider
 
@@ -27,33 +27,36 @@ def get_provider():
 
 # ---------------- 音域 ----------------
 
-def _range_row_dict(row: PitchRangeRow) -> dict:
+def get_personal_range(db: Session, *, user_id: str) -> dict | None:
+    """个人音域（FR-1006）= 该用户最新一行标定值。未标定返回 None，
+    由调用方回落默认成人参考范围。"""
+    row = (
+        db.query(PitchRangeRow)
+        .filter(PitchRangeRow.user_id == user_id,
+                PitchRangeRow.kind == "calibration",
+                PitchRangeRow.deleted_at.is_(None))
+        .order_by(PitchRangeRow.created_at.desc(), PitchRangeRow.id.desc())
+        .first()
+    )
+    if row is None:
+        return None
     return {
+        "status": "personal",
         "fLo": round(row.f_lo, 1),
         "fHi": round(row.f_hi, 1),
         "vowelSpace": JSONText.load(row.vowel_space),
         "algorithmVersion": row.algorithm_version,
-        "basisCalibrationId": row.basis_calibration_id,
-        "updatedAt": row.updated_at.isoformat() if row.updated_at else None,
+        "updatedAt": row.created_at.isoformat() if row.created_at else None,
     }
 
 
-def get_personal_range(db: Session, *, user_id: str) -> dict | None:
-    """个人音域（FR-1006）。未标定返回 None，由调用方回落默认成人参考范围。"""
-    row = (
-        db.query(PitchRangeRow)
-        .filter(PitchRangeRow.user_id == user_id,
-                PitchRangeRow.deleted_at.is_(None))
-        .one_or_none()
-    )
-    return {"status": "personal", **_range_row_dict(row)} if row else None
-
-
-def create_snapshot(db: Session, *, user_id: str, f_lo: float,
-                    f_hi: float, vowel_space: dict | None, created_from: dict) -> PitchRangeSnapshotRow:
-    row = PitchRangeSnapshotRow(
+def create_range_row(db: Session, *, user_id: str, kind: str, f_lo: float,
+                     f_hi: float, vowel_space: dict | None,
+                     created_from: dict) -> PitchRangeRow:
+    """插入一条音域行（标定值或受理快照），插入即冻结、原地不更新。"""
+    row = PitchRangeRow(
         id=new_id("prs_"),
-        user_id=user_id,
+        user_id=user_id, kind=kind,
         f_lo=f_lo, f_hi=f_hi,
         vowel_space=JSONText.dump(vowel_space) if vowel_space else None,
         algorithm_version=analysis.ALGORITHM_VERSION,
@@ -65,7 +68,7 @@ def create_snapshot(db: Session, *, user_id: str, f_lo: float,
     return row
 
 
-def snapshot_dict(row: PitchRangeSnapshotRow) -> dict:
+def snapshot_dict(row: PitchRangeRow) -> dict:
     return {
         "id": row.id,
         "fLo": round(row.f_lo, 1),
@@ -149,11 +152,6 @@ def _signal_advice(signal) -> str:  # noqa: ANN001
         if dim and dim.get("advice"):
             return dim["advice"]
     return "录音质量不达标，请换个安静环境重录"
-
-
-def delete_owner_ranges(db: Session, *, user_id: str) -> None:
-    for row in db.query(PitchRangeRow).filter(PitchRangeRow.user_id == user_id).all():
-        row.deleted_at = now()
 
 
 # ---------------- 评分缓存 ----------------

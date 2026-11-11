@@ -1,4 +1,4 @@
-"""反馈与希望增加路由（登录后提交、限流）。"""
+"""反馈与希望增加路由（登录后提交、限流）。愿望提交收口至 /feedback/wishes。"""
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Request
@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 from app.api.deps import Actor, get_actor, require_user
 from app.feedback import usecases as feedback_uc
-from app.api.schemas import Envelope, FeedbackResponse, WishResponse
+from app.api.schemas import Envelope, FeedbackResponse
 from app.platform.envelope import envelope
 
 router = APIRouter(prefix="/api", tags=["feedback"])
@@ -38,7 +38,7 @@ class WishBody(BaseModel):
     searchQuery: str | None = None
 
 
-@router.post("/wishes", response_model=Envelope[WishResponse])
+@router.post("/feedback/wishes", response_model=Envelope[FeedbackResponse])
 async def submit_wish(request: Request, body: WishBody,
                       actor: Actor = Depends(get_actor)):
     user = require_user(actor)

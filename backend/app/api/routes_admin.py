@@ -47,12 +47,12 @@ async def admin_login(request: Request, body: AdminLoginBody,
     if body.username != config.ADMIN_USERNAME or body.password != config.ADMIN_PASSWORD:
         raise ApiError(401, "INVALID_CREDENTIALS", "管理员用户名或密码不正确")
     session_id = new_token(24)
-    from app.security_models import AdminSessionRow
+    from app.identity.models import SessionRow
 
     import datetime as _dt
 
-    db.add(AdminSessionRow(session_id=session_id, expires_at=now() + _dt.timedelta(hours=8),
-                           created_at=now()))
+    db.add(SessionRow(session_id=session_id, kind="admin", user_id=None,
+                      expires_at=now() + _dt.timedelta(hours=8), created_at=now()))
     db.commit()
     resp = envelope(request, {"loggedIn": True})
     resp.set_cookie(ADMIN_COOKIE, session_id, max_age=8 * 3600, httponly=True,
@@ -72,7 +72,7 @@ async def admin_logout(request: Request, db: Session = Depends(db_session)):
 async def admin_overview(request: Request, db: Session = Depends(db_session)):
     _admin(request, db)
     from app.detection.models import RecordingRow
-    from app.feedback.models import FeedbackRow, WishRow
+    from app.feedback.models import FeedbackRow
     from app.platform.executor import executor
     from app.identity.models import UserRow
 
@@ -86,9 +86,8 @@ async def admin_overview(request: Request, db: Session = Depends(db_session)):
             "total": db.query(ArticleRow).count(),
         },
         "recordings": db.query(RecordingRow).count(),
-        "users": db.query(UserRow).filter(UserRow.deleted_at.is_(None)).count(),
+        "users": db.query(UserRow).count(),
         "pendingFeedback": db.query(FeedbackRow).filter(FeedbackRow.status == "pending").count(),
-        "pendingWishes": db.query(WishRow).filter(WishRow.status == "pending").count(),
         "executor": executor.stats(),
         "cleanupBacklog": len(deletion_log.read_pending()),
     })
@@ -101,11 +100,10 @@ async def admin_levels(request: Request, db: Session = Depends(db_session)):
     _admin(request, db)
     out = []
     for lv in db.query(LevelRow).order_by(LevelRow.order).all():
-        content = JSONText.load(lv.content, {})
         out.append({
             "id": lv.id, "order": lv.order, "layer": lv.layer,
             "published": lv.published, "skeletonPublic": lv.skeleton_public,
-            "title": content.get("title"), "targetSound": content.get("targetSound"),
+            "title": lv.title, "targetSound": lv.target_sound,
             "updatedAt": lv.updated_at.isoformat(),
         })
     return envelope(request, {"levels": out})
@@ -121,7 +119,7 @@ async def admin_level_detail(request: Request, level_id: str,
     return envelope(request, {
         "level": {"id": lv.id, "order": lv.order, "layer": lv.layer,
                   "published": lv.published, "skeletonPublic": lv.skeleton_public},
-        "content": JSONText.load(lv.content, {}),
+        "content": content_uc.level_full_content(db, lv),
     })
 
 
@@ -143,7 +141,7 @@ async def admin_precheck_level(request: Request, level_id: str,
     lv = db.get(LevelRow, level_id)
     if lv is None:
         raise ApiError(404, "NOT_FOUND", "关卡不存在")
-    missing = content_uc.precheck_level(db, JSONText.load(lv.content, {}))
+    missing = content_uc.precheck_level(db, content_uc.level_full_content(db, lv))
     return envelope(request, {"levelId": level_id, "ok": not missing, "missing": missing})
 
 
@@ -163,11 +161,13 @@ async def admin_set_level_published(request: Request, level_id: str, body: Publi
 @router.get("/articles")
 async def admin_articles(request: Request, db: Session = Depends(db_session)):
     _admin(request, db)
+    rows = db.query(ArticleRow).order_by(ArticleRow.slug).all()
+    names = content_uc._category_names(db, {a.category_id for a in rows})
     out = []
-    for a in db.query(ArticleRow).order_by(ArticleRow.slug).all():
+    for a in rows:
         content = JSONText.load(a.content, {})
         out.append({"slug": a.slug, "published": a.published,
-                    "title": content.get("title"), "category": content.get("category")})
+                    "title": content.get("title"), "category": names[a.category_id]})
     return envelope(request, {"articles": out})
 
 
@@ -372,10 +372,10 @@ async def admin_register_speaker(request: Request, body: SpeakerBody,
                               "pitchRange": {"fLo": row.f_lo, "fHi": row.f_hi}})
 
 
-# ---------------- 反馈 / 希望增加 ----------------
+# ---------------- 反馈 / 希望增加（kind 判别） ----------------
 
 @router.get("/feedback")
-async def admin_feedback(request: Request, status: str = "",
+async def admin_feedback(request: Request, status: str = "", kind: str = "",
                          db: Session = Depends(db_session)):
     _admin(request, db)
     from app.feedback.models import FeedbackRow
@@ -383,10 +383,14 @@ async def admin_feedback(request: Request, status: str = "",
     q = db.query(FeedbackRow)
     if status:
         q = q.filter(FeedbackRow.status == status)
+    if kind:
+        q = q.filter(FeedbackRow.kind == kind)
     rows = q.order_by(FeedbackRow.created_at.desc()).limit(200).all()
     return envelope(request, {"feedback": [
-        {"id": r.id, "sourcePage": r.source_page, "type": r.type, "subtype": r.subtype,
-         "content": r.content, "levelId": r.level_id, "articleSlug": r.article_slug,
+        {"id": r.id, "kind": r.kind, "sourcePage": r.source_page,
+         "type": r.type, "subtype": r.subtype,
+         "content": r.content, "searchQuery": r.search_query,
+         "levelId": r.level_id, "articleSlug": r.article_slug,
          "rating": r.rating, "status": r.status,
          "createdAt": r.created_at.isoformat()} for r in rows]})
 
@@ -402,22 +406,3 @@ async def admin_handle_feedback(request: Request, feedback_id: str, body: Handle
     result = feedback_uc.handle_feedback(db, feedback_id=feedback_id,
                                          status=body.status, admin_actor=actor)
     return envelope(request, result)
-
-
-@router.get("/wishes")
-async def admin_wishes(request: Request, db: Session = Depends(db_session)):
-    _admin(request, db)
-    from app.feedback.models import WishRow
-
-    rows = db.query(WishRow).order_by(WishRow.created_at.desc()).limit(200).all()
-    return envelope(request, {"wishes": [
-        {"id": r.id, "content": r.content, "searchQuery": r.search_query,
-         "status": r.status, "createdAt": r.created_at.isoformat()} for r in rows]})
-
-
-@router.put("/wishes/{wish_id}")
-async def admin_handle_wish(request: Request, wish_id: str, body: HandleBody,
-                            db: Session = Depends(db_session)):
-    actor = _admin(request, db)
-    return envelope(request, feedback_uc.handle_wish(
-        db, wish_id=wish_id, status=body.status, admin_actor=actor))

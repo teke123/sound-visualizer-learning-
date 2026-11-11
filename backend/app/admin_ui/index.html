@@ -108,7 +108,7 @@ async function renderOverview(){
       <tr><th>录音总数</th><td>${d.recordings}</td></tr>
       <tr><th>执行器</th><td>${JSON.stringify(d.executor)}</td></tr>
       <tr><th>清理积压</th><td>${d.cleanupBacklog}</td></tr>
-      <tr><th>待处理反馈/希望</th><td>${d.pendingFeedback} / ${d.pendingWishes}</td></tr>
+      <tr><th>待处理反馈/希望</th><td>${d.pendingFeedback}</td></tr>
     </table></div></div>`;
 }
 
@@ -327,22 +327,24 @@ async function addSpeaker(){
 }
 async function renderFeedback(){
   const m=$('#main');
+  // 单表按 kind 分组：issue = 用户反馈，wish = 希望增加
   const fb=await api('/api/admin/feedback?status=');
-  const wi=await api('/api/admin/wishes');
-  const fbRows=fb.data.feedback.map(f=>`<tr><td>${f.createdAt.slice(0,10)}</td><td>${f.sourcePage}</td><td>${f.type}</td>
+  const issues=fb.data.feedback.filter(f=>f.kind==='issue');
+  const wishes=fb.data.feedback.filter(f=>f.kind==='wish');
+  const handle=id=>`<button class="btn ok" onclick="handleFb('${id}','adopted')">采纳</button>
+      <button class="btn" onclick="handleFb('${id}','rejected')">暂不</button>`;
+  const fbRows=issues.map(f=>`<tr><td>${f.createdAt.slice(0,10)}</td><td>${f.sourcePage||''}</td><td>${f.type||''}</td>
     <td>${esc(f.content||'')}</td><td>${f.rating??''}</td><td><span class="tag pend">${f.status}</span></td>
-    <td>${f.status==='pending'?`<button class="btn ok" onclick="handleFb('${f.id}','adopted')">采纳</button>
-      <button class="btn" onclick="handleFb('${f.id}','rejected')">暂不</button>`:''}</td></tr>`).join('');
-  const wiRows=wi.data.wishes.map(w=>`<tr><td>${w.createdAt.slice(0,10)}</td><td>${esc(w.content)}</td><td>${esc(w.searchQuery||'')}</td>
-    <td>${w.status==='pending'?`<button class="btn ok" onclick="handleWish('${w.id}','adopted')">采纳</button>
-      <button class="btn" onclick="handleWish('${w.id}','rejected')">暂不</button>`:w.status}</td></tr>`).join('');
+    <td>${f.status==='pending'?handle(f.id):''}</td></tr>`).join('');
+  const wiRows=wishes.map(w=>`<tr><td>${w.createdAt.slice(0,10)}</td><td>${esc(w.content||'')}</td><td>${esc(w.searchQuery||'')}</td>
+    <td><span class="tag pend">${w.status}</span></td>
+    <td>${w.status==='pending'?handle(w.id):''}</td></tr>`).join('');
   m.innerHTML=`<div class="card"><h3>用户反馈</h3>
     <table><tr><th>日期</th><th>来源页</th><th>类型</th><th>内容</th><th>评分</th><th>状态</th><th>操作</th></tr>${fbRows}</table></div>
     <div class="card"><h3>希望增加</h3>
-    <table><tr><th>日期</th><th>内容</th><th>搜索词</th><th>操作</th></tr>${wiRows}</table></div>`;
+    <table><tr><th>日期</th><th>内容</th><th>搜索词</th><th>状态</th><th>操作</th></tr>${wiRows}</table></div>`;
 }
 async function handleFb(id,st){ await api(`/api/admin/feedback/${id}`,{method:'PUT',body:JSON.stringify({status:st})}); render(); }
-async function handleWish(id,st){ await api(`/api/admin/wishes/${id}`,{method:'PUT',body:JSON.stringify({status:st})}); render(); }
 boot();
 </script>
 </body>

@@ -682,7 +682,3 @@ class DeletedResponse(BaseModel):
 
 class FeedbackResponse(BaseModel):
     feedbackId: str
-
-
-class WishResponse(BaseModel):
-    wishId: str

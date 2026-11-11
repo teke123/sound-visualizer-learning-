@@ -20,10 +20,10 @@ from app.acoustics.usecases import audio_path
 from app.content.models import LevelRow
 from app.content_seed_data import GLOBAL_FOUR_STEP_FALLBACKS
 from app.db import JSONText, get_session, now
-from app.detection.models import AssessmentResultRow, RecordingRow
+from app.detection.models import RecordingRow
 from app.ids import new_id
 from app.platform.envelope import ApiError
-from app.scoring.models import PitchRangeSnapshotRow
+from app.scoring.models import PitchRangeRow
 from app.scoring.provider import ProviderError
 from app.scoring import rules as scoring_rules
 from app.scoring import usecases as scoring_uc
@@ -96,27 +96,26 @@ def submit_recording(db: Session, *, user, audio_id: str, level_id: str,
             raise ApiError(409, "IDEMPOTENCY_CONFLICT",
                            "同一 submissionId 只能绑定同一提交内容")
         if existing.status == "completed":
-            result = db.query(AssessmentResultRow).filter(
-                AssessmentResultRow.recording_id == existing.id).one_or_none()
             return SubmitOutcome(200, existing,
-                                 JSONText.load(result.payload) if result else None)
+                                 JSONText.load(existing.result_payload)
+                                 if existing.result_payload else None)
         if existing.status == "processing":
             return SubmitOutcome(202, existing, None)
 
     # 新建或可重试失败复活：受理时固定音域快照（deadline 同步记录）
     effective = scoring_uc.get_personal_range(db, user_id=user.id)
     if effective is not None:
-        snapshot = scoring_uc.create_snapshot(
-            db, user_id=user.id,
+        snapshot = scoring_uc.create_range_row(
+            db, user_id=user.id, kind="submission_snapshot",
             f_lo=effective["fLo"], f_hi=effective["fHi"],
             vowel_space=effective.get("vowelSpace"),
-            created_from={"kind": "calibration_baseline",
-                          "basis": effective.get("basisCalibrationId")},
+            created_from={"kind": "personal_calibration"},
         )
     else:
         f_lo, f_hi = config.DEFAULT_ADULT_F0_RANGE
-        snapshot = scoring_uc.create_snapshot(
-            db, user_id=user.id, f_lo=f_lo, f_hi=f_hi,
+        snapshot = scoring_uc.create_range_row(
+            db, user_id=user.id, kind="submission_snapshot",
+            f_lo=f_lo, f_hi=f_hi,
             vowel_space=None, created_from={"kind": "default_adult_range"},
         )
     if existing is not None and existing.retryable:   # failed(retryable) 同键重试
@@ -187,9 +186,8 @@ async def wait_sync_window(outcome: SubmitOutcome) -> SubmitOutcome:
         if rec is not None:
             outcome.recording = rec
             if rec.status == "completed":
-                result = db.query(AssessmentResultRow).filter(
-                    AssessmentResultRow.recording_id == rec.id).one_or_none()
-                outcome.result = JSONText.load(result.payload) if result else None
+                outcome.result = (JSONText.load(rec.result_payload)
+                                  if rec.result_payload else None)
                 outcome.status = 200
         return outcome
     finally:
@@ -250,7 +248,7 @@ def run_pipeline(recording_id: str) -> None:
                 return
             reading = scoring_rules.reading_report(prov)
 
-        snapshot_row = db.get(PitchRangeSnapshotRow, rec.range_snapshot_id)
+        snapshot_row = db.get(PitchRangeRow, rec.range_snapshot_id)
         if snapshot_row is None:
             # 受理时必然已写入快照（submit_recording）；缺失属数据完整性破坏，
             # 不用兜底音域静默换算，交外层异常处理标可重试失败（重试生成新快照）
@@ -334,11 +332,11 @@ def run_pipeline(recording_id: str) -> None:
 
 
 def user_dialect(db: Session, user_id: str) -> str | None:
-    """用户方言区/母语背景（FR-1007 提示用）；注销痕迹读取为空。"""
+    """用户方言区/母语背景（FR-1007 提示用）。"""
     from app.identity.models import UserRow
 
     user = db.get(UserRow, user_id)
-    return user.dialect_background if user is not None and user.deleted_at is None else None
+    return user.dialect_background if user is not None else None
 
 
 def _quality_payload(signal: dict, reading: dict | None) -> dict:
@@ -420,16 +418,14 @@ def _finalize_completed(db: Session, rec: RecordingRow, result: dict,
         db.rollback()
         return
     user = db.get(UserRow, rec.user_id)
-    if user is None or user.deleted_at is not None:
+    if user is None:   # 账号已注销时其录音行也已随外键级联删除
         db.rollback()
         return
     rec.status = "completed"
     rec.outcome = "scored"
     rec.completed_at = now()
-    db.add(AssessmentResultRow(
-        id=new_id("ar_"), recording_id=rec.id,
-        payload=JSONText.dump(result), created_at=now(),
-    ))
+    rec.result_payload = JSONText.dump(result)
+    rec.result_created_at = now()
     if cacheable is not None:
         audio = db.get(AudioRow, rec.audio_id)
         if audio is not None:
@@ -457,9 +453,9 @@ def get_recording(db: Session, *, user_id: str, recording_id: str) -> SubmitOutc
     if rec.status == "processing":
         return SubmitOutcome(202, rec, None)
     if rec.status == "completed":
-        result = db.query(AssessmentResultRow).filter(
-            AssessmentResultRow.recording_id == rec.id).one_or_none()
-        return SubmitOutcome(200, rec, JSONText.load(result.payload) if result else None)
+        return SubmitOutcome(200, rec,
+                             JSONText.load(rec.result_payload)
+                             if rec.result_payload else None)
     code = rec.outcome or "INTERNAL_ERROR"
     raise ApiError(_stage_failed_code_status(code), code,
                    _failure_message(code),

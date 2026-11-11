@@ -22,9 +22,9 @@ from app.acoustics.usecases import audio_path, get_audio_for_read, mark_deleted 
 from app.db import JSONText, get_session, now
 from app.ids import new_id
 from app.scoring.models import (
-    CalibrationSessionRow, CalibrationTakeRow, PitchRangeRow, PitchRangeSnapshotRow,
+    CalibrationSessionRow, CalibrationTakeRow, PitchRangeRow,
 )
-from app.scoring.usecases import _signal_advice, create_snapshot, get_provider
+from app.scoring.usecases import _signal_advice, create_range_row, get_provider
 from app.platform.executor import executor
 from app.platform.envelope import ApiError
 from app.content.usecases import _split_voiced_equal
@@ -156,7 +156,7 @@ def session_view(db: Session, session: CalibrationSessionRow) -> dict:
     completed = session.status == "completed"
     result = None
     if completed and session.snapshot_id:
-        snap = db.get(PitchRangeSnapshotRow, session.snapshot_id)
+        snap = db.get(PitchRangeRow, session.snapshot_id)
         if snap is not None:
             result = {
                 "ok": True, "status": "personal",
@@ -441,23 +441,13 @@ def _compute_session(db: Session, session_id: str) -> dict:
     pitch_measurements = JSONText.load(pitch.result)
     f_lo, f_hi = float(pitch_measurements["fLo"]), float(pitch_measurements["fHi"])
 
-    range_row = db.query(PitchRangeRow).filter(
-        PitchRangeRow.user_id == session.user_id).one_or_none()
-    if range_row is None:
-        range_row = PitchRangeRow(user_id=session.user_id)
-        db.add(range_row)
-    range_row.f_lo, range_row.f_hi = f_lo, f_hi
-    range_row.vowel_space = JSONText.dump(vowel_space)
-    range_row.algorithm_version = analysis.ALGORITHM_VERSION
-    range_row.deleted_at = None
-    range_row.updated_at = now()
-    snap = create_snapshot(db, user_id=session.user_id, f_lo=f_lo, f_hi=f_hi,
-                           vowel_space=vowel_space,
-                           created_from={"kind": "calibration_session", "sessionId": session_id})
-    range_row.basis_calibration_id = snap.id
+    range_row = create_range_row(db, user_id=session.user_id, kind="calibration",
+                                 f_lo=f_lo, f_hi=f_hi, vowel_space=vowel_space,
+                                 created_from={"kind": "calibration_session",
+                                               "sessionId": session_id})
     session.status = "completed"
     session.calc_state = "done"
-    session.snapshot_id = snap.id
+    session.snapshot_id = range_row.id
     _touch_session(session)
     # 会话录音按私有音频清理机制处理：完成即失效，物理删除走清理任务
     for row_take in _session_takes(db, session_id):
@@ -465,4 +455,4 @@ def _compute_session(db: Session, session_id: str) -> dict:
         if audio is not None:
             mark_audio_deleted(db, audio)
     db.commit()
-    return {"ok": True, "rangeSnapshotId": snap.id}
+    return {"ok": True, "rangeSnapshotId": range_row.id}

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import datetime
 
-from sqlalchemy import DateTime, Float, Integer, String, Text, UniqueConstraint
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
@@ -13,7 +13,8 @@ class AudioRow(Base):
     __tablename__ = "audio"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
-    user_id: Mapped[str] = mapped_column(String(64), index=True)
+    user_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("user.id", ondelete="CASCADE"), index=True)
     purpose: Mapped[str] = mapped_column(String(16))       # recording | calibration
     original_filename: Mapped[str | None] = mapped_column(String(255))
     original_mime: Mapped[str | None] = mapped_column(String(128))
@@ -31,7 +32,8 @@ class FeatureCacheRow(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    audio_id: Mapped[str] = mapped_column(String(64), index=True)
+    audio_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("audio.id", ondelete="CASCADE"), index=True)
     kind: Mapped[str] = mapped_column(String(16))          # f0 | formants | formants_png | spectrogram_png
     algorithm_version: Mapped[str] = mapped_column(String(64))
     payload: Mapped[str] = mapped_column(Text)             # JSON（图片则文件相对路径）

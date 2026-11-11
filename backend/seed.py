@@ -18,7 +18,7 @@ from app import config
 from app.acoustics import analysis, f0_pipeline, transcode
 from app.content import usecases as content_uc
 from app.content.models import (
-    CalibrationTextRow, LevelRow, MediaAssetRow,
+    CalibrationTextRow, LevelConfusableRow, LevelRow, MediaAssetRow,
     ReferenceSpeakerRow,
 )
 from app.db import JSONText, create_all, get_session, now
@@ -299,6 +299,7 @@ def seed_levels(db, corpus: Path, speakers: dict[str, str], open_count: int | No
     from app.content_seed_data import LEVELS
 
     items = LEVELS if open_count is None else LEVELS[:open_count]
+    pending_confusables: list[tuple[str, str]] = []
     for item in items:
         level_id = item["id"]
         if db.get(LevelRow, level_id) is not None:
@@ -354,14 +355,24 @@ def seed_levels(db, corpus: Path, speakers: dict[str, str], open_count: int | No
         # 标准曲线（基于真实参考示范与真实发音人基线计算）
         content = content_uc.prepare_level_content(db, content)
         curve_segments = len((content.get("standardCurve") or {}).get("segments") or [])
+        cols = content_uc.split_level_content(content)
 
         db.add(LevelRow(id=level_id, order=item["order"], layer=item["layer"],
                         published=True,
                         skeleton_public=bool(item.get("skeletonPublic", True)),
                         content=JSONText.dump(content),
-                        created_at=now(), updated_at=now()))
+                        created_at=now(), updated_at=now(), **cols))
+        # 混淆项可能引用尚未插入的关卡（前向引用），全部关卡就绪后统一建关联
+        pending_confusables.extend(
+            (level_id, other_id) for other_id in sorted(set(item.get("confusables") or [])))
         db.commit()
         print(f"[seed] {level_id} 已开放（{item['targetSound']}，6 发音人示范，标准曲线 {curve_segments} 段）")
+
+    for level_id, other_id in pending_confusables:
+        db.add(LevelConfusableRow(level_id=level_id, confusable_level_id=other_id))
+    db.commit()
+    if pending_confusables:
+        print(f"[seed] 关卡混淆项关联：{len(pending_confusables)} 条")
 
 
 def main() -> None:

@@ -9,8 +9,8 @@ from sqlalchemy.orm import Session
 
 from app import config
 from app.content.models import (
-    ArticleRow, CalibrationTextRow, CategoryRow, LevelRow, MediaAssetRow,
-    ReferenceSpeakerRow,
+    ArticleRow, CalibrationTextRow, CategoryRow, LevelConfusableRow, LevelRow,
+    MediaAssetRow, ReferenceSpeakerRow,
 )
 from app.db import JSONText, now
 from app.platform.envelope import ApiError
@@ -19,6 +19,65 @@ from app.pinyin_utils import annotated_syllables, main_vowel, split_pinyin
 logger = logging.getLogger("svs.content")
 
 LAYER_LABEL = {"vowel": "单韵母", "initial": "声母", "syllable": "拼读"}
+
+
+# ---------------- 内容文档与列的拆分/拼装 ----------------
+
+# 保存时从内容文档抽到列上的键：搜索列（title/targetSound/pinyin）、
+# 外键列（detection.sampleMediaId/detection.referenceSpeakerId）、
+# 关联表（confusables），以及与 level 表列双写的冗余键
+_LEVEL_COLUMN_KEYS = ("title", "targetSound", "pinyin")
+_LEVEL_DOUBLED_KEYS = ("id", "order", "layer", "skeletonPublic")
+
+
+def split_level_content(content: dict) -> dict:
+    """从完整内容文档抽取列值（返回给 LevelRow 用的字段字典）；content 被就地瘦身。"""
+    det = content.get("detection") or {}
+    cols = {
+        "title": content.pop("title", None),
+        "target_sound": content.pop("targetSound", None),
+        "pinyin": content.pop("pinyin", None),
+        "sample_media_id": det.pop("sampleMediaId", None),
+        "reference_speaker_id": det.pop("referenceSpeakerId", None),
+    }
+    if det:
+        content["detection"] = det
+    else:
+        content.pop("detection", None)
+    content.pop("confusables", None)
+    for key in _LEVEL_DOUBLED_KEYS:
+        content.pop(key, None)
+    return cols
+
+
+def level_full_content(db: Session, level: LevelRow) -> dict:
+    """列与混淆项关联拼回完整内容文档（保存回显、预检、管理端编辑的统一视图）。"""
+    content = JSONText.load(level.content, {})
+    content["title"] = level.title
+    content["targetSound"] = level.target_sound
+    content["pinyin"] = level.pinyin
+    det = content.get("detection") or {}
+    det["sampleMediaId"] = level.sample_media_id
+    det["referenceSpeakerId"] = level.reference_speaker_id
+    content["detection"] = det
+    content["confusables"] = confusable_ids_of(db, level.id)
+    return content
+
+
+def confusable_ids_of(db: Session, level_id: str) -> list[str]:
+    rows = (db.query(LevelConfusableRow)
+            .filter(LevelConfusableRow.level_id == level_id)
+            .order_by(LevelConfusableRow.confusable_level_id).all())
+    return [r.confusable_level_id for r in rows]
+
+
+def _sync_confusables(db: Session, level_id: str, other_ids: list[str] | None) -> None:
+    """以提交的混淆项列表为准重建该关卡的关联行（保存即生效）。"""
+    (db.query(LevelConfusableRow)
+     .filter(LevelConfusableRow.level_id == level_id)
+     .delete(synchronize_session=False))
+    for other_id in sorted(set(other_ids or [])):
+        db.add(LevelConfusableRow(level_id=level_id, confusable_level_id=other_id))
 
 
 # ---------------- 读模型 ----------------
@@ -55,10 +114,10 @@ def level_summary(db: Session, level: LevelRow) -> dict:
         "order": level.order,
         "layer": level.layer,
         "type": content.get("type") or LAYER_LABEL.get(level.layer, level.layer),
-        "targetSound": content.get("targetSound") or "",
-        "pinyin": content.get("pinyin") or "",
+        "targetSound": level.target_sound or "",
+        "pinyin": level.pinyin or "",
         "representativeChar": content.get("representativeChar") or "",
-        "title": content.get("title") or "",
+        "title": level.title or "",
         "phonology": _phonology_of(content),
         "demoMediaId": demo_media,
         "availability": availability_of(level),
@@ -71,17 +130,17 @@ def levels_response(db: Session) -> dict:
     open_ids = {lv.id for lv in levels}
     skeleton = [
         {"id": lv.id, "order": lv.order, "layer": lv.layer,
-         "targetSound": JSONText.load(lv.content, {}).get("targetSound") or "",
+         "targetSound": lv.target_sound or "",
          "availability": "closed"}
         for lv in db.query(LevelRow).order_by(LevelRow.order).all()
         if not lv.published and lv.skeleton_public
     ]
-    pairs = []
-    for lv in levels:
-        content = JSONText.load(lv.content, {})
-        for other_id in content.get("confusables") or []:
-            if other_id in open_ids and other_id > lv.id:
-                pairs.append({"a": lv.id, "b": other_id})
+    pairs = [
+        {"a": row.level_id, "b": row.confusable_level_id}
+        for row in db.query(LevelConfusableRow).all()
+        if row.confusable_level_id > row.level_id
+        and row.level_id in open_ids and row.confusable_level_id in open_ids
+    ]
     return {"levels": summaries, "skeleton": skeleton, "confusablePairs": pairs}
 
 
@@ -92,7 +151,7 @@ def _nav(db: Session, level: LevelRow, content: dict) -> dict:
     prev_id = ids[idx - 1] if idx > 0 else None
     next_id = ids[idx + 1] if 0 <= idx < len(ids) - 1 else None
     opened = set(ids)
-    confusables = [c for c in (content.get("confusables") or []) if c in opened]
+    confusables = [c for c in confusable_ids_of(db, level.id) if c in opened]
     return {"prev": prev_id, "next": next_id, "confusables": confusables}
 
 
@@ -150,10 +209,10 @@ def level_detail(db: Session, level_id: str) -> dict:
         "order": level.order,
         "layer": level.layer,
         "type": content.get("type") or LAYER_LABEL.get(level.layer, level.layer),
-        "targetSound": content.get("targetSound"),
-        "pinyin": content.get("pinyin"),
+        "targetSound": level.target_sound,
+        "pinyin": level.pinyin,
         "representativeChar": content.get("representativeChar"),
-        "title": content.get("title"),
+        "title": level.title,
         "tags": content.get("tags") or [],
         "phonology": _phonology_of(content),
         "nav": _nav(db, level, content),
@@ -178,10 +237,10 @@ def search_levels(db: Session, query: str) -> dict:
     levels = open_levels(db)
     contents: dict[str, dict] = {lv.id: JSONText.load(lv.content, {}) for lv in levels}
 
-    def text_of(cid: str) -> str:
-        c = contents[cid]
+    def text_of(lv: LevelRow) -> str:
+        c = contents[lv.id]
         return " ".join(filter(None, [
-            c.get("targetSound"), c.get("pinyin"), c.get("title"),
+            lv.target_sound, lv.pinyin, lv.title,
             c.get("representativeChar"), " ".join(c.get("tags") or []),
         ]))
 
@@ -189,22 +248,23 @@ def search_levels(db: Session, query: str) -> dict:
     results = []
     for lv in levels:
         c = contents[lv.id]
-        hay = _plain_pinyin(text_of(lv.id))
+        hay = _plain_pinyin(text_of(lv))
+        target_sound = lv.target_sound or ""
         score = 0
-        if _plain_pinyin(c.get("targetSound") or "") == low:
+        if _plain_pinyin(target_sound) == low:
             score = 100
-        elif _plain_pinyin(c.get("pinyin") or "") == low:
+        elif _plain_pinyin(lv.pinyin or "") == low:
             score = 95
         elif c.get("representativeChar") == query:
             score = 90
-        elif low in _plain_pinyin(c.get("pinyin") or "") or _plain_pinyin(c.get("pinyin") or "") in low:
+        elif low in _plain_pinyin(lv.pinyin or "") or _plain_pinyin(lv.pinyin or "") in low:
             score = 70
         elif any(t.lower() == low for t in (c.get("tags") or [])):
             score = 65
         elif low in hay:
             score = 50
         else:
-            score = _pinyin_match(query, c)
+            score = _pinyin_match(low, target_sound)
         if score > 0:
             results.append((score, lv))
     results.sort(key=lambda x: (-x[0], x[1].order))
@@ -213,8 +273,7 @@ def search_levels(db: Session, query: str) -> dict:
     if not matched:
         seen: set[str] = set()
         for lv in levels:
-            c = contents[lv.id]
-            ts = (c.get("targetSound") or "")
+            ts = (lv.target_sound or "")
             if ts and _plain_pinyin(ts) in low and lv.id not in seen:
                 near.append(level_summary(db, lv))
                 seen.add(lv.id)
@@ -226,11 +285,11 @@ def search_levels(db: Session, query: str) -> dict:
     return {"results": matched, "near": near, "query": query}
 
 
-def _pinyin_match(query: str, content: dict) -> int:
+def _pinyin_match(query: str, target_sound: str) -> int:
     """汉字查询 → 拼音声母/韵母映射到关卡（pypinyin）。"""
     from pypinyin import Style, pinyin
 
-    target = _plain_pinyin(content.get("targetSound") or "")
+    target = _plain_pinyin(target_sound)
     if not target:
         return 0
     for ch in query:
@@ -276,9 +335,7 @@ def delete_category(db: Session, category_id: int) -> dict:
     row = db.get(CategoryRow, category_id)
     if row is None:
         raise ApiError(404, "NOT_FOUND", "分类不存在")
-    used = sum(
-        1 for a in db.query(ArticleRow).all()
-        if (JSONText.load(a.content, {}) or {}).get("category") == row.name)
+    used = db.query(ArticleRow).filter(ArticleRow.category_id == category_id).count()
     if used:
         raise ApiError(409, "INVALID_STATE", f"仍有 {used} 篇文章使用该分类，请先改分类")
     db.delete(row)
@@ -286,17 +343,26 @@ def delete_category(db: Session, category_id: int) -> dict:
     return {"deleted": True}
 
 
+def _category_names(db: Session, category_ids: set[int | None]) -> dict[int | None, str]:
+    rows = db.query(CategoryRow).filter(CategoryRow.id.in_(ids or {0})).all() \
+        if ids else []
+    names = {r.id: r.name for r in rows}
+    return {cid: names.get(cid, "") for cid in ids}
+
+
 def articles_list(db: Session, category: str | None = None) -> dict:
     rows = (db.query(ArticleRow).filter(ArticleRow.published.is_(True))
             .order_by(ArticleRow.updated_at.desc()).all())
+    names = _category_names(db, {a.category_id for a in rows})
     out = []
     for a in rows:
-        c = JSONText.load(a.content, {})
-        if category and c.get("category") != category:
+        if category and names[a.category_id] != category:
             continue
+        c = JSONText.load(a.content, {})
         open_ids_now = {lv.id for lv in open_levels(db)}
         out.append({
-            "slug": a.slug, "title": c.get("title", ""), "category": c.get("category", ""),
+            "slug": a.slug, "title": c.get("title", ""),
+            "category": names[a.category_id],
             "summary": c.get("summary", ""),
             "demoMediaId": c.get("demoMediaId"),
             "relatedLevelIds": [lid for lid in (c.get("relatedLevelIds") or [])
@@ -310,13 +376,14 @@ def article_detail(db: Session, slug: str) -> dict:
     if a is None or not a.published:
         raise ApiError(404, "NOT_FOUND", "文章不存在")
     c = JSONText.load(a.content, {})
+    cat = db.get(CategoryRow, a.category_id) if a.category_id else None
     open_ids_now = {lv.id for lv in open_levels(db)}
     related = [lid for lid in (c.get("relatedLevelIds") or []) if lid in open_ids_now]
     unavailable = [lid for lid in (c.get("relatedLevelIds") or []) if lid not in open_ids_now]
     return {
         "slug": a.slug,
         "title": c.get("title", ""),
-        "category": c.get("category", ""),
+        "category": cat.name if cat else "",
         "summary": c.get("summary", ""),
         "markdown": c.get("markdown", ""),
         "demo": {"mediaId": c.get("demoMediaId"), "text": c.get("demoText", "")},
@@ -377,28 +444,6 @@ def precheck_level(db: Session, content: dict) -> list[str]:
     for mid in all_media:
         if mid and db.get(MediaAssetRow, mid) is None:
             missing.append(f"媒体不存在：{mid}")
-    return missing
-
-
-def precheck_article(db: Session, content: dict) -> list[str]:
-    missing = []
-    if not content.get("title"):
-        missing.append("缺少标题")
-    if not content.get("category"):
-        missing.append("缺少分类")
-    else:
-        if db.query(CategoryRow).filter(CategoryRow.name == content["category"]).count() == 0:
-            missing.append(f"分类不存在：{content['category']}")
-    if not content.get("markdown") or len(content["markdown"]) < 30:
-        missing.append("正文过短")
-    if not content.get("demoMediaId"):
-        missing.append("缺少可播放示范")
-    if not (content.get("references") or []):
-        missing.append("缺少参考资料（FR-506）")
-    if not (content.get("practice") or []):
-        missing.append("缺少短练习")
-    if content.get("demoMediaId") and db.get(MediaAssetRow, content["demoMediaId"]) is None:
-        missing.append("示范媒体不存在")
     return missing
 
 
@@ -530,7 +575,12 @@ def save_level(db: Session, level_id: str, content: dict) -> dict:
     level = db.get(LevelRow, level_id)
     if level is None:
         raise ApiError(404, "NOT_FOUND", "关卡不存在")
-    content = prepare_level_content(db, content)
+    confusables = content.get("confusables")
+    content = prepare_level_content(db, content)   # 标准曲线计算需要完整文档
+    cols = split_level_content(content)
+    for key, value in cols.items():
+        setattr(level, key, value)
+    _sync_confusables(db, level_id, confusables)
     level.content = JSONText.dump(content)
     level.updated_at = now()
     db.commit()
@@ -548,17 +598,25 @@ def set_level_published(db: Session, level_id: str, published: bool) -> dict:
 
 
 def save_article(db: Session, slug: str, content: dict, *, create: bool = False) -> dict:
+    # 分类按名字解析为外键；填写了不存在的分类名一律拒绝（草稿同标准）
+    category_name = content.pop("category", None)
+    cat = None
+    if category_name:
+        cat = db.query(CategoryRow).filter(CategoryRow.name == category_name).one_or_none()
+        if cat is None:
+            raise ApiError(422, "VALIDATION_ERROR", f"分类不存在：{category_name}")
     if create:
         slug = (slug or "").strip()
         if not slug or db.get(ArticleRow, slug) is not None:
             raise ApiError(409, "INVALID_STATE", "slug 缺失或已存在")
-        db.add(ArticleRow(slug=slug, published=False,
+        db.add(ArticleRow(slug=slug, published=False, category_id=cat.id if cat else None,
                           content=JSONText.dump(content),
                           created_at=now(), updated_at=now()))
     else:
         article = db.get(ArticleRow, slug)
         if article is None:
             raise ApiError(404, "NOT_FOUND", "文章不存在")
+        article.category_id = cat.id if cat else None
         article.content = JSONText.dump(content)
         article.updated_at = now()
     db.commit()

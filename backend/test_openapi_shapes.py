@@ -35,7 +35,7 @@ from app.api.schemas import (  # noqa: E402
     F0Response, FormantsResponse, HealthData, LevelDetail,
     LevelsResponse, MeContext, MeProgress, PitchCalibrationInfo, ProfileResponse,
     ProgressLevel, RecordingDeleted, RecordingWithResult, RegisterResponse, SearchResponse,
-    WishResponse, Envelope,
+    Envelope,
 )
 
 ORIGIN = {"Origin": "http://localhost:5173"}   # 过 CSRF（同 e2e_test.py）
@@ -459,8 +459,8 @@ def main() -> int:
 
         r = c.post("/api/feedback", json={"type": "clarity", "content": "很有帮助"})
         expect("feedback → FeedbackResponse", r, FeedbackResponse)
-        r = c.post("/api/wishes", json={"content": "希望增加声调对比"})
-        expect("wishes → WishResponse", r, WishResponse)
+        r = c.post("/api/feedback/wishes", json={"content": "希望增加声调对比"})
+        expect("feedback/wishes → FeedbackResponse", r, FeedbackResponse)
 
         r = c.delete(f"/api/recordings/{rec2_id}")
         expect("recordings/{id} DELETE → RecordingDeleted", r, RecordingDeleted)
