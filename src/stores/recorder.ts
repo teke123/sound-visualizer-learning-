@@ -54,8 +54,10 @@ export const useRecorderStore = defineStore('recorder', () => {
   let capturing = false
 
   // 内部累积监听只注册一次（request 可能多次重入，重复注册会重复累积同一帧）
+  // 必须复制一份再累积：实时画布等订阅方会把 samples.buffer 转移给分析 Worker，
+  // 转移后原 Float32Array 被 detach（length 变 0），直接引用会录出 0 采样空 WAV
   pcmListeners.add((samples) => {
-    if (capturing) pcmChunks.push(samples)
+    if (capturing) pcmChunks.push(new Float32Array(samples))
   })
 
   const supported = computed(

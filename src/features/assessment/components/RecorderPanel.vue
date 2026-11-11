@@ -119,6 +119,12 @@ const progressPercent = () => Math.min(100, (props.elapsedMs / maxMs) * 100)
       </div>
       <template v-else>
         <p class="recorded-hint">已录好一段（{{ elapsedSec() }} 秒），先试听一下再提交：</p>
+        <!-- 提交失败但录音保留（state 停在 recorded）时，错误必须就地可见，否则表现为「点了没反应」 -->
+        <template v-if="error">
+          <p class="state-note err">{{ error.copy.title }}</p>
+          <p class="state-sub">{{ error.copy.hint }}</p>
+          <p v-if="error.requestId" class="request-id">requestId：{{ error.requestId }}</p>
+        </template>
         <div class="panel-row">
           <QBtn
             v-if="blobUrl"

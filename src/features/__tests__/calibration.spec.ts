@@ -134,7 +134,7 @@ describe('useCalibration：单条验收推进', () => {
     })
   })
 
-  it('accepted：以响应中的会话视图推进到下一任务', async () => {
+  it('accepted：以响应中的会话视图推进到下一任务，并给出提交反馈', async () => {
     const { scope, calibration, recorder } = setup()
     await calibration.openSession()
     withBlob(recorder)
@@ -154,6 +154,24 @@ describe('useCalibration：单条验收推进', () => {
     })
     expect(calibration.currentTask.value?.vowel).toBe('u')
     expect(calibration.phase.value).toBe('intro')
+    expect(calibration.notice.value).toBe('「衣」已提交')
+    scope.stop()
+  })
+
+  it('accepted 且该元音完成：反馈为已完成', async () => {
+    const { scope, calibration, recorder } = setup()
+    await calibration.openSession()
+    withBlob(recorder)
+    const vowels = sessionView().vowels.map((v) =>
+      v.key === 'i' ? { ...v, acceptedTakes: 2, done: true } : v)
+    submitTakeMock.mockResolvedValue({
+      data: {
+        outcome: 'accepted',
+        session: sessionView({ vowels, nextTask: { kind: 'vowel', vowel: 'u', ordinal: 1 } }),
+      },
+    })
+    await calibration.submit()
+    expect(calibration.notice.value).toBe('「衣」已完成')
     scope.stop()
   })
 
@@ -191,7 +209,7 @@ describe('useCalibration：单条验收推进', () => {
     scope.stop()
   })
 
-  it('additional_take_required：补录提示不阻塞推进', async () => {
+  it('additional_take_required：补录反馈明确，不阻塞推进', async () => {
     const { scope, calibration, recorder } = setup()
     await calibration.openSession()
     withBlob(recorder)
@@ -205,6 +223,7 @@ describe('useCalibration：单条验收推进', () => {
     expect(ok).toBe(true)
     expect(calibration.currentTask.value?.ordinal).toBe(3)
     expect(calibration.currentTask.value?.additionalTake).toBe(true)
+    expect(calibration.notice.value).toBe('「衣」的录音差异较大，请再录一条')
     scope.stop()
   })
 })

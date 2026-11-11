@@ -216,7 +216,7 @@ export function useAssessmentFlow(options: AssessmentFlowOptions) {
       return
     }
     if (error.code === 'FILE_TOO_LARGE' || error.code === 'DECODE_FAILED') {
-      flowError.value = { copy: { title: error.message, hint: '请重新录制一段较短的录音再提交。' }, requestId: error.requestId, retryable: false }
+      flowError.value = { copy: { title: error.message, hint: '请重录一段再提交；若多次失败，请检查麦克风是否正常采集声音。' }, requestId: error.requestId, retryable: false }
       state.value = 'recorded'
       return
     }
