@@ -558,7 +558,7 @@ export const handlers = [
 
   http.post('/api/feedback', () => envelope({ feedbackId: `fb-${Math.random().toString(36).slice(2, 10)}` })),
 
-  http.post('/api/wishes', () => envelope({ wishId: `wish-${Math.random().toString(36).slice(2, 10)}` })),
+  http.post('/api/feedback/wishes', () => envelope({ feedbackId: `fb-${Math.random().toString(36).slice(2, 10)}` })),
 ]
 
 /** 到时完成：写结果快照（质量良好 / 带质量提示两种演示形态，均正常评分） */

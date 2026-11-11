@@ -5,7 +5,6 @@ import type {
   ClearArchiveResponse,
   FeedbackPayload,
   FeedbackResponse,
-  WishResponse,
 } from '../generated/types'
 
 export const archiveApi = {
@@ -27,14 +26,18 @@ export interface WishPayload {
 }
 
 export const feedbackApi = {
-  /** type ∈ clarity / result_match / content_error / wish_more；rating：符合=1，不符合=0 */
+  /** type ∈ clarity / result_match / content_error；rating：符合=1，不符合=0 */
   submit(payload: FeedbackPayload) {
     return apiRequest<FeedbackResponse>('/feedback', {
       method: 'POST',
       body: payload,
     })
   },
+  /** 希望增加：与反馈共用一张表（kind='wish'），收口至 /feedback/wishes */
   submitWish(payload: WishPayload) {
-    return apiRequest<WishResponse>('/wishes', { method: 'POST', body: payload })
+    return apiRequest<FeedbackResponse>('/feedback/wishes', {
+      method: 'POST',
+      body: payload,
+    })
   },
 }

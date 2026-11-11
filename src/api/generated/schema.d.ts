@@ -567,7 +567,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/wishes": {
+    "/api/feedback/wishes": {
         parameters: {
             query?: never;
             header?: never;
@@ -577,7 +577,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Submit Wish */
-        post: operations["submit_wish_api_wishes_post"];
+        post: operations["submit_wish_api_feedback_wishes_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -895,40 +895,6 @@ export interface paths {
         get?: never;
         /** Admin Handle Feedback */
         put: operations["admin_handle_feedback_api_admin_feedback__feedback_id__put"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/admin/wishes": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Admin Wishes */
-        get: operations["admin_wishes_api_admin_wishes_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/admin/wishes/{wish_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Admin Handle Wish */
-        put: operations["admin_handle_wish_api_admin_wishes__wish_id__put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1898,24 +1864,6 @@ export interface components {
             /** Nextstep */
             nextStep?: string | null;
         };
-        /** Envelope[WishResponse] */
-        Envelope_WishResponse_: {
-            /**
-             * Code
-             * @default OK
-             */
-            code: string;
-            /**
-             * Message
-             * @default ok
-             */
-            message: string;
-            data: components["schemas"]["WishResponse"];
-            /** Requestid */
-            requestId?: string | null;
-            /** Nextstep */
-            nextStep?: string | null;
-        };
         /** F0Frame */
         F0Frame: {
             /** T */
@@ -2669,11 +2617,6 @@ export interface components {
             content: string;
             /** Searchquery */
             searchQuery?: string | null;
-        };
-        /** WishResponse */
-        WishResponse: {
-            /** Wishid */
-            wishId: string;
         };
     };
     responses: never;
@@ -3684,7 +3627,7 @@ export interface operations {
             };
         };
     };
-    submit_wish_api_wishes_post: {
+    submit_wish_api_feedback_wishes_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -3703,7 +3646,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Envelope_WishResponse_"];
+                    "application/json": components["schemas"]["Envelope_FeedbackResponse_"];
                 };
             };
             /** @description Validation Error */
@@ -4440,6 +4383,7 @@ export interface operations {
         parameters: {
             query?: {
                 status?: string;
+                kind?: string;
             };
             header?: never;
             path?: never;
@@ -4473,61 +4417,6 @@ export interface operations {
             header?: never;
             path: {
                 feedback_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["HandleBody"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    admin_wishes_api_admin_wishes_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
-    admin_handle_wish_api_admin_wishes__wish_id__put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                wish_id: string;
             };
             cookie?: never;
         };
