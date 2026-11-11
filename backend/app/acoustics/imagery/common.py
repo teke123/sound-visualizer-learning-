@@ -148,6 +148,19 @@ def final_type(final_label: str) -> str:
     return "diphthong"
 
 
+def vowel_nucleus_type(final_label: str) -> str:
+    """绘制元音空间时，按鼻韵尾之前的元音核区分单元音与滑动元音。"""
+    coda = nasal_coda(final_label)
+    nucleus = final_label[:-len(coda)] if coda else final_label
+    if final_label == "un":  # 拼音 un 的元音核为 uə
+        nucleus = "ue"
+    if nucleus in MONOPHTHONG_FINALS:
+        return "monophthong"
+    if nucleus in TRIPHTHONG_FINALS:
+        return "triphthong"
+    return "diphthong"
+
+
 def display_label(phone: PhoneSeg) -> str:
     """图上显示用标签：讯飞符号 + IPA（零声母显示为 ∅）。"""
     if phone.label.startswith("_"):

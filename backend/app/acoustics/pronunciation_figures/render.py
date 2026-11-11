@@ -5,8 +5,9 @@ from io import BytesIO
 from threading import RLock
 
 import numpy as np
+from matplotlib.patches import Ellipse
 
-from app.acoustics.imagery.common import setup_matplotlib
+from app.acoustics.imagery.common import setup_matplotlib, vowel_nucleus_type
 from app.acoustics.f0_pipeline import hz_to_degree
 from .measure import Analysis, SR, hz_to_bark
 
@@ -187,23 +188,35 @@ def _tone_vowel(fig, a, reference=None):
             vowel_ax.plot(polygon[:, 0], polygon[:, 1], color="#9299a0", ls="--", lw=1.5)
             for (name, _), (x, y) in zip(anchors, xy):
                 vowel_ax.annotate(name, (x, y), xytext=(4, 4), textcoords="offset points", color="#59636b")
-        f1 = np.asarray(s["vowel"]["F1_hz"], float)
-        f2 = np.asarray(s["vowel"]["F2_hz"], float)
-        if s["final_type"] == "monophthong":
-            f1 = f1.copy(); f2 = f2.copy()
-            f1[:3] = np.nan; f1[8:] = np.nan
-            f2[:3] = np.nan; f2[8:] = np.nan
-        x = hz_to_bark(f2) - hz_to_bark(f1)
-        y = hz_to_bark(f1)
-        x[f2 <= f1] = np.nan
-        vowel_ax.plot(x, y, color="#bb2026", lw=2.4)
-        valid = np.flatnonzero(np.isfinite(x) & np.isfinite(y))
-        if len(valid):
-            vowel_ax.plot(x[valid[0]], y[valid[0]], "o", color="#bb2026", ms=7)
-        if len(valid) > 1:
-            vowel_ax.annotate("", xy=(x[valid[-1]], y[valid[-1]]),
-                              xytext=(x[valid[-2]], y[valid[-2]]),
-                              arrowprops={"arrowstyle": "->", "color": "#bb2026", "lw": 2.2})
+        vowel = s["vowel"]
+        nucleus_type = vowel_nucleus_type(s["final"]["label"])
+        if nucleus_type == "monophthong":
+            x, y = vowel["steady_bark"]
+            if x is not None and y is not None:
+                spread_x, spread_y = vowel["steady_iqr_bark"]
+                if spread_x is not None and spread_y is not None:
+                    vowel_ax.add_patch(Ellipse((x, y), width=spread_x, height=spread_y,
+                                               facecolor="#bb2026", edgecolor="none", alpha=.18))
+                vowel_ax.plot(x, y, "o", color="#bb2026", ms=9)
+        else:
+            x = np.asarray(vowel["F2_minus_F1_bark"], float)
+            y = np.asarray(vowel["F1_bark"], float)
+            x[[0, -1]] = np.nan; y[[0, -1]] = np.nan
+            vowel_ax.plot(x, y, color="#bb2026", lw=2.4)
+            valid = np.flatnonzero(np.isfinite(x) & np.isfinite(y))
+            if len(valid):
+                vowel_ax.plot(x[valid[0]], y[valid[0]], "o", color="#bb2026", ms=7)
+            if nucleus_type == "triphthong" and len(valid) > 2:
+                middle = valid[np.argmin(np.abs(valid - 5))]
+                if middle not in (valid[0], valid[-1]):
+                    vowel_ax.plot(x[middle], y[middle], "o", mfc="white", mec="#bb2026", ms=6)
+            if len(valid) > 1:
+                tail, tip = valid[max(0, len(valid)-3)], valid[-1]
+                if tip - tail <= 2 and np.hypot(x[tip]-x[tail], y[tip]-y[tail]) >= .35:
+                    vowel_ax.annotate("", xy=(x[tip], y[tip]), xytext=(x[tail], y[tail]),
+                                      arrowprops={"arrowstyle": "->", "color": "#bb2026", "lw": 2.2})
+                else:
+                    vowel_ax.plot(x[tip], y[tip], "o", mfc="white", mec="#bb2026", ms=7)
         vowel_ax.set(xlim=(15, 0), ylim=(11, 1.5), xlabel="F2−F1 (Bark)",
                      ylabel="F1 (Bark)", title="个人元音空间")
 

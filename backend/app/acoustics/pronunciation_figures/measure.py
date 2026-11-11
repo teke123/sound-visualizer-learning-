@@ -747,6 +747,18 @@ def _measure_syllable(a: Analysis, i: int) -> dict:
     steady_t = _grid(vowel_t0 + .3*(vowel_t1-vowel_t0), vowel_t0 + .7*(vowel_t1-vowel_t0), FORMANT_STEP)
     steady = np.asarray([[v if v is not None else np.nan for v in a.formants_at(t, (vowel_t0, vowel_t1))] for t in steady_t])
     steady_hz = [_rnd(np.nanmedian(steady[:, k]), 0) if np.isfinite(steady[:, k]).any() else None for k in range(3)]
+    steady_xy = np.column_stack((hz_to_bark(steady[:, 1]) - hz_to_bark(steady[:, 0]),
+                                 hz_to_bark(steady[:, 0])))
+    steady_valid = np.isfinite(steady_xy).all(axis=1) & (steady[:, 1] > steady[:, 0])
+    steady_points = steady_xy[steady_valid]
+    steady_center = np.median(steady_points, axis=0) if len(steady_points) else [np.nan, np.nan]
+    steady_iqr = (np.diff(np.percentile(steady_points, [25, 75], axis=0), axis=0)[0]
+                  if len(steady_points) >= 4 else [np.nan, np.nan])
+    quarter = .25 * (steady_t[-1] - steady_t[0])
+    early = steady_xy[steady_valid & (steady_t <= steady_t[0] + quarter)]
+    late = steady_xy[steady_valid & (steady_t >= steady_t[-1] - quarter)]
+    steady_drift = (np.linalg.norm(np.median(late, axis=0) - np.median(early, axis=0))
+                    if len(early) >= 2 and len(late) >= 2 else None)
     valid_xy = np.isfinite(samples[:2]).all(axis=0)
     xy = samples[:2, valid_xy].T
     distance = float(np.sum(np.linalg.norm(np.diff(xy, axis=0), axis=1))) if len(xy) > 1 else None
@@ -758,6 +770,9 @@ def _measure_syllable(a: Analysis, i: int) -> dict:
              "mid_hz": [_rnd(samples[k, 5], 0) for k in range(3)],
              "steady_hz": steady_hz, "trajectory_length_hz": _rnd(distance, 0),
              "trajectory_angle_degree": _rnd(angle, 1),
+             "steady_bark": [_rnd(v, 2) for v in steady_center],
+             "steady_iqr_bark": [_rnd(v, 2) for v in steady_iqr],
+             "steady_drift_bark": _rnd(steady_drift, 2),
              "sample_reasons": sample_reasons}
     plotted_f1 = hz_to_bark(samples[0])
     plotted_distance = hz_to_bark(samples[1]) - plotted_f1
