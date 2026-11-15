@@ -35,11 +35,7 @@ watch(view, () => void archive.load())
 
 <template>
   <div class="archive-page">
-    <PageHead
-      title="声音档案"
-      icon="folder"
-      desc="个人练习记录：登录后，每次录音检测的结果都会自动保存，随时回看同一关的前后变化。"
-    />
+    <PageHead title="声音档案" icon="folder" />
 
     <!-- 未登录：登录引导 -->
     <section v-if="view === 'guest'" class="guest-box">
@@ -55,8 +51,6 @@ watch(view, () => void archive.load())
       </div>
       <ul class="guest-facts">
         <li>用户名 + 密码即可，不收集邮箱或手机号</li>
-        <li>不做排行榜，档案只有你自己能看</li>
-        <li>录音不合格时不会记成一次 0 分练习</li>
       </ul>
     </section>
 

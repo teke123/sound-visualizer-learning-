@@ -30,15 +30,15 @@ withDefaults(
 <style scoped lang="sass">
 .vs-page-head h1,
 .vs-page-head h2
-  font-size: 30px
-  font-weight: 900
-  letter-spacing: -0.5px
-  line-height: 1.28
+  font-family: var(--vs-font-display)
+  font-size: 32px
+  font-weight: 600
+  letter-spacing: -0.02em
+  line-height: 1.26
   margin: 0
 
 @media (max-width: 900px)
   .vs-page-head h1,
   .vs-page-head h2
-    font-size: 22px
-    letter-spacing: -0.4px
+    font-size: 24px
 </style>

@@ -1,128 +1,86 @@
 /* ==========================================================================
-   看得见的声音 · 视觉规范 V3（全局主题层）
-   两套主题：
-     暖沙（默认）：米橙底 + 米白卡 / 深咖啡主按钮 / 红色强调；
-     青瓷：浅青底 + 白卡 / 深青绿主按钮 / 青绿强调。
-   除色板外还有 8px 圆角、8px 栅格、柔和阴影；本文件是唯一的色板来源，
-   页面与组件只引用这里的 CSS 变量与 .vs-* 类，不各自硬编码色值。
-   主题切换：<html data-theme="amber|celadon">（见 src/utils/theme.ts）。
+   看得见的声音 · 视觉规范 V4（编辑感 / 测评工具）
+   绛红 + 米白 + 蜜桃：深色章节带、白色内容卡、衬线标题、胶囊按钮。
+   色板集中在下方 :root，页面与组件只引用 CSS 变量与 .vs-* 类。
    ========================================================================== */
 
-/* —— 暖沙（默认） —— */
-:root,
-:root[data-theme='amber']
+:root
   /* 底色与文字 */
-  --vs-bg: #f2dcbb
-  --vs-bg-rgb: 242, 220, 187
-  --vs-card: #fffcf7
-  --vs-card-rgb: 255, 252, 247
-  --vs-field: #ffffff
-  --vs-ink: #33231a
-  --vs-ink2: #4e3a2b
-  --vs-sub: #7c6450
-  --vs-mute: #a89078
-  --vs-mute-2: #c9b69c
-  --vs-line: #f0e3cf
-  --vs-line2: #e8d6bd
-  --vs-line2-rgb: 232, 214, 189
-  --vs-line-hover: #dfc49e
-  --vs-line-strong: #d9b582
-
-  /* 品牌强调 */
-  --vs-brand: #cb3a2e
-  --vs-brand-d: #98241c
-  --vs-brand-rgb: 203, 58, 46
-  --vs-brand-soft: #f9eddc
-  --vs-brand-line: #ead5b6
-  --vs-sand: #e8c79c
-
-  /* 主按钮 / 选中态 */
-  --vs-coffee: #4a3323
-  --vs-coffee-d: #3a2718
-  --vs-coffee-2: #5c4230
-  --vs-coffee-a: #563d29
-  --vs-coffee-b: #412d1d
-  --vs-coffee-a-hover: #4b3421
-  --vs-coffee-b-hover: #362417
-  --vs-on-coffee: #fff6e9
-
-  /* 浅色面板 */
-  --vs-soft: #f7ead9
-  --vs-soft-2: #fbf3e7
-  --vs-panel: #fef8ef
-  --vs-panel-rgb: 254, 248, 239
-
-  /* 语义色（两套主题共用） */
-  --vs-green: #5c8c55
-  --vs-green-soft: #eef4e8
-  --vs-green-line: #b9cfa8
-  --vs-green-d: #4a7a44
-  --vs-amber-soft: #fbedd9
-  --vs-amber-ink: #7a4a1c
-  --vs-danger-line: #e7c0b4
-  --vs-danger-soft: #fdf4f0
-
-  /* 阴影与光晕 */
-  --vs-shadow-rgb: 74, 46, 26
-  --vs-glow-rgb: 192, 118, 47
-
-  /* 形状与动效 */
-  --vs-r: 8px
-  --vs-sh-1: 0 1px 2px rgba(var(--vs-shadow-rgb), 0.05), 0 1px 3px rgba(var(--vs-shadow-rgb), 0.04)
-  --vs-sh-2: 0 1px 2px rgba(var(--vs-shadow-rgb), 0.05), 0 8px 24px rgba(var(--vs-shadow-rgb), 0.09)
-  --vs-sh-3: 0 2px 4px rgba(var(--vs-shadow-rgb), 0.05), 0 24px 48px rgba(var(--vs-shadow-rgb), 0.16)
-  --vs-ease: cubic-bezier(0.2, 0.7, 0.3, 1)
-  --vs-safe: env(safe-area-inset-bottom)
-
-  /* 字体 */
-  --vs-font: 'PingFang SC', 'Microsoft YaHei', 'Hiragino Sans GB', 'Noto Sans CJK SC', system-ui, -apple-system, sans-serif
-
-/* —— 青瓷 —— */
-:root[data-theme='celadon']
-  --vs-bg: #e9f2e6
-  --vs-bg-rgb: 233, 242, 230
+  --vs-bg: #fbf4ea
+  --vs-bg-rgb: 251, 244, 234
   --vs-card: #ffffff
   --vs-card-rgb: 255, 255, 255
   --vs-field: #ffffff
-  --vs-ink: #1e2f27
-  --vs-ink2: #33483b
-  --vs-sub: #5b6f63
-  --vs-mute: #8b9d90
-  --vs-mute-2: #b7c6b8
-  --vs-line: #e1ecdd
-  --vs-line2: #d0e0ca
-  --vs-line2-rgb: 208, 224, 202
-  --vs-line-hover: #b9d3b0
-  --vs-line-strong: #a8c69f
+  --vs-ink: #2a1620
+  --vs-ink2: #46232f
+  --vs-sub: #6e5058
+  --vs-mute: #9b7c83
+  --vs-mute-2: #c7b0b5
+  --vs-line: #f1e0d3
+  --vs-line2: #e4cdbd
+  --vs-line2-rgb: 228, 205, 189
+  --vs-line-hover: #d3b4a0
+  --vs-line-strong: #c39f89
 
-  --vs-brand: #2f7d5b
-  --vs-brand-d: #1c5a40
-  --vs-brand-rgb: 47, 125, 91
-  --vs-brand-soft: #e9f4e6
-  --vs-brand-line: #cfe4c7
-  --vs-sand: #c3ddb8
+  /* 品牌强调 */
+  --vs-brand: #6a1230
+  --vs-brand-d: #4a0a20
+  --vs-brand-rgb: 106, 18, 48
+  --vs-brand-soft: #f8e4d9
+  --vs-brand-line: #e9cabd
+  --vs-sand: #e9c7a9
 
-  --vs-coffee: #1f5b45
-  --vs-coffee-d: #174a38
-  --vs-coffee-2: #2a6b52
-  --vs-coffee-a: #2a6b52
-  --vs-coffee-b: #174a38
-  --vs-coffee-a-hover: #235c46
-  --vs-coffee-b-hover: #12392c
-  --vs-on-coffee: #f3faf1
+  /* 主按钮 / 选中态 */
+  --vs-coffee: #5c1129
+  --vs-coffee-d: #3e0919
+  --vs-coffee-2: #6e1b35
+  --vs-coffee-a: #64132c
+  --vs-coffee-b: #450b1e
+  --vs-coffee-a-hover: #521026
+  --vs-coffee-b-hover: #350716
+  --vs-on-coffee: #fff5ec
 
-  --vs-soft: #e8f2e4
-  --vs-soft-2: #f1f7ef
-  --vs-panel: #f5faf3
-  --vs-panel-rgb: 245, 250, 243
+  /* 浅色面板 */
+  --vs-soft: #f8e7da
+  --vs-soft-2: #fbf2e8
+  --vs-panel: #fff8f0
+  --vs-panel-rgb: 255, 248, 240
 
-  --vs-green: #3e8e5a
-  --vs-green-soft: #e9f5e5
-  --vs-green-line: #bfdcb4
-  --vs-green-d: #2f6f45
+  /* 章节带（深色 / 蜜桃） */
+  --vs-band: #4a0c22
+  --vs-band-rgb: 74, 12, 34
+  --vs-band-ink: #f8ece1
+  --vs-band-ink-rgb: 248, 236, 225
+  --vs-band-sub: #d9b7a9
+  --vs-peach: #f8dfcb
+  --vs-peach-soft: #fbead9
 
-  --vs-shadow-rgb: 26, 54, 38
-  --vs-glow-rgb: 47, 125, 91
+  /* 语义色 */
+  --vs-green: #4f7a48
+  --vs-green-soft: #eef4e7
+  --vs-green-line: #bfd4b4
+  --vs-green-d: #3f6639
+  --vs-amber-soft: #f9e3cc
+  --vs-amber-ink: #7a3d12
+  --vs-danger-line: #ebc0b4
+  --vs-danger-soft: #fdf3ef
+
+  /* 阴影与光晕 */
+  --vs-shadow-rgb: 58, 26, 34
+  --vs-glow-rgb: 106, 18, 48
+
+  /* 形状与动效 */
+  --vs-r: 12px
+  --vs-r-lg: 20px
+  --vs-sh-1: 0 1px 2px rgba(var(--vs-shadow-rgb), 0.04), 0 2px 8px rgba(var(--vs-shadow-rgb), 0.05)
+  --vs-sh-2: 0 2px 4px rgba(var(--vs-shadow-rgb), 0.05), 0 12px 32px rgba(var(--vs-shadow-rgb), 0.10)
+  --vs-sh-3: 0 4px 8px rgba(var(--vs-shadow-rgb), 0.06), 0 32px 64px rgba(var(--vs-shadow-rgb), 0.16)
+  --vs-ease: cubic-bezier(0.2, 0.7, 0.3, 1)
+  --vs-safe: env(safe-area-inset-bottom)
+
+  /* 字体：正文无衬线，标题衬线（编辑感） */
+  --vs-font: 'MiSans', 'HarmonyOS Sans', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', system-ui, -apple-system, sans-serif
+  --vs-font-display: 'Noto Serif SC', 'Songti SC', 'Source Han Serif SC', 'SimSun', serif
 
 /* ==========================================================================
    基础
@@ -194,36 +152,43 @@ img
   font-size: 12px
   color: var(--vs-mute)
 
-/* 区块标题：渐变竖条 + 大标题 */
+/* 区块标题：衬线大标题 + 短竖线 */
 .vs-sect
-  margin-top: 80px
+  margin-top: 88px
 
 .vs-sect > h2
-  font-size: 34px
-  font-weight: 900
-  letter-spacing: -0.8px
-  line-height: 1.22
+  font-family: var(--vs-font-display)
+  font-size: 38px
+  font-weight: 600
+  letter-spacing: -0.02em
+  line-height: 1.24
   color: var(--vs-ink)
   display: flex
   align-items: center
-  gap: 12px
+  gap: 14px
   margin: 0
 
 .vs-sect > h2 .vs-bar
   display: block
   flex: none
-  width: 6px
-  height: 32px
-  border-radius: var(--vs-r)
-  background: linear-gradient(180deg, var(--vs-sand), var(--vs-brand))
-  box-shadow: 0 4px 12px rgba(var(--vs-glow-rgb), 0.26)
+  width: 4px
+  height: 30px
+  border-radius: 2px
+  background: var(--vs-brand)
+  box-shadow: none
 
 .vs-sect > .vs-lead
-  margin: 8px 0 0
-  font-size: 14px
+  margin: 10px 0 0
+  font-size: 15px
   color: var(--vs-sub)
   line-height: 1.8
   max-width: 720px
+
+/* 衬线显示字：落地页大标题用 */
+.vs-display
+  font-family: var(--vs-font-display)
+  font-weight: 600
+  letter-spacing: -0.02em
 
 /* ==========================================================================
    卡片 / 页头
@@ -237,9 +202,10 @@ img
   box-shadow: var(--vs-sh-1)
 
 .vs-card > h3
-  font-size: 20px
-  font-weight: 900
-  letter-spacing: -0.3px
+  font-family: var(--vs-font-display)
+  font-size: 21px
+  font-weight: 600
+  letter-spacing: -0.01em
   display: flex
   align-items: center
   gap: 8px
@@ -252,7 +218,7 @@ img
 .vs-page-head
   background: var(--vs-card)
   border: 1px solid var(--vs-line)
-  border-radius: var(--vs-r)
+  border-radius: var(--vs-r-lg)
   padding: 24px
   display: flex
   gap: 16px
@@ -268,13 +234,14 @@ img
   display: flex
   align-items: center
   justify-content: center
-  background: linear-gradient(160deg, var(--vs-sand), var(--vs-brand))
-  box-shadow: 0 6px 16px rgba(var(--vs-glow-rgb), 0.28)
+  background: var(--vs-brand)
+  box-shadow: none
 
 .vs-page-head h2
+  font-family: var(--vs-font-display)
   font-size: 30px
-  font-weight: 900
-  letter-spacing: -0.5px
+  font-weight: 600
+  letter-spacing: -0.02em
   line-height: 1.28
   margin: 0
 
@@ -315,15 +282,15 @@ img
 .vs-btn
   border: none
   cursor: pointer
-  border-radius: var(--vs-r)
-  min-height: 40px
-  padding: 0 16px
+  border-radius: 999px
+  min-height: 44px
+  padding: 0 22px
   font-family: inherit
-  font-size: 14px
+  font-size: 14.5px
   font-weight: 600
   color: var(--vs-on-coffee)
-  background: linear-gradient(180deg, var(--vs-coffee-a), var(--vs-coffee-b))
-  box-shadow: 0 2px 6px rgba(var(--vs-shadow-rgb), 0.18)
+  background: var(--vs-coffee)
+  box-shadow: 0 2px 6px rgba(var(--vs-shadow-rgb), 0.16)
   display: inline-flex
   align-items: center
   justify-content: center
@@ -332,8 +299,8 @@ img
   transition: background 0.16s var(--vs-ease), box-shadow 0.16s var(--vs-ease), transform 0.16s var(--vs-ease)
 
 .vs-btn:hover
-  background: linear-gradient(180deg, var(--vs-coffee-a-hover), var(--vs-coffee-b-hover))
-  box-shadow: 0 4px 12px rgba(var(--vs-shadow-rgb), 0.24)
+  background: var(--vs-coffee-2)
+  box-shadow: 0 6px 16px rgba(var(--vs-shadow-rgb), 0.22)
 
 .vs-btn:active
   transform: translateY(1px)
@@ -346,36 +313,37 @@ img
   box-shadow: none
 
 .vs-btn--ghost
-  background: var(--vs-card)
+  background: transparent
   color: var(--vs-ink2)
-  box-shadow: inset 0 0 0 1px var(--vs-line2)
+  box-shadow: inset 0 0 0 1px var(--vs-line-strong)
 
 .vs-btn--ghost:hover
   background: var(--vs-soft-2)
   color: var(--vs-coffee)
-  box-shadow: inset 0 0 0 1px var(--vs-line-hover)
+  box-shadow: inset 0 0 0 1px var(--vs-ink2)
 
 .vs-btn--soft
   background: var(--vs-brand-soft)
   color: var(--vs-coffee)
-  box-shadow: inset 0 0 0 1px var(--vs-brand-line)
+  box-shadow: none
 
 .vs-btn--soft:hover
   background: var(--vs-brand-line)
 
 .vs-btn--small
-  min-height: 32px
-  padding: 0 12px
+  min-height: 36px
+  padding: 0 16px
   font-size: 13px
 
 .vs-tag
   display: inline-flex
   align-items: center
   gap: 4px
-  border-radius: var(--vs-r)
-  padding: 2px 8px
+  border-radius: 999px
+  padding: 3px 10px
   font-size: 11.5px
   font-weight: 600
+  letter-spacing: 0.02em
   background: var(--vs-soft)
   color: var(--vs-sub)
 
@@ -388,9 +356,9 @@ img
   background: var(--vs-card)
   color: var(--vs-sub)
   cursor: pointer
-  border-radius: var(--vs-r)
-  padding: 0 14px
-  height: 32px
+  border-radius: 999px
+  padding: 0 16px
+  height: 34px
   font-family: inherit
   font-size: 13px
   font-weight: 500
@@ -402,10 +370,10 @@ img
 
 .vs-chip[aria-pressed='true'],
 .vs-chip.is-on
-  background: linear-gradient(180deg, var(--vs-coffee-a), var(--vs-coffee-b))
-  border-color: var(--vs-coffee-b)
+  background: var(--vs-coffee)
+  border-color: var(--vs-coffee)
   color: var(--vs-on-coffee)
-  font-weight: 700
+  font-weight: 600
 
 /* ==========================================================================
    加载 / 空态

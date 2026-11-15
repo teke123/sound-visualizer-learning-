@@ -103,7 +103,7 @@ const option = computed(() => {
     <div v-if="unavailable" class="formant-unavailable">
       <p>本次没有可用的共振峰对比。</p>
       <p class="reason">
-        {{ formants.note ?? '共振峰对比需要先完成元音空间标定；没有有效数据时不做伪造展示。' }}
+        {{ formants.note ?? '共振峰需要先完成元音空间标定。' }}
       </p>
     </div>
     <VChart v-else :option="option" :style="{ height: `${height ?? 300}px`, width: '100%' }" autoresize />

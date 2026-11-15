@@ -241,7 +241,7 @@ function optionFor(side: SideView) {
   <div class="vot-waveform-chart">
     <div v-if="unavailable" class="curve-unavailable">
       <p>本次没有可用的送气段对比。</p>
-      <p class="reason">{{ vot.note ?? '这条录音未能定位清辅音起始与嗓音起始，不做伪造展示。' }}</p>
+      <p class="reason">{{ vot.note ?? '这条录音没有定位到清辅音起始与嗓音起始。' }}</p>
     </div>
 
     <template v-else>

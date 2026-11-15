@@ -64,7 +64,7 @@ function onSearch(term: string) {
 
 <template>
   <div class="search-page">
-    <PageHead title="搜一个音" icon="search" desc="用汉字、拼音或关卡名找到一关；没收录的音可以提交「希望增加」。" />
+    <PageHead title="搜一个音" icon="search" />
     <SearchBox :model-value="queryInput" @search="onSearch" />
 
     <PageState v-if="loading" state="loading" />
@@ -80,7 +80,6 @@ function onSearch(term: string) {
 
       <section v-else class="result-section" aria-label="无结果">
         <h2>没有找到「{{ q }}」</h2>
-        <p class="no-hit-hint">可能是这个音还没有开放，或者名字不太一样。可以试试相近的关卡：</p>
         <div v-if="nearLevels.length > 0" class="result-grid">
           <LevelCard v-for="level in nearLevels" :key="level.id" :level="level" />
         </div>
@@ -95,7 +94,6 @@ function onSearch(term: string) {
         />
       </section>
     </template>
-    <p v-else class="empty-hint">输入拼音开始搜索。</p>
 
     <WishDialog :open="wishOpen" :search-query="q" @close="wishOpen = false" />
   </div>

@@ -34,9 +34,7 @@ function width(value: number | null | undefined): string {
     <div class="score-row">
       <div class="score-num">{{ overallRounded }}<small>分</small></div>
       <div class="score-word">
-        <b :class="`tone-${overall.tone}`">{{ overall.label }}</b><br />
-        这个分数只表示这一关这一次录音，不折算总榜，也不和别的孩子比。<br />
-        这一关看的是：声母、韵母、声调三项。
+        <b :class="`tone-${overall.tone}`">{{ overall.label }}</b>
       </div>
     </div>
 

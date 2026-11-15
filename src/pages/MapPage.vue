@@ -27,11 +27,7 @@ function openPair(pair: { a: string; b: string }) {
 
 <template>
   <div class="map-page">
-    <PageHead
-      title="发音地图"
-      icon="map"
-      desc="看看自己学到哪一层：单韵母、声母，还是拼读。点一个音直接进关卡。"
-    />
+    <PageHead title="发音地图" icon="map" />
 
     <PageState v-if="levelsStore.loading && !levelsStore.loaded" state="loading" />
     <PageState

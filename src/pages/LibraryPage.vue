@@ -175,11 +175,7 @@ onMounted(() => {
 
 <template>
   <div class="library-page">
-    <PageHead
-      title="发音库"
-      icon="book"
-      desc="声母、韵母、音节、声调的完整音系表：点任一格看发音要点，也可以挑两关并排比较。"
-    />
+    <PageHead title="发音库" icon="book" />
 
     <div class="lib-controls">
       <div class="lib-topline">

@@ -89,11 +89,7 @@ function openClearArchive() {
 
 <template>
   <div class="account-page">
-    <PageHead
-      title="账号"
-      icon="user"
-      desc="学习进度与录音结果保存在账号里；这里可以改资料、重新标定音域和管理数据。"
-    />
+    <PageHead title="账号" icon="user" />
 
     <!-- 未登录 -->
     <section v-if="!authenticated" class="panel guest-panel">
@@ -106,7 +102,6 @@ function openClearArchive() {
       <ul class="guest-facts">
         <li>用户名 + 密码即可，不收集邮箱或手机号</li>
         <li>不提供密码找回：忘记密码只能重新注册</li>
-        <li>不做排行榜，档案只有你自己能看</li>
       </ul>
     </section>
 
@@ -116,14 +111,13 @@ function openClearArchive() {
         <span class="profile-mark"><AppIcon name="user" size="sm" /></span>
         <div>
           <h2>{{ contextStore.context.username }}</h2>
-          <p class="panel-note">登录中 · 录音与成绩会自动存进档案</p>
         </div>
       </div>
 
       <dl class="profile-rows">
         <div class="profile-row">
           <dt>音域</dt>
-          <dd>{{ contextStore.context.calibration.status === 'personal' ? '已标定，实时曲线按你的音域显示' : '未标定（可在录音前标定，也可跳过）' }}</dd>
+          <dd>{{ contextStore.context.calibration.status === 'personal' ? '已标定' : '未标定' }}</dd>
         </div>
         <div class="profile-row">
           <dt>方言区 / 母语背景</dt>

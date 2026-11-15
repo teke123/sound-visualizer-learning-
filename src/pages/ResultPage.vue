@@ -105,11 +105,7 @@ async function onRetrySubmission() {
 
     <!-- 已完成 -->
     <template v-else-if="assessment && recording">
-      <PageHead
-        :title="`${levelTitle} · 检测结果`"
-        icon="wave"
-        desc="录音质量、分数、声学曲线与下一步练习都在这一页。"
-      />
+      <PageHead :title="`${levelTitle} · 检测结果`" icon="wave" />
 
       <!-- 完成态公共主体：质量 / 分数 / 声学对比图 / 现象与四步（与页内结果共用） -->
       <ResultBody :result="assessment" :audio-id="recording.audioId" :recording-id="recordingId">

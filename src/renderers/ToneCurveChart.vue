@@ -330,7 +330,7 @@ const durationNotes = computed(() =>
   <div ref="wrapEl" class="tone-curve-chart">
     <div v-if="unavailable" class="curve-unavailable">
       <p>本次没有可用的音高曲线。</p>
-      <p class="reason">{{ curve.note ?? '这条录音未能提取有效音高，不做伪造展示。' }}</p>
+      <p class="reason">{{ curve.note ?? '这条录音没有提取到有效音高。' }}</p>
     </div>
     <template v-else>
       <div class="chart-toolbar">

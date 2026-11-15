@@ -88,7 +88,6 @@ onBeforeUnmount(() => {
         <span class="level-pinyin">{{ level.pinyin }}</span>
         <span v-if="phonology.ipa" class="ipa-badge">[{{ phonology.ipa }}]</span>
       </div>
-      <p class="level-sub">{{ level.detection ? '这一关已经开放录音，录完可以看分数与声学曲线' : '这一关目前只跟读，还不能评分' }}</p>
     </header>
 
     <aside class="level-aside">
@@ -178,15 +177,12 @@ onBeforeUnmount(() => {
   flex-wrap: wrap
 
 .level-header h1
-  font-size: 21px
+  font-family: var(--vs-font-display)
+  font-size: 23px
   margin: 0
   line-height: 1.25
-  font-weight: 900
-
-.level-sub
-  margin: 4px 0 0
-  font-size: 12.5px
-  color: var(--vs-sub)
+  font-weight: 600
+  letter-spacing: -0.01em
 
 .level-pinyin
   color: var(--vs-ink2)
@@ -245,8 +241,11 @@ onBeforeUnmount(() => {
 @media (min-width: 1024px)
   .level-view
     max-width: 1200px
+    margin-top: -40px
+    min-height: calc(100dvh - var(--lv-top, 0px))
     display: grid
     grid-template-columns: 58fr 42fr
+    grid-template-rows: auto minmax(0, 1fr)
     grid-template-areas: "header header" "aside main"
     gap: 14px 28px
     align-content: start
@@ -261,6 +260,8 @@ onBeforeUnmount(() => {
     /* 让位冻结头部：顶栏高度 + 头部自身高度 + 原有间隙 */
     top: calc(var(--lv-top, 0px) + var(--lv-head-h, 0px) + 16px)
     align-self: start
+    max-height: calc(100dvh - var(--lv-top, 0px) - var(--lv-head-h, 0px) - 16px)
+    overflow-y: auto
 
   .level-main
     display: block

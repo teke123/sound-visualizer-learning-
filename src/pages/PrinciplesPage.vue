@@ -69,11 +69,7 @@ const steps = [
 
 <template>
   <div class="principles-page">
-    <PageHead
-      title="专业资料"
-      icon="doc"
-      desc="发音原理、术语与来源：先看懂声音怎么形成，再看更细的说明。默认只给结论，不堆术语。"
-    />
+    <PageHead title="专业资料" icon="doc" />
 
     <section class="steps" aria-label="发音三步">
       <article v-for="(step, index) in steps" :key="step.title" class="step-card">
@@ -85,8 +81,6 @@ const steps = [
         <p class="step-drill"><AppIcon name="run" size="sm" />小练习：{{ step.drill }}</p>
       </article>
     </section>
-
-    <p class="vs-bound">发音原理只用来说明「怎样做更容易被听清」，学习参考，不是医学说明。</p>
 
     <section class="articles" aria-label="发音文章">
       <h2 class="art-title"><span class="vs-bar" />更多讲解</h2>
