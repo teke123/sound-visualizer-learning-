@@ -19,6 +19,7 @@ import FinalMatrix from '@/components/library/FinalMatrix.vue'
 import SyllableMatrix from '@/components/library/SyllableMatrix.vue'
 import ToneTable from '@/components/library/ToneTable.vue'
 import SoundDetailPanel from '@/components/library/SoundDetailPanel.vue'
+import TeacherDemo from '@/components/library/TeacherDemo.vue'
 import { buildCoverage } from '@/components/library/matching'
 import {
   CONFUSABLE_GROUPS,
@@ -176,6 +177,8 @@ onMounted(() => {
 <template>
   <div class="library-page">
     <PageHead title="发音库" icon="book" />
+
+    <TeacherDemo />
 
     <div class="lib-controls">
       <div class="lib-topline">
