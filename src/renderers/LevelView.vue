@@ -236,33 +236,40 @@ onBeforeUnmount(() => {
 .sec-figure
   margin-top: 0
 
-/* 桌面（≥1024px）：双栏工作台。左栏为主（58%，构形/示范常驻参照，sticky），
-   右栏 42% 训练与检测流；行距收紧让主体贴近冻结头部。 */
+/* 桌面（≥1024px）：双栏工作台。整页高度固定为一屏，
+   左栏（构形 / 示范）与头部完全不动，只有右栏（训练与检测流）内部滚动。 */
 @media (min-width: 1024px)
   .level-view
     max-width: 1100px
-    min-height: calc(100dvh - 260px)
+    flex: 1 1 auto
+    min-height: 0
     display: grid
     grid-template-columns: 58fr 42fr
     grid-template-rows: auto minmax(0, 1fr)
     grid-template-areas: "header header" "aside main"
     gap: 14px 28px
-    align-content: start
+    align-content: stretch
 
   .level-header
     grid-area: header
+    position: static
+    backdrop-filter: none
+    -webkit-backdrop-filter: none
+    background: transparent
 
   .level-aside
     display: block
     grid-area: aside
-    position: sticky
-    /* 让位冻结头部：顶栏高度 + 头部自身高度 + 原有间隙 */
-    top: calc(var(--lv-top, 0px) + var(--lv-head-h, 0px) + 16px)
-    align-self: start
-    max-height: calc(100dvh - var(--lv-top, 0px) - var(--lv-head-h, 0px) - 16px)
+    position: static
+    align-self: stretch
     overflow-y: auto
+    padding-right: 4px
+    overscroll-behavior: contain
 
   .level-main
     display: block
     grid-area: main
+    overflow-y: auto
+    padding-right: 8px
+    overscroll-behavior: contain
 </style>

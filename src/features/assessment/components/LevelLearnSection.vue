@@ -157,4 +157,16 @@ onBeforeUnmount(() => recorder.release())
 <style scoped lang="sass">
 .level-learn
   padding-bottom: 4px
+
+/* 桌面工作台：整页高度固定为一屏，LevelView 占满剩余高度，
+   下一关与反馈入口留在底部；滚动只发生在 LevelView 右栏内部。 */
+@media (min-width: 1024px)
+  .level-learn
+    height: calc(100dvh - 64px)
+    display: flex
+    flex-direction: column
+    padding-bottom: 0
+
+  .level-learn > :not(.level-view)
+    flex: none
 </style>
