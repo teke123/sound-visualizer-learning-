@@ -41,13 +41,13 @@ const phonology = computed(() =>
 /* ------------------- 粘性头部的让位测量（运行时实测） ------------------- */
 const headerEl = ref<HTMLElement | null>(null)
 
-/** 顶部让位：AppShell 手机顶栏（≤760px 显示，sticky）实测高度；桌面为 0 */
+/** 顶部让位：窄屏顶部品牌条（sticky）实测高度；桌面隐藏时为 0 */
 const topOffsetPx = ref(0)
 /** 头部实际高度：sticky 冻结后，左栏参照区的让位距离 */
 const headerHeightPx = ref(0)
 
 function readOffsets() {
-  const appTopBar = document.querySelector('.app-shell > .topbar')
+  const appTopBar = document.querySelector('.app-shell .app-header')
   const barH = appTopBar ? appTopBar.getBoundingClientRect().height : 0
   topOffsetPx.value = barH > 0 ? Math.round(barH) : 0
   headerHeightPx.value = headerEl.value
@@ -240,9 +240,8 @@ onBeforeUnmount(() => {
    右栏 42% 训练与检测流；行距收紧让主体贴近冻结头部。 */
 @media (min-width: 1024px)
   .level-view
-    max-width: 1200px
-    margin-top: -40px
-    min-height: calc(100dvh - var(--lv-top, 0px))
+    max-width: 1100px
+    min-height: calc(100dvh - 260px)
     display: grid
     grid-template-columns: 58fr 42fr
     grid-template-rows: auto minmax(0, 1fr)

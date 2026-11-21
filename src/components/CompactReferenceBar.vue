@@ -51,13 +51,13 @@ let observer: IntersectionObserver | null = null
 let recordIntersecting = false
 
 /**
- * 顶栏让位：AppShell 手机顶栏（≤760px 显示，sticky z-100）运行时实测高度；
- * 桌面 761–1023px 区间顶栏隐藏（高度 0）则贴顶 top: 0。
+ * 顶栏让位：AppShell 窄屏顶部品牌条（sticky）运行时实测高度；
+ * 桌面隐藏（高度 0）则贴顶 top: 0。
  */
 const topOffsetPx = ref(0)
 
 function readTopOffset() {
-  const appTopBar = document.querySelector('.app-shell > .topbar')
+  const appTopBar = document.querySelector('.app-shell .app-header')
   const height = appTopBar ? appTopBar.getBoundingClientRect().height : 0
   topOffsetPx.value = height > 0 ? Math.round(height) : 0
 }

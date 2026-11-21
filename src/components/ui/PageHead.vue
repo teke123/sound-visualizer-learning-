@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
- * PageHead：全站统一页头（渐变图标方块 + 标题 + 一句说明）。
- * 外观定义在 src/css/theme.sass 的 .vs-page-head，页面只需给标题、说明与图标名。
+ * PageHead：全站统一页头（渐变图标方块 + 标题 + 可选说明）。
+ * 外观定义在 src/css/theme.sass 的 .vs-page-head。
  */
 import AppIcon from './AppIcon.vue'
 
@@ -31,14 +31,10 @@ withDefaults(
 .vs-page-head h1,
 .vs-page-head h2
   font-family: var(--vs-font-display)
-  font-size: 32px
-  font-weight: 600
-  letter-spacing: -0.02em
-  line-height: 1.26
+  font-size: 17px
+  font-weight: 800
+  letter-spacing: -0.01em
+  line-height: 1.4
   margin: 0
-
-@media (max-width: 900px)
-  .vs-page-head h1,
-  .vs-page-head h2
-    font-size: 24px
+  color: var(--vs-ink)
 </style>

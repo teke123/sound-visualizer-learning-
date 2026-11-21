@@ -1,86 +1,91 @@
 /* ==========================================================================
-   看得见的声音 · 视觉规范 V4（编辑感 / 测评工具）
-   绛红 + 米白 + 蜜桃：深色章节带、白色内容卡、衬线标题、胶囊按钮。
-   色板集中在下方 :root，页面与组件只引用 CSS 变量与 .vs-* 类。
+   看得见的声音 · 视觉规范 V5（清透蓝 / 卡片工作台）
+   依据组长提供的单文件原型：浅蓝底、白卡、蓝色渐变主按钮、右侧竖导航。
+   色板集中在 :root，页面与组件只引用 CSS 变量与 .vs-* 类。
    ========================================================================== */
 
 :root
   /* 底色与文字 */
-  --vs-bg: #fbf4ea
-  --vs-bg-rgb: 251, 244, 234
+  --vs-bg: #f1f7fc
+  --vs-bg-rgb: 241, 247, 252
   --vs-card: #ffffff
   --vs-card-rgb: 255, 255, 255
   --vs-field: #ffffff
-  --vs-ink: #2a1620
-  --vs-ink2: #46232f
-  --vs-sub: #6e5058
-  --vs-mute: #9b7c83
-  --vs-mute-2: #c7b0b5
-  --vs-line: #f1e0d3
-  --vs-line2: #e4cdbd
-  --vs-line2-rgb: 228, 205, 189
-  --vs-line-hover: #d3b4a0
-  --vs-line-strong: #c39f89
+  --vs-ink: #142639
+  --vs-ink2: #1b3149
+  --vs-sub: #566a80
+  --vs-mute: #7b849f
+  --vs-mute-2: #aeb7c8
+  --vs-line: #e4eef7
+  --vs-line2: #dce8f4
+  --vs-line2-rgb: 220, 232, 244
+  --vs-line-hover: #cbe6f8
+  --vs-line-strong: #bfd2f5
 
-  /* 品牌强调 */
-  --vs-brand: #6a1230
-  --vs-brand-d: #4a0a20
-  --vs-brand-rgb: 106, 18, 48
-  --vs-brand-soft: #f8e4d9
-  --vs-brand-line: #e9cabd
-  --vs-sand: #e9c7a9
+  /* 品牌蓝 */
+  --vs-brand: #1e93e8
+  --vs-brand-d: #1467a8
+  --vs-brand-rgb: 30, 147, 232
+  --vs-brand-soft: #e9f4fe
+  --vs-brand-line: #cbe6f8
+  --vs-sand: #a6d8f4
 
-  /* 主按钮 / 选中态 */
-  --vs-coffee: #5c1129
-  --vs-coffee-d: #3e0919
-  --vs-coffee-2: #6e1b35
-  --vs-coffee-a: #64132c
-  --vs-coffee-b: #450b1e
-  --vs-coffee-a-hover: #521026
-  --vs-coffee-b-hover: #350716
-  --vs-on-coffee: #fff5ec
+  /* 主按钮 / 选中态（沿用旧变量名，统一映射到蓝） */
+  --vs-coffee: #1477c4
+  --vs-coffee-d: #0f63a8
+  --vs-coffee-2: #2aa0ee
+  --vs-coffee-a: #2aa0ee
+  --vs-coffee-b: #1477c4
+  --vs-coffee-a-hover: #3aaaf2
+  --vs-coffee-b-hover: #1779c9
+  --vs-on-coffee: #ffffff
 
   /* 浅色面板 */
-  --vs-soft: #f8e7da
-  --vs-soft-2: #fbf2e8
-  --vs-panel: #fff8f0
-  --vs-panel-rgb: 255, 248, 240
+  --vs-soft: #eff4fa
+  --vs-soft-2: #f6f9fe
+  --vs-panel: #f2f9ff
+  --vs-panel-rgb: 242, 249, 255
 
-  /* 章节带（深色 / 蜜桃） */
-  --vs-band: #4a0c22
-  --vs-band-rgb: 74, 12, 34
-  --vs-band-ink: #f8ece1
-  --vs-band-ink-rgb: 248, 236, 225
-  --vs-band-sub: #d9b7a9
-  --vs-peach: #f8dfcb
-  --vs-peach-soft: #fbead9
+  /* 章节带（旧组件兼容，映射到蓝色块） */
+  --vs-band: #1b7fc8
+  --vs-band-rgb: 27, 127, 200
+  --vs-band-ink: #ffffff
+  --vs-band-ink-rgb: 255, 255, 255
+  --vs-band-sub: #d9ecfb
+  --vs-peach: #e9f4fe
+  --vs-peach-soft: #eff7fe
 
   /* 语义色 */
-  --vs-green: #4f7a48
-  --vs-green-soft: #eef4e7
-  --vs-green-line: #bfd4b4
-  --vs-green-d: #3f6639
-  --vs-amber-soft: #f9e3cc
-  --vs-amber-ink: #7a3d12
-  --vs-danger-line: #ebc0b4
-  --vs-danger-soft: #fdf3ef
+  --vs-green: #12a67b
+  --vs-green-soft: #e9f8f2
+  --vs-green-line: #bfe6d8
+  --vs-green-d: #0b7d5f
+  --vs-amber: #c8873a
+  --vs-amber-soft: #fdf4e6
+  --vs-amber-ink: #8f6425
+  --vs-violet: #22a7d8
+  --vs-violet-soft: #e7f6fc
+  --vs-danger-line: #ebc0c8
+  --vs-danger-soft: #fdf3f5
+  --vs-danger-ink: #b4445c
 
   /* 阴影与光晕 */
-  --vs-shadow-rgb: 58, 26, 34
-  --vs-glow-rgb: 106, 18, 48
+  --vs-shadow-rgb: 20, 38, 57
+  --vs-glow-rgb: 30, 147, 232
+  --vs-sh-1: 0 1px 2px rgba(20, 38, 57, 0.04), 0 6px 20px rgba(20, 38, 57, 0.05)
+  --vs-sh-2: 0 2px 6px rgba(20, 38, 57, 0.05), 0 16px 36px rgba(20, 38, 57, 0.1)
+  --vs-sh-3: 0 3px 8px rgba(20, 38, 57, 0.05), 0 24px 52px rgba(20, 38, 57, 0.14)
 
   /* 形状与动效 */
-  --vs-r: 12px
-  --vs-r-lg: 20px
-  --vs-sh-1: 0 1px 2px rgba(var(--vs-shadow-rgb), 0.04), 0 2px 8px rgba(var(--vs-shadow-rgb), 0.05)
-  --vs-sh-2: 0 2px 4px rgba(var(--vs-shadow-rgb), 0.05), 0 12px 32px rgba(var(--vs-shadow-rgb), 0.10)
-  --vs-sh-3: 0 4px 8px rgba(var(--vs-shadow-rgb), 0.06), 0 32px 64px rgba(var(--vs-shadow-rgb), 0.16)
-  --vs-ease: cubic-bezier(0.2, 0.7, 0.3, 1)
+  --vs-r: 10px
+  --vs-r-md: 14px
+  --vs-r-lg: 16px
+  --vs-ease: cubic-bezier(0.22, 0.61, 0.36, 1)
   --vs-safe: env(safe-area-inset-bottom)
 
-  /* 字体：正文无衬线，标题衬线（编辑感） */
-  --vs-font: 'MiSans', 'HarmonyOS Sans', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', system-ui, -apple-system, sans-serif
-  --vs-font-display: 'Noto Serif SC', 'Songti SC', 'Source Han Serif SC', 'SimSun', serif
+  /* 字体：统一无衬线，标题靠字重与字距拉开层次 */
+  --vs-font: 'PingFang SC', 'Microsoft YaHei', 'Hiragino Sans GB', 'Noto Sans CJK SC', system-ui, -apple-system, sans-serif
+  --vs-font-display: 'PingFang SC', 'Microsoft YaHei', 'Hiragino Sans GB', 'Noto Sans CJK SC', system-ui, -apple-system, sans-serif
 
 /* ==========================================================================
    基础
@@ -92,28 +97,28 @@ html
 
 body
   margin: 0
-  background: var(--vs-bg)
+  background: radial-gradient(880px 520px at 8% -10%, #e6f3fd 0%, rgba(231, 237, 252, 0) 62%), radial-gradient(760px 460px at 92% 2%, #e6f6fb 0%, rgba(238, 233, 253, 0) 58%), linear-gradient(180deg, #f4f7fd 0%, #f3f6fc 45%, #f0f4fa 100%)
+  background-attachment: fixed
   color: var(--vs-ink)
   font-family: var(--vs-font)
-  line-height: 1.6
+  line-height: 1.7
   -webkit-font-smoothing: antialiased
   -webkit-text-size-adjust: 100%
   overflow-x: hidden
-  transition: background-color 0.25s var(--vs-ease), color 0.25s var(--vs-ease)
 
 ::selection
-  background: rgba(var(--vs-brand-rgb), 0.14)
+  background: rgba(var(--vs-brand-rgb), 0.16)
+  color: var(--vs-ink)
 
 :focus-visible
-  outline: 2px solid var(--vs-brand)
+  outline: 3px solid #a3d6f2
   outline-offset: 2px
-  border-radius: var(--vs-r)
+  border-radius: 6px
 
 img
   max-width: 100%
   height: auto
 
-/* 图标基类（AppIcon 输出） */
 .vs-ico
   width: 20px
   height: 20px
@@ -145,50 +150,45 @@ img
 
 .vs-bound
   margin-top: 16px
-  background: var(--vs-panel)
-  border: 1px solid var(--vs-line)
-  border-radius: var(--vs-r)
+  background: var(--vs-soft)
+  border-radius: var(--vs-r-md)
   padding: 12px 16px
   font-size: 12px
-  color: var(--vs-mute)
+  color: var(--vs-sub)
 
-/* 区块标题：衬线大标题 + 短竖线 */
+/* 区块标题：蓝色短竖线 + 20px 黑体 */
 .vs-sect
-  margin-top: 88px
+  margin-top: 34px
 
 .vs-sect > h2
-  font-family: var(--vs-font-display)
-  font-size: 38px
-  font-weight: 600
-  letter-spacing: -0.02em
-  line-height: 1.24
+  font-size: 20px
+  font-weight: 900
+  letter-spacing: -0.2px
+  line-height: 1.35
   color: var(--vs-ink)
   display: flex
   align-items: center
-  gap: 14px
+  gap: 8px
   margin: 0
 
 .vs-sect > h2 .vs-bar
   display: block
   flex: none
-  width: 4px
-  height: 30px
-  border-radius: 2px
-  background: var(--vs-brand)
-  box-shadow: none
+  width: 5px
+  height: 19px
+  border-radius: 3px
+  background: linear-gradient(180deg, #52b0ec, #22a7d8)
 
 .vs-sect > .vs-lead
-  margin: 10px 0 0
-  font-size: 15px
+  margin: 8px 0 0
+  font-size: 13.5px
   color: var(--vs-sub)
-  line-height: 1.8
-  max-width: 720px
+  line-height: 1.9
+  max-width: 760px
 
-/* 衬线显示字：落地页大标题用 */
 .vs-display
-  font-family: var(--vs-font-display)
-  font-weight: 600
-  letter-spacing: -0.02em
+  font-weight: 800
+  letter-spacing: -0.2px
 
 /* ==========================================================================
    卡片 / 页头
@@ -196,16 +196,14 @@ img
 
 .vs-card
   background: var(--vs-card)
-  border: 1px solid var(--vs-line)
-  border-radius: var(--vs-r)
-  padding: 24px
+  border: 1px solid rgba(20, 38, 57, 0.055)
+  border-radius: var(--vs-r-lg)
+  padding: 20px
   box-shadow: var(--vs-sh-1)
 
 .vs-card > h3
-  font-family: var(--vs-font-display)
-  font-size: 21px
-  font-weight: 600
-  letter-spacing: -0.01em
+  font-size: 15.5px
+  font-weight: 700
   display: flex
   align-items: center
   gap: 8px
@@ -214,47 +212,45 @@ img
 .vs-card > h3 .vs-ico
   color: var(--vs-brand)
 
-/* 页头：图标方块 + 标题 + 一句说明 */
+/* 页头：图标方块 + 标题 */
 .vs-page-head
   background: var(--vs-card)
-  border: 1px solid var(--vs-line)
+  border: 1px solid rgba(20, 38, 57, 0.055)
   border-radius: var(--vs-r-lg)
-  padding: 24px
+  padding: 16px 20px
   display: flex
-  gap: 16px
+  gap: 12px
   align-items: flex-start
   box-shadow: var(--vs-sh-1)
 
 .vs-page-head .vs-mark
   width: 40px
   height: 40px
-  border-radius: var(--vs-r)
+  border-radius: 12px
   flex: none
-  color: var(--vs-on-coffee)
+  color: #fff
   display: flex
   align-items: center
   justify-content: center
-  background: var(--vs-brand)
-  box-shadow: none
+  background: linear-gradient(135deg, #52b0ec, #22a7d8)
+  box-shadow: 0 8px 18px rgba(30, 147, 232, 0.22)
 
 .vs-page-head h2
-  font-family: var(--vs-font-display)
-  font-size: 30px
-  font-weight: 600
-  letter-spacing: -0.02em
-  line-height: 1.28
+  font-size: 17px
+  font-weight: 800
+  line-height: 1.4
   margin: 0
 
 .vs-page-head p
   margin: 4px 0 0
-  font-size: 13.5px
+  font-size: 12.5px
   color: var(--vs-sub)
   line-height: 1.6
 
 .vs-crumb
-  margin: 24px 0 16px
-  font-size: 13px
-  color: var(--vs-mute)
+  margin: 8px 0 12px
+  font-size: 12.5px
+  color: var(--vs-sub)
   display: flex
   align-items: center
   gap: 6px
@@ -263,12 +259,12 @@ img
 .vs-crumb button
   border: none
   background: none
-  color: var(--vs-sub)
+  color: var(--vs-brand-d)
   cursor: pointer
-  font-size: 13px
+  font-size: 12.5px
   font-weight: 600
   padding: 4px 0
-  border-radius: var(--vs-r)
+  border-radius: 6px
   text-decoration: none
 
 .vs-crumb a:hover,
@@ -282,15 +278,15 @@ img
 .vs-btn
   border: none
   cursor: pointer
-  border-radius: 999px
+  border-radius: 13px
   min-height: 44px
-  padding: 0 22px
+  padding: 0 20px
   font-family: inherit
   font-size: 14.5px
-  font-weight: 600
-  color: var(--vs-on-coffee)
-  background: var(--vs-coffee)
-  box-shadow: 0 2px 6px rgba(var(--vs-shadow-rgb), 0.16)
+  font-weight: 700
+  color: #fff
+  background: linear-gradient(135deg, #2aa0ee, #1477c4)
+  box-shadow: 0 8px 20px rgba(30, 147, 232, 0.24)
   display: inline-flex
   align-items: center
   justify-content: center
@@ -299,40 +295,42 @@ img
   transition: background 0.16s var(--vs-ease), box-shadow 0.16s var(--vs-ease), transform 0.16s var(--vs-ease)
 
 .vs-btn:hover
-  background: var(--vs-coffee-2)
-  box-shadow: 0 6px 16px rgba(var(--vs-shadow-rgb), 0.22)
+  background: linear-gradient(135deg, #3aaaf2, #1779c9)
+  box-shadow: 0 10px 24px rgba(30, 147, 232, 0.3)
 
 .vs-btn:active
   transform: translateY(1px)
 
 .vs-btn:disabled,
 .vs-btn[aria-disabled='true']
-  opacity: 0.4
+  opacity: 0.45
   cursor: default
   transform: none
   box-shadow: none
 
 .vs-btn--ghost
-  background: transparent
-  color: var(--vs-ink2)
-  box-shadow: inset 0 0 0 1px var(--vs-line-strong)
+  background: #fff
+  color: var(--vs-ink)
+  box-shadow: inset 0 0 0 1px var(--vs-line)
+  border: 1px solid rgba(20, 38, 57, 0.06)
 
 .vs-btn--ghost:hover
-  background: var(--vs-soft-2)
-  color: var(--vs-coffee)
-  box-shadow: inset 0 0 0 1px var(--vs-ink2)
+  background: #f6f9fe
+  color: var(--vs-brand-d)
+  border-color: #d2e2f0
+  box-shadow: inset 0 0 0 1px #d2e2f0
 
 .vs-btn--soft
   background: var(--vs-brand-soft)
-  color: var(--vs-coffee)
+  color: var(--vs-brand-d)
   box-shadow: none
 
 .vs-btn--soft:hover
-  background: var(--vs-brand-line)
+  background: #e4ebfe
 
 .vs-btn--small
-  min-height: 36px
-  padding: 0 16px
+  min-height: 38px
+  padding: 0 14px
   font-size: 13px
 
 .vs-tag
@@ -340,40 +338,39 @@ img
   align-items: center
   gap: 4px
   border-radius: 999px
-  padding: 3px 10px
-  font-size: 11.5px
-  font-weight: 600
-  letter-spacing: 0.02em
-  background: var(--vs-soft)
-  color: var(--vs-sub)
-
-.vs-tag--ok
-  background: var(--vs-soft)
+  padding: 4px 9px
+  font-size: 12px
+  font-weight: 700
+  background: var(--vs-brand-soft)
   color: var(--vs-brand-d)
 
+.vs-tag--ok
+  background: var(--vs-green-soft)
+  color: var(--vs-green-d)
+
 .vs-chip
-  border: 1px solid var(--vs-line2)
-  background: var(--vs-card)
-  color: var(--vs-sub)
+  border: 1.5px solid var(--vs-line)
+  background: #fff
+  color: #5f6a85
   cursor: pointer
   border-radius: 999px
   padding: 0 16px
-  height: 34px
+  height: 38px
   font-family: inherit
   font-size: 13px
-  font-weight: 500
+  font-weight: 600
   transition: background 0.16s var(--vs-ease), color 0.16s var(--vs-ease), border-color 0.16s var(--vs-ease)
 
 .vs-chip:hover
-  background: var(--vs-soft-2)
-  color: var(--vs-ink)
+  background: #f6f9fe
+  color: var(--vs-brand-d)
 
 .vs-chip[aria-pressed='true'],
 .vs-chip.is-on
-  background: var(--vs-coffee)
-  border-color: var(--vs-coffee)
-  color: var(--vs-on-coffee)
-  font-weight: 600
+  background: linear-gradient(135deg, #2aa0ee, #1477c4)
+  border-color: transparent
+  color: #fff
+  box-shadow: 0 6px 16px rgba(30, 147, 232, 0.24)
 
 /* ==========================================================================
    加载 / 空态
@@ -381,26 +378,26 @@ img
 
 .vs-state
   text-align: center
-  padding: 64px 24px
+  padding: 44px 20px
   color: var(--vs-sub)
 
 .vs-state .vs-ico
   margin: 0 auto 12px
-  color: var(--vs-mute)
+  color: #b7c1d6
 
 .vs-state p
   font-size: 14px
-  line-height: 1.7
+  line-height: 1.9
   margin: 0
 
 .vs-spin
-  width: 28px
-  height: 28px
-  margin: 0 auto 16px
+  width: 32px
+  height: 32px
+  margin: 0 auto 12px
   border-radius: 50%
-  border: 2.5px solid var(--vs-line2)
+  border: 3.5px solid #e2ebf5
   border-top-color: var(--vs-brand)
-  animation: vs-spin 0.8s linear infinite
+  animation: vs-spin 0.9s linear infinite
 
 @keyframes vs-spin
   to
@@ -409,7 +406,7 @@ img
 @keyframes vs-fade-rise
   from
     opacity: 0
-    transform: translateY(8px)
+    transform: translateY(10px)
   to
     opacity: 1
     transform: translateY(0)
@@ -427,76 +424,70 @@ img
     opacity: 1
 
 /* ==========================================================================
-   Quasar 控件对齐 V3 观感
-   （只覆盖观感，不改行为；页面里继续用 QBtn / QInput / QCard / QTabs）
+   Quasar 控件对齐新观感
    ========================================================================== */
 
-/* —— 卡片 —— */
 .q-card
   background: var(--vs-card)
   color: var(--vs-ink)
-  border-radius: var(--vs-r)
+  border-radius: var(--vs-r-lg)
   box-shadow: var(--vs-sh-1)
 
 .q-card--bordered
   border: 1px solid var(--vs-line)
 
-/* —— 按钮：主按钮深咖啡渐变，描边按钮白底沙边 —— */
 .q-btn
-  border-radius: var(--vs-r)
-  font-weight: 600
+  border-radius: 13px
+  font-weight: 700
   text-transform: none
 
 .q-btn--rounded
   border-radius: 999px
 
 .q-btn.bg-primary
-  background: linear-gradient(180deg, var(--vs-coffee-a), var(--vs-coffee-b)) !important
-  color: var(--vs-on-coffee) !important
-  box-shadow: 0 2px 6px rgba(var(--vs-shadow-rgb), 0.18)
+  background: linear-gradient(135deg, #2aa0ee, #1477c4) !important
+  color: #fff !important
+  box-shadow: 0 8px 20px rgba(30, 147, 232, 0.24)
 
 .q-btn.bg-primary:hover
-  box-shadow: 0 4px 12px rgba(var(--vs-shadow-rgb), 0.24)
+  box-shadow: 0 10px 24px rgba(30, 147, 232, 0.3)
 
-/* 录音等的实底按钮统一收进咖啡色系（红色只做强调） */
 .q-btn.bg-red-8,
 .q-btn.bg-blue-grey-8
-  background: linear-gradient(180deg, var(--vs-coffee-a), var(--vs-coffee-b)) !important
-  color: var(--vs-on-coffee) !important
+  background: linear-gradient(135deg, #2aa0ee, #1477c4) !important
+  color: #fff !important
 
 .q-btn--outline
-  background: var(--vs-card)
+  background: #fff
   color: var(--vs-ink2) !important
 
 .q-btn--outline:before
-  border: 1px solid var(--vs-line2)
+  border: 1px solid var(--vs-line)
 
 .q-btn--outline:hover:before
   border-color: var(--vs-line-hover)
 
-/* 危险 / 删除类描边按钮保留红字，但换成品牌红 */
 .q-btn--outline.text-red-9,
 .q-btn--outline.text-negative
-  color: var(--vs-brand-d) !important
+  color: var(--vs-danger-ink) !important
+
 .q-btn--outline.text-red-9:before,
 .q-btn--outline.text-negative:before
   border-color: var(--vs-danger-line)
 
-/* 扁平按钮保持透明底 */
 .q-btn--flat
   box-shadow: none
 
-/* —— 输入框 / 选择框 —— */
 .q-field--outlined .q-field__control
-  background: var(--vs-card)
-  border-radius: var(--vs-r)
+  background: #fff
+  border-radius: var(--vs-r-md)
 
 .q-field--outlined .q-field__control:before
-  border: 1px solid var(--vs-line2)
+  border: 1px solid var(--vs-line)
 
 .q-field--outlined.q-field--focused .q-field__control:after
-  border: 1px solid var(--vs-line-strong)
-  box-shadow: 0 0 0 4px rgba(var(--vs-glow-rgb), 0.1)
+  border: 1px solid var(--vs-brand-line)
+  box-shadow: 0 0 0 4px rgba(var(--vs-glow-rgb), 0.08)
 
 .q-field__native,
 .q-field__input,
@@ -506,7 +497,6 @@ img
 .q-field__native::placeholder
   color: var(--vs-mute)
 
-/* —— 页签 —— */
 .q-tab
   color: var(--vs-sub)
   font-weight: 600
@@ -514,67 +504,65 @@ img
 .q-tab--active
   color: var(--vs-ink)
 
-/* Quasar 的 $primary 烘焙成暖沙色，个别控件用 text-primary 染色，
-   在青瓷主题下补一条覆盖，保持与色板一致 */
 .q-tab.text-primary,
 .q-spinner.text-primary
-  color: var(--vs-coffee) !important
+  color: var(--vs-brand-d) !important
 
 .q-tabs .q-tab__indicator
   background: var(--vs-brand)
 
-/* —— 徽章 / 勾选 / 折叠 —— */
 .q-badge
   border-radius: 6px
-  font-weight: 600
+  font-weight: 700
 
 .q-checkbox__inner--truthy
-  color: var(--vs-coffee) !important
+  color: var(--vs-brand) !important
 
 .q-expansion-item
   background: var(--vs-card)
   border: 1px solid var(--vs-line)
-  border-radius: var(--vs-r)
+  border-radius: var(--vs-r-lg)
   box-shadow: var(--vs-sh-1)
   overflow: hidden
 
 .q-expansion-item .q-item
   color: var(--vs-ink2)
 
-/* —— 弹窗 —— */
 .q-dialog__backdrop
-  background: rgba(var(--vs-shadow-rgb), 0.44)
+  background: rgba(40, 48, 70, 0.42)
 
 .q-dialog .q-card
   background: var(--vs-card)
   border: none
-  border-radius: var(--vs-r)
+  border-radius: var(--vs-r-lg)
   box-shadow: var(--vs-sh-3)
 
-/* —— 提示条 —— */
 .q-notification
-  background: var(--vs-ink)
-  color: var(--vs-on-coffee)
-  border-radius: var(--vs-r)
+  background: rgba(40, 48, 70, 0.94)
+  color: #fff
+  border-radius: var(--vs-r-md)
   font-family: var(--vs-font)
 
-/* —— 下拉菜单 —— */
 .q-menu
-  background: var(--vs-card)
+  background: #fff
   border: 1px solid var(--vs-line)
-  border-radius: var(--vs-r)
+  border-radius: var(--vs-r-md)
   box-shadow: var(--vs-sh-2)
 
-/* —— 滚动条（桌面）：细、低调 —— */
 @media (min-width: 761px)
   ::-webkit-scrollbar
-    width: 10px
-    height: 10px
+    width: 11px
+    height: 11px
 
   ::-webkit-scrollbar-thumb
-    background: var(--vs-line-strong)
-    border: 3px solid var(--vs-bg)
+    background: #d3dae8
+    border: 3px solid transparent
     border-radius: 999px
+    background-clip: content-box
+
+  ::-webkit-scrollbar-thumb:hover
+    background: #bdc7db
+    background-clip: content-box
 
   ::-webkit-scrollbar-track
     background: transparent

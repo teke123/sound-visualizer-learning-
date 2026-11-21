@@ -79,8 +79,8 @@ const option = computed(() => {
               data: circle,
               showSymbol: false,
               smooth: true,
-              lineStyle: { width: 2, type: 'dashed' as const, color: '#a8743f' },
-              itemStyle: { color: '#a8743f' },
+              lineStyle: { width: 2, type: 'dashed' as const, color: '#93a8c4' },
+              itemStyle: { color: '#93a8c4' },
               silent: true,
             },
           ]

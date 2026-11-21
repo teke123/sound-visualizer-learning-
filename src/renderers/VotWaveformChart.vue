@@ -156,7 +156,7 @@ const sides = computed<SideView[]>(() => {
       envelope: referenceEnvelope.value,
       failed: referenceFailed.value,
       span: props.vot.reference,
-      color: '#a8743f',
+      color: '#93a8c4',
     })
   }
   return list
@@ -218,7 +218,7 @@ function optionFor(side: SideView) {
           symbol: 'none',
           animation: false,
           lineStyle: { color: '#cb3a2e', type: 'solid' as const, width: 1.5 },
-          label: { formatter: '嗓音起始', position: 'insideEndTop' as const, fontSize: 11, color: '#7c6450' },
+          label: { formatter: '嗓音起始', position: 'insideEndTop' as const, fontSize: 11, color: '#566a80' },
           data: span ? [{ xAxis: span.voicingOnsetSec }] : [],
         },
       },

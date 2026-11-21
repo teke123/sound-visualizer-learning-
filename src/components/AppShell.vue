@@ -1,368 +1,468 @@
 <script setup lang="ts">
 /**
- * AppShell · V4（编辑感）
- * 顶部：悬浮胶囊导航（品牌 / 一级导航 / 搜索 / 开始练 / 账号）
- * 底部：深色页脚（站内导航 + 说明 + 超大字号品牌）
- * 原来的底部悬浮导航与主题切换按钮已移除，导航统一放在顶部。
+ * AppShell · V5（清透蓝 / 右侧竖导航）
+ * 右侧固定竖导航（可收起）+ 内容滚动区 + 页脚；窄屏改为顶部品牌条 + 抽屉式导航。
  */
-import { computed, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { useContextStore } from '@/stores/context'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import AppIcon from '@/components/ui/AppIcon.vue'
 
 const route = useRoute()
-const router = useRouter()
-const contextStore = useContextStore()
 
-const navItems = [
-  { to: '/', label: '首页' },
-  { to: '/map', label: '发音地图' },
-  { to: '/library', label: '发音库' },
-  { to: '/principles', label: '专业资料' },
-  { to: '/archive', label: '声音档案' },
+interface RailItem {
+  to: string
+  label: string
+  desc: string
+  icon: string
+}
+
+const studyItems: RailItem[] = [
+  { to: '/', label: '首页', desc: '面板与快捷入口', icon: 'home' },
+  { to: '/map', label: '发音地图', desc: '单韵母 / 声母 / 拼读', icon: 'map' },
+  { to: '/library', label: '发音库', desc: '按声母 / 韵母分册', icon: 'book' },
 ]
 
-const searchTerm = ref('')
+const toolItems: RailItem[] = [
+  { to: '/principles', label: '专业资料', desc: '发音原理与依据', icon: 'doc' },
+  { to: '/archive', label: '声音档案', desc: '练过的关与录音', icon: 'folder' },
+  { to: '/account', label: '账号', desc: '资料、音域与数据', icon: 'user' },
+]
 
-const accountLabel = computed(
-  () => (contextStore.isAuthenticated && contextStore.context.username) || '登录',
-)
-
-/** 首页把产品名放进英雄区大字，导航里不再重复 */
-const isHome = computed(() => route.name === 'home')
+const railHidden = ref(false)
+const mobileOpen = ref(false)
 
 function isActive(to: string): boolean {
   if (to === '/') return route.path === '/'
   if (to === '/library') return route.path === '/library' || route.path.startsWith('/learn')
+  if (to === '/archive') return route.path === '/archive' || route.path.startsWith('/result')
   return route.path === to || route.path.startsWith(`${to}/`)
 }
 
-function submitSearch() {
-  const q = searchTerm.value.trim()
-  if (!q) return
-  void router.push({ path: '/search', query: { q } })
-  searchTerm.value = ''
+function isNarrow(): boolean {
+  return typeof window !== 'undefined' && window.innerWidth <= 900
 }
+
+function toggleRail() {
+  if (isNarrow()) {
+    mobileOpen.value = !mobileOpen.value
+    return
+  }
+  railHidden.value = !railHidden.value
+}
+
+function closeMobile() {
+  mobileOpen.value = false
+}
+
+watch(
+  () => route.fullPath,
+  () => {
+    closeMobile()
+  },
+)
+
+function onResize() {
+  if (!isNarrow()) mobileOpen.value = false
+}
+
+onMounted(() => {
+  window.addEventListener('resize', onResize)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', onResize)
+})
 </script>
 
 <template>
-  <div class="app-shell">
-    <header class="topbar">
-      <div class="topbar-in">
-        <RouterLink to="/" class="brand" aria-label="看得见的声音 · 回到首页">
-          <span class="brand-mark"><AppIcon name="wave" size="sm" /></span>
-          <span v-if="!isHome" class="brand-name">看得见的声音</span>
+  <div
+    class="app-shell"
+    :class="{ 'rail-hidden': railHidden, 'mobile-open': mobileOpen }"
+  >
+    <aside class="rail" aria-label="主导航">
+      <RouterLink to="/" class="rail-brand" title="回到首页">
+        <span class="mark"><AppIcon name="wave" size="sm" /></span>
+        <div>
+          <b>看得见的声音</b>
+          <span>普通话发音学习</span>
+        </div>
+      </RouterLink>
+
+      <p class="rail-sec">学习</p>
+      <RouterLink
+        v-for="item in studyItems"
+        :key="item.to"
+        :to="item.to"
+        class="ritem"
+        :class="{ on: isActive(item.to) }"
+        @click="closeMobile"
+      >
+        <span class="ic"><AppIcon :name="item.icon" size="sm" /></span>
+        <span class="tx"><b>{{ item.label }}</b><small>{{ item.desc }}</small></span>
+      </RouterLink>
+
+      <p class="rail-sec">家长与检测</p>
+      <RouterLink
+        v-for="item in toolItems"
+        :key="item.to"
+        :to="item.to"
+        class="ritem"
+        :class="{ on: isActive(item.to) }"
+        @click="closeMobile"
+      >
+        <span class="ic"><AppIcon :name="item.icon" size="sm" /></span>
+        <span class="tx"><b>{{ item.label }}</b><small>{{ item.desc }}</small></span>
+      </RouterLink>
+    </aside>
+
+    <button
+      type="button"
+      class="rail-toggle"
+      :aria-expanded="isNarrow() ? mobileOpen : !railHidden"
+      :aria-label="isNarrow() ? '打开导航' : railHidden ? '展开导航' : '收起导航'"
+      :title="isNarrow() ? '打开导航' : railHidden ? '展开导航' : '收起导航'"
+      @click="toggleRail"
+    >
+      <AppIcon name="chev" size="sm" />
+    </button>
+
+    <div class="rail-scrim" aria-hidden="true" @click="closeMobile" />
+
+    <div class="pane">
+      <header class="app-header">
+        <RouterLink to="/" class="logo" title="回到首页">
+          <span class="mark"><AppIcon name="wave" size="sm" /></span>
+          看得见的声音
         </RouterLink>
+        <button type="button" class="btn-quiet" @click="toggleRail">
+          <span>更多</span>
+          <AppIcon name="chev" size="sm" />
+        </button>
+      </header>
 
-        <nav class="nav" aria-label="主导航">
-          <RouterLink
-            v-for="item in navItems"
-            :key="item.to"
-            :to="item.to"
-            class="nav-link"
-            :class="{ on: isActive(item.to) }"
-            :aria-current="isActive(item.to) ? 'page' : undefined"
-          >
-            {{ item.label }}
-          </RouterLink>
-        </nav>
-
-        <div class="nav-right">
-          <form class="nav-search" role="search" @submit.prevent="submitSearch">
-            <AppIcon name="search" size="sm" />
-            <input
-              v-model="searchTerm"
-              type="search"
-              placeholder="搜拼音 / 汉字"
-              aria-label="搜索关卡"
-              enterkeyhint="search"
-            />
-          </form>
-
-          <RouterLink to="/account" class="account">{{ accountLabel }}</RouterLink>
-
-          <RouterLink to="/map" class="nav-cta">
-            开始练
-            <AppIcon name="arrow" size="sm" />
-          </RouterLink>
-        </div>
-      </div>
-    </header>
-
-    <main class="shell-main">
-      <slot />
-    </main>
-
-    <footer class="site-foot">
-      <div class="foot-in">
-        <div class="foot-brand">
-          <span class="brand-mark"><AppIcon name="wave" size="sm" /></span>
-          <span class="foot-brand-name">看得见的声音</span>
-        </div>
-
-        <nav class="foot-links" aria-label="页脚导航">
-          <RouterLink to="/map">发音地图</RouterLink>
-          <RouterLink to="/library">发音库</RouterLink>
-          <RouterLink to="/principles">专业资料</RouterLink>
-          <RouterLink to="/archive">声音档案</RouterLink>
-          <RouterLink to="/search">搜索</RouterLink>
-          <RouterLink to="/account">账号</RouterLink>
-        </nav>
-      </div>
-    </footer>
+      <main class="pane-main">
+        <slot />
+      </main>
+    </div>
   </div>
 </template>
 
 <style scoped lang="sass">
 .app-shell
-  overflow-x: clip
-  background: var(--vs-bg)
+  min-height: 100%
 
-/* ============================ 顶部导航 ============================ */
+/* ============================ 右侧竖导航 ============================ */
 
-.topbar
-  position: sticky
-  top: 0
-  z-index: 60
-  padding: 16px 24px 0
-  background: linear-gradient(180deg, var(--vs-bg) 60%, rgba(var(--vs-bg-rgb), 0.86))
-  -webkit-backdrop-filter: blur(12px)
-  backdrop-filter: blur(12px)
-
-.topbar-in
-  max-width: 1180px
-  margin: 0 auto
-  height: 64px
-  padding: 0 10px 0 18px
+.rail
+  position: fixed
+  top: 16px
+  right: 16px
+  bottom: 16px
+  width: 236px
+  z-index: 58
   display: flex
-  align-items: center
-  gap: 24px
-  background: var(--vs-card)
-  border: 1px solid var(--vs-line)
-  border-radius: 999px
-  box-shadow: 0 10px 30px rgba(var(--vs-shadow-rgb), 0.08)
+  flex-direction: column
+  background: linear-gradient(178deg, #2596da 0%, #1a79c0 46%, #0e528c 100%)
+  color: rgba(255, 255, 255, 0.92)
+  padding: 16px 12px 12px
+  border-radius: 22px
+  border: 1px solid rgba(255, 255, 255, 0.22)
+  overflow-y: auto
+  overscroll-behavior: contain
+  box-shadow: 0 28px 64px rgba(10, 45, 80, 0.26), 0 6px 18px rgba(10, 45, 80, 0.12)
+  transition: transform 0.42s var(--vs-ease), opacity 0.3s var(--vs-ease)
 
-.brand
+.rail::-webkit-scrollbar
+  width: 0
+
+.rail::before
+  content: ''
+  position: absolute
+  left: 0
+  right: 0
+  top: 0
+  height: 240px
+  pointer-events: none
+  background: radial-gradient(120% 100% at 82% 0%, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0) 68%)
+
+.rail > *
+  position: relative
+
+.rail-hidden .rail
+  transform: translateX(calc(100% + 30px))
+  opacity: 0
+  pointer-events: none
+
+.rail-brand
   display: flex
   align-items: center
   gap: 10px
-  flex: none
+  padding: 2px 8px 14px
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2)
+  color: #fff
   text-decoration: none
 
-.brand-mark
-  width: 32px
-  height: 32px
-  border-radius: 10px
+.rail-brand .mark
+  width: 36px
+  height: 36px
+  border-radius: 12px
   flex: none
-  color: var(--vs-on-coffee)
+  color: #fff
   display: flex
   align-items: center
   justify-content: center
-  background: var(--vs-brand)
+  background: linear-gradient(135deg, #52b0ec, #22a7d8)
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.34)
 
-.brand-name
-  font-family: var(--vs-font-display)
-  font-size: 21px
-  font-weight: 600
-  letter-spacing: -0.01em
-  color: var(--vs-ink)
-  white-space: nowrap
+.rail-brand b
+  display: block
+  font-size: 14.5px
+  font-weight: 800
+  letter-spacing: 0.4px
+  line-height: 1.35
 
-.nav
-  display: flex
-  align-items: center
-  gap: 4px
-  flex: 1
-  min-width: 0
+.rail-brand span
+  display: block
+  font-size: 10.5px
+  color: rgba(255, 255, 255, 0.88)
+  margin-top: 1px
 
-.nav-link
-  position: relative
-  padding: 8px 12px
-  border-radius: 999px
-  font-size: 13.5px
-  font-weight: 500
-  color: var(--vs-sub)
-  text-decoration: none
-  white-space: nowrap
-  transition: color 0.16s var(--vs-ease), background 0.16s var(--vs-ease)
+.rail-sec
+  margin: 16px 9px 6px
+  font-size: 10.5px
+  font-weight: 800
+  letter-spacing: 1.6px
+  color: rgba(255, 255, 255, 0.7)
 
-.nav-link:hover
-  color: var(--vs-ink)
-  background: var(--vs-soft-2)
-
-.nav-link.on
-  color: var(--vs-brand)
-  font-weight: 600
-
-.nav-link.on::after
-  content: ''
-  position: absolute
-  left: 12px
-  right: 12px
-  bottom: 2px
-  height: 2px
-  border-radius: 2px
-  background: var(--vs-brand)
-
-.nav-right
+.ritem
   display: flex
   align-items: center
   gap: 10px
-  flex: none
+  width: 100%
+  border: none
+  background: transparent
+  cursor: pointer
+  font-family: inherit
+  text-align: left
+  color: #eaf6ff
+  padding: 7px 9px
+  border-radius: 12px
+  margin-bottom: 2px
+  text-decoration: none
+  transition: background 0.2s var(--vs-ease), color 0.2s var(--vs-ease), box-shadow 0.2s var(--vs-ease)
 
-.nav-search
+.ritem .ic
+  flex: none
+  width: 30px
+  height: 30px
+  border-radius: 9px
   display: flex
   align-items: center
-  gap: 6px
-  width: 180px
-  height: 40px
-  padding: 0 12px
-  border-radius: 999px
-  background: var(--vs-soft-2)
-  color: var(--vs-mute)
+  justify-content: center
+  background: rgba(255, 255, 255, 0.17)
+  color: #eaf6ff
+  transition: background 0.2s var(--vs-ease), color 0.2s var(--vs-ease)
 
-.nav-search input
-  flex: 1
+.ritem .tx
   min-width: 0
-  border: none
-  outline: none
-  background: transparent
-  font-family: inherit
+
+.ritem b
+  display: block
   font-size: 13px
-  color: var(--vs-ink)
+  font-weight: 600
+  color: #fff
 
-.nav-search input::placeholder
-  color: var(--vs-mute)
-
-.account
-  font-size: 13.5px
-  font-weight: 500
-  color: var(--vs-sub)
-  text-decoration: none
+.ritem small
+  display: block
+  font-size: 10.5px
+  color: rgba(255, 255, 255, 0.88)
+  margin-top: 1px
   white-space: nowrap
-  max-width: 90px
   overflow: hidden
   text-overflow: ellipsis
 
-.account:hover
-  color: var(--vs-brand)
+.ritem:hover
+  background: rgba(255, 255, 255, 0.15)
 
-.nav-cta
-  display: inline-flex
+.ritem:hover .ic
+  background: rgba(255, 255, 255, 0.26)
+  color: #fff
+
+.ritem.on
+  background: linear-gradient(135deg, #ffffff 0%, #eaf5fe 100%)
+  box-shadow: 0 10px 24px rgba(8, 58, 98, 0.3)
+
+.ritem.on b
+  color: #0f63a8
+
+.ritem.on small
+  color: #4a87b2
+
+.ritem.on .ic
+  background: rgba(30, 147, 232, 0.12)
+  color: #1573bc
+
+/* 导航收起开关：贴在导航左侧中缝 */
+.rail-toggle
+  position: fixed
+  top: 50%
+  right: 254px
+  transform: translateY(-50%)
+  z-index: 59
+  width: 30px
+  height: 70px
+  padding: 0
+  border: 1px solid rgba(20, 38, 57, 0.08)
+  cursor: pointer
+  border-radius: 16px
+  display: flex
   align-items: center
-  gap: 6px
-  height: 42px
-  padding: 0 18px
-  border-radius: 999px
-  background: var(--vs-coffee)
-  color: var(--vs-on-coffee)
-  font-size: 13.5px
-  font-weight: 600
-  text-decoration: none
-  white-space: nowrap
-  transition: background 0.16s var(--vs-ease)
+  justify-content: center
+  background: rgba(255, 255, 255, 0.94)
+  color: #1467a8
+  box-shadow: 0 10px 26px rgba(10, 45, 80, 0.16), 0 2px 8px rgba(10, 45, 80, 0.08)
+  transition: right 0.42s var(--vs-ease), opacity 0.25s var(--vs-ease)
 
-.nav-cta:hover
-  background: var(--vs-coffee-2)
+.rail-toggle .vs-ico
+  transform: rotate(-90deg)
+  transition: transform 0.42s var(--vs-ease)
+
+.rail-hidden .rail-toggle
+  right: 10px
+  opacity: 0.6
+
+.rail-hidden .rail-toggle .vs-ico
+  transform: rotate(90deg)
+
+.rail-scrim
+  display: none
 
 /* ============================ 内容区 ============================ */
 
-.shell-main
-  max-width: 1180px
+.pane
+  margin-right: 288px
+  transition: margin-right 0.42s var(--vs-ease)
+
+.rail-hidden .pane
+  margin-right: 0
+
+.pane-main
+  max-width: 1040px
   margin: 0 auto
-  padding: 40px 24px 96px
+  padding: 24px 32px 40px
 
-/* ============================ 页脚 ============================ */
+.app-header
+  display: none
 
-.site-foot
-  margin-top: 40px
-  background: var(--vs-band)
-  color: var(--vs-band-ink)
-  overflow: hidden
+/* ============================ 窄屏 ============================ */
 
-.foot-in
-  max-width: 1180px
-  margin: 0 auto
-  padding: 40px 24px
-  display: flex
-  align-items: center
-  justify-content: space-between
-  gap: 24px
-  flex-wrap: wrap
-
-.foot-brand
-  display: flex
-  align-items: center
-  gap: 10px
-  .brand-mark
-    background: var(--vs-brand-soft)
-    color: var(--vs-band)
-
-.foot-brand-name
-  font-family: var(--vs-font-display)
-  font-size: 16px
-  font-weight: 600
-  color: var(--vs-band-ink)
-
-.foot-links
-  display: flex
-  align-items: center
-  gap: 24px
-  flex-wrap: wrap
-  a
-    font-size: 13.5px
-    color: var(--vs-band-sub)
-    text-decoration: none
-  a:hover
-    color: var(--vs-band-ink)
-
-/* ============================ 响应式 ============================ */
-
-@media (max-width: 1080px)
-  .nav-search
-    display: none
-
-  .nav-link
-    padding: 8px 9px
+@media (max-width: 1280px)
+  .pane-main
+    padding-left: 24px
+    padding-right: 24px
 
 @media (max-width: 900px)
-  .topbar
-    padding: 12px 12px 0
-
-  .topbar-in
-    height: auto
-    flex-wrap: wrap
-    padding: 10px 12px
+  .rail
+    top: 10px
+    right: 10px
+    bottom: 10px
+    width: 264px
     border-radius: 20px
-    gap: 10px
+    z-index: 70
+    transform: translateX(calc(100% + 30px))
+    opacity: 0
+    pointer-events: none
 
-  .brand-name
-    font-size: 19px
+  .mobile-open .rail
+    transform: translateX(0)
+    opacity: 1
+    pointer-events: auto
 
-  .nav
-    order: 3
-    flex: 1 1 100%
-    width: 100%
-    overflow-x: auto
-    padding-bottom: 2px
-    scrollbar-width: none
+  .pane
+    margin-right: 0
 
-  .nav::-webkit-scrollbar
-    display: none
+  .rail-toggle
+    z-index: 71
+    width: 28px
+    height: 62px
+    right: 10px
+    opacity: 0.6
 
-  .nav-right
-    margin-left: auto
+  .mobile-open .rail-toggle
+    right: 278px
+    opacity: 1
 
-  .account
-    display: none
+  .rail-scrim
+    display: block
+    position: fixed
+    inset: 0
+    z-index: 57
+    background: rgba(20, 38, 57, 0.38)
+    opacity: 0
+    pointer-events: none
+    transition: opacity 0.3s var(--vs-ease)
 
-  .shell-main
-    padding: 24px 16px 64px
+  .mobile-open .rail-scrim
+    opacity: 1
+    pointer-events: auto
 
-  .foot-top
-    grid-template-columns: 1fr 1fr
-    gap: 28px
+  .app-header
+    position: sticky
+    top: 0
+    z-index: 50
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 12px
+    padding: 12px 14px
+    background: rgba(247, 250, 252, 0.82)
+    backdrop-filter: blur(14px)
+    -webkit-backdrop-filter: blur(14px)
+    border-radius: 0 0 20px 20px
+    box-shadow: 0 1px 0 rgba(228, 238, 247, 0.9)
 
-  .foot-in
-    padding: 40px 20px 24px
+  .logo
+    display: flex
+    align-items: center
+    gap: 8px
+    font-size: 17px
+    font-weight: 800
+    color: var(--vs-ink)
+    text-decoration: none
+    white-space: nowrap
+
+  .logo .mark
+    width: 34px
+    height: 34px
+    border-radius: 11px
+    flex: none
+    color: #fff
+    display: flex
+    align-items: center
+    justify-content: center
+    background: linear-gradient(135deg, #52b0ec, #22a7d8)
+
+  .btn-quiet
+    border: none
+    cursor: pointer
+    border-radius: 999px
+    padding: 8px 16px
+    min-height: 44px
+    background: var(--vs-card)
+    color: var(--vs-ink)
+    font-size: 13px
+    font-weight: 600
+    box-shadow: var(--vs-sh-1)
+    display: flex
+    align-items: center
+    justify-content: center
+    gap: 8px
+    font-family: inherit
+
+  .btn-quiet:hover
+    background: var(--vs-brand-soft)
+
+  .pane-main
+    padding: 16px 20px 32px
+
 </style>

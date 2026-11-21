@@ -221,13 +221,13 @@ const option = computed(() => {
     },
     yAxis: (() => {
       if (view.value === 'hz') {
-        return { type: 'log' as const, name: 'Hz（对数）', min: 50, max: 800, splitLine: { show: true, lineStyle: { color: '#f0e3cf' } } }
+        return { type: 'log' as const, name: 'Hz（对数）', min: 50, max: 800, splitLine: { show: true, lineStyle: { color: '#e4eef7' } } }
       }
       if (view.value === 'st') {
         return {
           type: 'value' as const, name: '相对半音（音域中心 = 0）',
           min: yMin.value, max: yMax.value,
-          splitLine: { show: true, lineStyle: { color: '#f0e3cf' } },
+          splitLine: { show: true, lineStyle: { color: '#e4eef7' } },
         }
       }
       return {
@@ -239,10 +239,10 @@ const option = computed(() => {
       }
     })(),
     series: [
-      ...(showUser.value ? [lineSeries('我的曲线', userSolid, '#cb3a2e', false, false)] : []),
-      ...(showUser.value ? [lineSeries('我的曲线', userDotted, '#cb3a2e', true, false)] : []),
-      ...(showRef.value ? [lineSeries('标准曲线', refSolid, '#a8743f', false, true)] : []),
-      ...(showRef.value ? [lineSeries('标准曲线', refDotted, '#a8743f', true, true)] : []),
+      ...(showUser.value ? [lineSeries('我的曲线', userSolid, '#1e93e8', false, false)] : []),
+      ...(showUser.value ? [lineSeries('我的曲线', userDotted, '#1e93e8', true, false)] : []),
+      ...(showRef.value ? [lineSeries('标准曲线', refSolid, '#93a8c4', false, true)] : []),
+      ...(showRef.value ? [lineSeries('标准曲线', refDotted, '#93a8c4', true, true)] : []),
       {
         name: '分隔',
         type: 'line' as const,
@@ -251,8 +251,8 @@ const option = computed(() => {
           silent: true,
           symbol: 'none',
           animation: false,
-          lineStyle: { color: '#c9b69c', type: 'solid', width: 1 },
-          label: { position: 'insideEndTop', fontSize: 11, color: '#7c6450' },
+          lineStyle: { color: '#c9d6e6', type: 'solid', width: 1 },
+          label: { position: 'insideEndTop', fontSize: 11, color: '#566a80' },
           data: markLines,
         },
       },
@@ -454,7 +454,7 @@ const durationNotes = computed(() =>
     height: 0
     border-top: 2.5px solid var(--vs-brand)
     &.dashed
-      border-top: 2.5px dashed #a8743f
+      border-top: 2.5px dashed #93a8c4
 
 .duration-notes
   font-size: 12px
