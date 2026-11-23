@@ -167,7 +167,7 @@ function colIpa(col: FinalInfo): string {
   gap: 8px
 
 .sm-empty
-  color: #90a4ae
+  color: var(--vs-mute)
   font-size: 14px
   padding: 24px 8px
   margin: 0
@@ -175,9 +175,9 @@ function colIpa(col: FinalInfo): string {
 
 .sm-scroll
   overflow: auto
-  border: 1px solid #eceff1
+  border: 1px solid var(--vs-line)
   border-radius: 12px
-  background: #fff
+  background: var(--vs-card)
 
 .sm-table
   border-collapse: separate
@@ -188,29 +188,29 @@ function colIpa(col: FinalInfo): string {
     position: sticky
     top: 0
     z-index: 2
-    background: #dcedec
-    color: #37474f
+    background: var(--vs-soft)
+    color: var(--vs-ink)
     font-size: 12px
     font-weight: 600
     padding: 6px 6px
     height: 30px
     white-space: nowrap
-    border-bottom: 1px solid #cfe5e2
-    border-right: 1px solid #f2f7f6
+    border-bottom: 1px solid var(--vs-line)
+    border-right: 1px solid var(--vs-soft-2)
 
   .sm-col-row th
     position: sticky
     top: 30px
     z-index: 2
-    background: #e6f2f0
-    color: #546e7a
+    background: var(--vs-soft-2)
+    color: var(--vs-sub)
     font-size: 12px
     font-weight: 600
     padding: 5px 4px
     height: 30px
     white-space: nowrap
-    border-bottom: 1px solid #cfe5e2
-    border-right: 1px solid #f2f7f6
+    border-bottom: 1px solid var(--vs-line)
+    border-right: 1px solid var(--vs-soft-2)
 
   .sm-corner
     position: sticky
@@ -222,36 +222,36 @@ function colIpa(col: FinalInfo): string {
     position: sticky
     left: 0
     z-index: 1
-    background: #fff
+    background: var(--vs-card)
     text-align: center
     padding: 4px 8px
-    border-right: 1px solid #eceff1
-    border-bottom: 1px solid #f2f6f6
+    border-right: 1px solid var(--vs-line)
+    border-bottom: 1px solid var(--vs-soft-2)
     white-space: nowrap
 
   td
     padding: 3px
-    border-bottom: 1px solid #f2f6f6
-    border-right: 1px solid #f6f9f9
+    border-bottom: 1px solid var(--vs-soft-2)
+    border-right: 1px solid var(--vs-card)
 
 .sm-row-pinyin
   display: block
   font-size: 15px
   font-weight: 700
-  color: #263238
+  color: var(--vs-ink)
   font-family: var(--font-ipa)
 
 .sm-row-ipa
   display: block
   font-size: 10px
-  color: #90a4ae
+  color: var(--vs-mute)
   font-family: var(--font-ipa)
 
 .sm-col-ipa
   display: block
   font-size: 9px
   font-weight: 400
-  color: #90a4ae
+  color: var(--vs-mute)
   font-family: var(--font-ipa)
 
 .sm-cell
@@ -262,26 +262,25 @@ function colIpa(col: FinalInfo): string {
   min-height: 44px
   min-width: 62px
   padding: 4px 6px
-  border: 1.5px solid #e1e8e7
-  border-radius: 10px
-  background: #fff
+  border: 1.5px solid var(--vs-line2)
+  border-radius: 8px
+  background: var(--vs-card)
   &:hover
-    border-color: #4db6ac
+    border-color: var(--vs-sand)
   &.lit
-    border-color: #00897b
-    background: #e0f2f1
+    border-color: var(--vs-line-strong)
   &.hl
-    border-color: #0288d1
-    box-shadow: 0 0 0 2px rgba(2, 136, 209, 0.22)
+    border-color: var(--vs-brand)
+    box-shadow: 0 0 0 2px rgba(var(--vs-brand-rgb), 0.18)
 
 .sm-pinyin
   font-size: 14px
   font-weight: 600
-  color: #263238
+  color: var(--vs-ink)
   line-height: 1.15
   font-family: var(--font-ipa)
 
 .sm-char
   font-size: 11px
-  color: #546e7a
+  color: var(--vs-sub)
 </style>

@@ -57,28 +57,28 @@ const GUIDES: Array<{ browser: string; steps: string[] }> = [
 
 <style scoped lang="sass">
 .mic-guide
-  background: #fbe9e7
-  border: 1px solid #ffab91
+  background: var(--vs-danger-soft)
+  border: 1px solid var(--vs-sand)
   border-radius: 10px
   padding: 12px 16px
 
   h3
     margin: 0 0 4px
     font-size: 15px
-    color: #bf360c
+    color: var(--vs-brand-d)
 
   p
     font-size: 13px
-    color: #5d4037
+    color: var(--vs-ink2)
 
 .guide-item
   margin-top: 8px
   :deep(.q-item)
     font-size: 14px
-    color: #3e2723
+    color: var(--vs-ink)
   ol
     padding-left: 20px
     font-size: 13px
-    color: #5d4037
+    color: var(--vs-ink2)
     line-height: 1.8
 </style>

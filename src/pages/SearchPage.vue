@@ -11,6 +11,7 @@ import LevelCard from '@/components/LevelCard.vue'
 import SearchBox from '@/components/SearchBox.vue'
 import WishDialog from '@/components/WishDialog.vue'
 import PageState from '@/components/PageState.vue'
+import PageHead from '@/components/ui/PageHead.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -63,7 +64,7 @@ function onSearch(term: string) {
 
 <template>
   <div class="search-page">
-    <h1>搜一个音</h1>
+    <PageHead title="搜一个音" icon="search" />
     <SearchBox :model-value="queryInput" @search="onSearch" />
 
     <PageState v-if="loading" state="loading" />
@@ -79,7 +80,6 @@ function onSearch(term: string) {
 
       <section v-else class="result-section" aria-label="无结果">
         <h2>没有找到「{{ q }}」</h2>
-        <p class="no-hit-hint">可能是这个音还没有开放，或者名字不太一样。可以试试相近的关卡：</p>
         <div v-if="nearLevels.length > 0" class="result-grid">
           <LevelCard v-for="level in nearLevels" :key="level.id" :level="level" />
         </div>
@@ -94,7 +94,6 @@ function onSearch(term: string) {
         />
       </section>
     </template>
-    <p v-else class="empty-hint">输入拼音开始搜索。</p>
 
     <WishDialog :open="wishOpen" :search-query="q" @close="wishOpen = false" />
   </div>
@@ -106,23 +105,22 @@ function onSearch(term: string) {
   flex-direction: column
   gap: 20px
 
-  h1
-    font-size: 24px
-    margin: 0
-
 .result-section h2
-  font-size: 17px
+  font-size: 20px
+  font-weight: 800
+  letter-spacing: -0.3px
   margin: 0 0 12px
 
 .result-grid
   display: grid
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr))
-  gap: 14px
+  grid-template-columns: repeat(auto-fill, minmax(156px, 1fr))
+  gap: 16px
 
 .no-hit-hint, .no-suggestion, .empty-hint
-  color: #78909c
+  color: var(--vs-mute)
   font-size: 14px
 
 .wish-open
   margin-top: 14px
+  border-radius: 8px
 </style>

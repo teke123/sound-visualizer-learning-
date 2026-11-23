@@ -159,7 +159,7 @@ const NOTE_BY_TAB: Record<TabKey, string> = {
           class="vc-tab"
           :unelevated="tab === t.key"
           :flat="tab !== t.key"
-          :color="tab === t.key ? 'primary' : 'blue-grey-6'"
+          :color="tab === t.key ? 'primary' : 'grey-5'"
           :label="t.label"
           @click="tab = t.key"
         />
@@ -175,10 +175,10 @@ const NOTE_BY_TAB: Record<TabKey, string> = {
       <defs>
         <!-- userSpaceOnUse：箭头尺寸不随线宽缩放（原 strokeWidth 单位下 5×12 会被放大成巨箭头）；填色内联防止 marker 内样式失效变黑 -->
         <marker id="vc-arrow" orient="auto" markerUnits="userSpaceOnUse" markerWidth="19" markerHeight="14" refX="16" refY="6.5">
-          <path d="M 0 0 L 18 6.5 L 0 13 z" fill="#00897b" />
+          <path d="M 0 0 L 18 6.5 L 0 13 z" fill="#cb3a2e" />
         </marker>
         <marker id="vc-arrow-on" orient="auto" markerUnits="userSpaceOnUse" markerWidth="19" markerHeight="14" refX="16" refY="6.5">
-          <path d="M 0 0 L 18 6.5 L 0 13 z" fill="#0288d1" />
+          <path d="M 0 0 L 18 6.5 L 0 13 z" fill="#cb3a2e" />
         </marker>
       </defs>
 
@@ -283,12 +283,12 @@ const NOTE_BY_TAB: Record<TabKey, string> = {
   h3
     margin: 0
     font-size: 15px
-    color: #37474f
+    color: var(--vs-ink)
 
 .vc-tabs
   display: inline-flex
   gap: 3px
-  background: #eceff1
+  background: var(--vs-line)
   border-radius: 999px
   padding: 3px
 
@@ -305,36 +305,36 @@ const NOTE_BY_TAB: Record<TabKey, string> = {
   user-select: none
 
 .vc-outline
-  fill: #f6faf9
+  fill: var(--vs-card)
   fill-opacity: 0.6
-  stroke: #546e7a
+  stroke: var(--vs-sub)
   stroke-width: 4
 
 .vc-guide
-  stroke: #cfd8dc
+  stroke: var(--vs-line2)
   stroke-width: 2
   stroke-dasharray: 10 10
 
 .vc-allo
-  fill: rgba(2, 136, 209, 0.03)
-  stroke: #90a4ae
+  fill: rgba(var(--vs-brand-rgb), 0.03)
+  stroke: var(--vs-mute)
   stroke-width: 3
   stroke-dasharray: 14 10
 
 .vc-allo-label
   font-size: 22px
-  fill: #90a4ae
+  fill: var(--vs-mute)
   font-family: var(--font-ipa)
 
 .vc-axis
   font-size: 26px
-  fill: #90a4ae
+  fill: var(--vs-mute)
   &.small
     font-size: 22px
-    fill: #b0bec5
+    fill: var(--vs-mute-2)
 
 .vc-ref
-  fill: #cfd8dc
+  fill: var(--vs-line2)
 
 .vc-point
   cursor: pointer
@@ -348,31 +348,31 @@ const NOTE_BY_TAB: Record<TabKey, string> = {
   .vc-dot
     stroke-width: 4
     &.rounded
-      fill: #00897b
-      stroke: #00897b
+      fill: var(--vs-brand)
+      stroke: var(--vs-brand)
     &:not(.rounded)
-      fill: #fff
-      stroke: #00897b
+      fill: var(--vs-card)
+      stroke: var(--vs-brand)
 
   .vc-ref-dot
-    fill: #cfd8dc
-    stroke: #b0bec5
+    fill: var(--vs-line2)
+    stroke: var(--vs-mute-2)
     stroke-width: 3
 
   &.hl .vc-dot
-    stroke: #0288d1
+    stroke: var(--vs-brand)
     &.rounded
-      fill: #0288d1
+      fill: var(--vs-brand)
 
   .vc-ring
     fill: none
-    stroke: #0288d1
+    stroke: var(--vs-brand)
     stroke-width: 4
 
   &:hover .vc-dot
-    stroke: #0288d1
+    stroke: var(--vs-brand)
     &.rounded
-      fill: #0288d1
+      fill: var(--vs-brand)
 
 .vc-glide
   cursor: pointer
@@ -382,49 +382,49 @@ const NOTE_BY_TAB: Record<TabKey, string> = {
     stroke: none
 
   .vc-arrow
-    stroke: #00897b
+    stroke: var(--vs-brand)
     stroke-width: 3.5
     stroke-linecap: round
 
   .vc-dot
-    fill: #00897b
-    stroke: #fff
+    fill: var(--vs-brand)
+    stroke: var(--vs-card)
     stroke-width: 2.5
 
   .vc-ring
     fill: none
-    stroke: #0288d1
+    stroke: var(--vs-brand)
     stroke-width: 4
 
   &.hl,
   &.active
     .vc-arrow
-      stroke: #0288d1
+      stroke: var(--vs-brand)
     .vc-dot
-      fill: #0288d1
+      fill: var(--vs-brand)
 
   &:hover
     .vc-arrow
-      stroke: #0288d1
+      stroke: var(--vs-brand)
     .vc-dot
-      fill: #0288d1
+      fill: var(--vs-brand)
 
 .vc-label
   font-size: 30px
   font-weight: 600
-  fill: #455a64
+  fill: var(--vs-ink2)
   font-family: var(--font-ipa)
   paint-order: stroke
-  stroke: #fff
+  stroke: var(--vs-card)
   stroke-width: 7px
   stroke-linejoin: round
 
 .vc-glide.active .vc-label,
 .vc-point.active .vc-label
-  fill: #0288d1
+  fill: var(--vs-brand)
 
 .vc-note
   margin: 0
   font-size: 12px
-  color: #90a4ae
+  color: var(--vs-mute)
 </style>

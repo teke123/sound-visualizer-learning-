@@ -74,7 +74,9 @@ const diffB = computed(() => {
   align-items: center
   h2
     margin: 0
-    font-size: 18px
+    font-size: 20px
+    font-weight: 900
+    letter-spacing: -0.3px
 
 .compare-body
   display: grid
@@ -85,11 +87,11 @@ const diffB = computed(() => {
 
 .compare-divider
   align-self: center
-  background: #eceff1
+  background: var(--vs-line)
   border-radius: 999px
   padding: 4px 10px
   font-size: 12px
-  color: #78909c
+  color: var(--vs-mute)
 
 @media (max-width: 640px)
   .compare-body

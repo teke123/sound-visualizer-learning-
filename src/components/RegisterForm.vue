@@ -118,16 +118,24 @@ const usernameTaken = () => auth.error.value instanceof ApiError && auth.error.v
 @use './auth-shared'
 
 .auth-form
-  max-width: 380px
-  margin: 0 auto
+  max-width: 420px
+  margin: 16px auto
+  padding: 32px
+  background: var(--vs-card)
+  border: 1px solid var(--vs-line)
+  border-radius: 8px
+  box-shadow: var(--vs-sh-2)
 
   h2
     margin: 0 0 6px
+    font-size: 24px
+    font-weight: 900
+    letter-spacing: -0.3px
 
 .register-ok
-  background: #e8f5e9
-  border: 1px solid #a5d6a7
-  border-radius: 10px
+  background: var(--vs-green-soft)
+  border: 1px solid var(--vs-green-line)
+  border-radius: 8px
   padding: 16px
   text-align: center
   display: flex
@@ -135,9 +143,9 @@ const usernameTaken = () => auth.error.value instanceof ApiError && auth.error.v
   gap: 10px
   p
     margin: 0
-    color: #1b5e20
+    color: var(--vs-green)
 
 .register-login-link
-  color: #00897b
+  color: var(--vs-brand)
   font-weight: 700
 </style>

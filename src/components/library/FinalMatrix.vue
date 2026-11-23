@@ -184,7 +184,7 @@ const vowelHitKeys = computed(() => {
   gap: 8px
 
 .fm-empty
-  color: #90a4ae
+  color: var(--vs-mute)
   font-size: 14px
   padding: 24px 8px
   margin: 0
@@ -202,9 +202,9 @@ const vowelHitKeys = computed(() => {
 
 .fm-scroll
   overflow: auto
-  border: 1px solid #eceff1
+  border: 1px solid var(--vs-line)
   border-radius: 12px
-  background: #fff
+  background: var(--vs-card)
 
 .fm-table
   border-collapse: separate
@@ -216,14 +216,14 @@ const vowelHitKeys = computed(() => {
     position: sticky
     top: 0
     z-index: 2
-    background: #e6f2f0
-    color: #37474f
+    background: var(--vs-soft-2)
+    color: var(--vs-ink)
     font-size: 13px
     font-weight: 600
     padding: 9px 10px
     white-space: nowrap
-    border-bottom: 1px solid #cfe5e2
-    border-right: 1px solid #f2f7f6
+    border-bottom: 1px solid var(--vs-line)
+    border-right: 1px solid var(--vs-soft-2)
 
   .fm-corner
     position: sticky
@@ -235,14 +235,14 @@ const vowelHitKeys = computed(() => {
     position: sticky
     left: 0
     z-index: 1
-    background: #fff
+    background: var(--vs-card)
     text-align: left
     font-size: 13px
     font-weight: 500
-    color: #546e7a
+    color: var(--vs-sub)
     white-space: nowrap
     padding: 8px 10px
-    border-right: 1px solid #eceff1
+    border-right: 1px solid var(--vs-line)
     font-family: var(--font-ipa)
 
   .fm-coda
@@ -250,16 +250,16 @@ const vowelHitKeys = computed(() => {
     margin-left: 6px
     font-size: 11px
     font-weight: 600
-    color: #00695c
-    background: #e0f2f1
+    color: var(--vs-coffee)
+    background: var(--vs-soft)
     border-radius: 999px
     padding: 1px 8px
     font-family: var(--font-ipa)
 
   td
     padding: 5px
-    border-bottom: 1px solid #f2f6f6
-    border-right: 1px solid #f6f9f9
+    border-bottom: 1px solid var(--vs-soft-2)
+    border-right: 1px solid var(--vs-card)
     vertical-align: top
     min-width: 96px
 
@@ -275,41 +275,40 @@ const vowelHitKeys = computed(() => {
   gap: 2px
   min-height: 44px
   padding: 5px 10px
-  border: 1.5px solid #cfd8dc
-  border-radius: 12px
-  background: #fff
+  border: 1.5px solid var(--vs-line2)
+  border-radius: 8px
+  background: var(--vs-card)
   &:hover
-    border-color: #4db6ac
+    border-color: var(--vs-sand)
   &.lit
-    border-color: #00897b
-    background: #e0f2f1
+    border-color: var(--vs-line-strong)
   &.hl
-    border-color: #0288d1
-    box-shadow: 0 0 0 3px rgba(2, 136, 209, 0.22)
+    border-color: var(--vs-brand)
+    box-shadow: 0 0 0 3px rgba(var(--vs-brand-rgb), 0.18)
   &.active
-    border-color: #0288d1
-    box-shadow: 0 0 0 3px rgba(2, 136, 209, 0.35)
+    border-color: var(--vs-coffee)
+    box-shadow: 0 0 0 3px rgba(74, 51, 35, 0.16)
 
 .fm-pinyin
   font-size: 16px
   font-weight: 700
-  color: #263238
+  color: var(--vs-ink)
   line-height: 1.1
   font-family: var(--font-ipa)
 
 .fm-spell
   font-size: 11px
   font-weight: 400
-  color: #78909c
+  color: var(--vs-mute)
 
 .fm-ipa
   font-size: 11px
-  color: #78909c
+  color: var(--vs-mute)
   font-family: var(--font-ipa)
 
 .fm-char
   font-size: 12px
-  color: #546e7a
+  color: var(--vs-sub)
 
 /* ------------------------------ 元音舌位图 ------------------------------ */
 

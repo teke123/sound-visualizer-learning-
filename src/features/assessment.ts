@@ -1,11 +1,14 @@
 /**
  * useAssessmentFlow：录音检测流程状态机（P05 内嵌录音区，FR-902–906 / D-20）。
  *
- *   Idle → (未标定：可选) Calibrating → MicRequest → Recording → Recorded
+ *   Idle → (未登录) AuthRequired
+ *        Idle → (未标定：可选) Calibrating → MicRequest → Recording → Recorded
  *        （授权成功即刻开播，不停在待机；Ready 仅作开播失败时的回退态）
  *        → Uploading → Submitting → Navigate(/result/:id) 或 Submitted(页内结果)
  *   分支：CONTENT_VERSION_CHANGED → VersionChanged → 刷新任务后 Ready
  *         可重试失败 → Failed（同 submissionId 重试）
+ *   录音与检测都要落账号（后端上传/提交要求登录），未登录直接进 AuthRequired，
+ *   不做「先录再 401」的死路；登录后回跳本页重新开始（会话过期同样落到这里）。
  *   标定可跳过（D-20）：跳过标定直接进入录音，提交流程不因未标定阻断。
  *   提交成功后的去向（docs §3.2 页内结果闭环）：
  *   - 未提供 onSubmitted → 跳转独立结果页（state='navigating'）；
@@ -22,6 +25,7 @@ import { setSubmittedEntry } from './submittedEntry'
 
 export type FlowState =
   | 'idle'
+  | 'auth-required'
   | 'calibrating'
   | 'mic-request'
   | 'mic-denied'
@@ -71,6 +75,11 @@ export function useAssessmentFlow(options: AssessmentFlowOptions) {
     // 授权请求/录音已在途时忽略重复点击（一键直录后误双击不至于重复开播）
     if (state.value === 'mic-request' || state.value === 'calibrating' || state.value === 'recording') return
     flowError.value = null
+    if (!contextStore.isAuthenticated) {
+      // 录音与检测结果都要落账号（上传/提交接口要求登录），未登录先引导登录
+      state.value = 'auth-required'
+      return
+    }
     if (!contextStore.calibrationValid) {
       // 未标定：先引导标定（可跳过，D-20）；跳过后直接进入录音
       state.value = 'calibrating'
@@ -79,11 +88,22 @@ export function useAssessmentFlow(options: AssessmentFlowOptions) {
     await requestMic(true)
   }
 
+  /** 去登录：带上本页路径，登录成功后回跳原关卡 */
+  function goLogin() {
+    const redirect = router.currentRoute.value.fullPath
+    void router.push({ path: '/account/login', query: { redirect } })
+  }
+
   /**
    * 请求麦克风授权。autoStart = true 时授权成功即刻开始录音，
    * 不停在待机态（ready 仅在直接开播失败等异常时回退）。
    */
   async function requestMic(autoStart = false) {
+    // 未登录直接进登录引导：此处不再申请麦克风（否则用户录完才发现传不上去）
+    if (!contextStore.isAuthenticated) {
+      state.value = 'auth-required'
+      return
+    }
     state.value = 'mic-request'
     const ok = await recorder.request()
     if (!ok) {
@@ -221,7 +241,11 @@ export function useAssessmentFlow(options: AssessmentFlowOptions) {
       return
     }
     if (error.code === 'AUTH_REQUIRED') {
+      // 会话过期或未登录：不再给「重试」让人反复撞 401，直接转登录引导
       contextStore.onAuthError(error)
+      flowError.value = null
+      state.value = 'auth-required'
+      return
     }
     const retryAfter = error.retryAfterMs
     flowError.value = {
@@ -246,6 +270,10 @@ export function useAssessmentFlow(options: AssessmentFlowOptions) {
 
   /** 跳过标定，直接录音（D-20：未标定不阻断提交流程） */
   function onCalibrationCancel() {
+    if (!contextStore.isAuthenticated) {
+      state.value = 'auth-required'
+      return
+    }
     void requestMic(true)
   }
 
@@ -269,6 +297,7 @@ export function useAssessmentFlow(options: AssessmentFlowOptions) {
     busy,
     recorder,
     begin,
+    goLogin,
     requestMic,
     startRecording,
     stopRecording,

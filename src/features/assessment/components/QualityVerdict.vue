@@ -6,8 +6,8 @@
  * 无任何质量问题时整块不渲染。
  */
 import { computed } from 'vue'
-import { QBadge } from 'quasar'
 import type { Quality } from '@/api'
+import AppIcon from '@/components/ui/AppIcon.vue'
 
 const props = defineProps<{ quality: Quality }>()
 
@@ -47,13 +47,31 @@ const tags = computed(() => {
 
 <template>
   <div v-if="tags.length > 0" class="quality-tags" aria-label="录音质量提示">
-    <QBadge v-for="tag in tags" :key="tag" outline color="warning" :label="tag" />
+    <span class="quality-head"><AppIcon name="info" size="sm" />录音质量提示</span>
+    <span v-for="tag in tags" :key="tag" class="vs-tag quality-tag">{{ tag }}</span>
   </div>
 </template>
 
 <style scoped lang="sass">
 .quality-tags
   display: flex
+  align-items: center
   gap: 6px
   flex-wrap: wrap
+  background: var(--vs-amber-soft)
+  border: 1px solid var(--vs-line2)
+  border-radius: 8px
+  padding: 10px 14px
+
+.quality-head
+  display: inline-flex
+  align-items: center
+  gap: 4px
+  font-size: 12.5px
+  font-weight: 600
+  color: var(--vs-amber-ink)
+
+.quality-tag
+  background: var(--vs-on-coffee)
+  color: var(--vs-amber-ink)
 </style>

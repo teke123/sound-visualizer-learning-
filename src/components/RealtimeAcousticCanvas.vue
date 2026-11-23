@@ -152,14 +152,14 @@ function stopLoop(drain = false): void {
 /* ------------------------------ 绘制 ------------------------------ */
 
 const COLOR = {
-  voiced: '#26a69a',
-  head: '#00897b',
-  noiseHigh: '#00acc1',
-  noiseLow: '#fb8c00',
-  silence: '#cfd8dc',
-  clip: '#d32f2f',
-  grid: '#eceff1',
-  text: '#90a4ae',
+  voiced: '#cb3a2e',
+  head: '#cb3a2e',
+  noiseHigh: '#c98746',
+  noiseLow: '#c98746',
+  silence: '#e8d6bd',
+  clip: '#cb3a2e',
+  grid: '#f0e3cf',
+  text: '#a89078',
 } as const
 
 function draw(): void {
@@ -198,7 +198,7 @@ function draw(): void {
   // 定格回看：试听游标
   if (!props.active && props.playheadSec != null && props.takeDurationSec && props.takeDurationSec > 0) {
     const x = padX + (props.playheadSec / props.takeDurationSec) * plotW
-    ctx.strokeStyle = '#455a64'
+    ctx.strokeStyle = '#4e3a2b'
     ctx.lineWidth = 1.5
     ctx.beginPath()
     ctx.moveTo(x, 4)
@@ -416,7 +416,7 @@ const ariaLabel = computed(() =>
   gap: 6px
   margin-bottom: 6px
   font-size: 12px
-  color: #546e7a
+  color: var(--vs-sub)
 
 .rt-pill
   display: inline-flex
@@ -424,31 +424,31 @@ const ariaLabel = computed(() =>
   gap: 4px
   padding: 2px 10px
   border-radius: 999px
-  background: #eceff1
+  background: var(--vs-line)
   strong
-    color: #37474f
+    color: var(--vs-ink)
   &.vol-ok
-    background: #e0f2f1
-    color: #00695c
+    background: var(--vs-soft)
+    color: var(--vs-coffee)
   &.vol-quiet
-    background: #fff8e1
-    color: #8d6e00
+    background: var(--vs-panel)
+    color: var(--vs-amber-ink)
   &.vol-loud
-    background: #ffebee
-    color: #c62828
+    background: var(--vs-danger-soft)
+    color: var(--vs-brand-d)
   &.centroid
-    background: #e1f5fe
-    color: #0277bd
+    background: var(--vs-brand-soft)
+    color: var(--vs-brand-d)
 
 .rt-canvas
   display: block
   width: 100%
   height: 168px
-  background: #fafafa
+  background: var(--vs-panel)
   border-radius: 8px
 
 .rt-frozen-hint
   margin: 6px 0 0
   font-size: 12px
-  color: #90a4ae
+  color: var(--vs-mute)
 </style>

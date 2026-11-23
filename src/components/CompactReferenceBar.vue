@@ -51,13 +51,13 @@ let observer: IntersectionObserver | null = null
 let recordIntersecting = false
 
 /**
- * 顶栏让位：AppShell 手机顶栏（≤760px 显示，sticky z-100）运行时实测高度；
- * 桌面 761–1023px 区间顶栏隐藏（高度 0）则贴顶 top: 0。
+ * 顶栏让位：AppShell 窄屏顶部品牌条（sticky）运行时实测高度；
+ * 桌面隐藏（高度 0）则贴顶 top: 0。
  */
 const topOffsetPx = ref(0)
 
 function readTopOffset() {
-  const appTopBar = document.querySelector('.app-shell > .mobile-bar')
+  const appTopBar = document.querySelector('.app-shell .app-header')
   const height = appTopBar ? appTopBar.getBoundingClientRect().height : 0
   topOffsetPx.value = height > 0 ? Math.round(height) : 0
 }
@@ -124,7 +124,7 @@ onBeforeUnmount(() => {
         outline
         no-caps
         color="primary"
-        text-color="teal-9"
+        text-color="primary"
         class="ref-demo-btn"
         @click="toggleDemo"
       >
@@ -154,8 +154,8 @@ onBeforeUnmount(() => {
   min-height: 60px
   padding: 6px 14px
   box-sizing: border-box
-  background: #fff
-  border-bottom: 1px solid #eceff1
+  background: var(--vs-card)
+  border-bottom: 1px solid var(--vs-line)
   box-shadow: 0 4px 14px rgba(69, 90, 100, 0.1)
   transform: translateY(-100%)
   opacity: 0
@@ -183,7 +183,7 @@ onBeforeUnmount(() => {
   font-size: 30px
   font-weight: 700
   line-height: 1.1
-  color: #263238
+  color: var(--vs-ink)
 
 .ref-meta
   display: flex
@@ -194,14 +194,14 @@ onBeforeUnmount(() => {
 .ref-pinyin
   font-size: 15px
   font-weight: 700
-  color: #00695c
+  color: var(--vs-coffee)
   white-space: nowrap
   overflow: hidden
   text-overflow: ellipsis
 
 .ref-ipa
   font-size: 13px
-  color: #546e7a
+  color: var(--vs-sub)
   white-space: nowrap
 
 .ref-actions
@@ -210,12 +210,12 @@ onBeforeUnmount(() => {
   gap: 8px
   flex-shrink: 0
 
-/* 主操作「听示范」保持 ≥44px 触达标准；原版浅青底（#e0f2f1）由 scoped 补回
+/* 主操作「听示范」保持 ≥44px 触达标准；原版浅青底（var(--vs-soft)）由 scoped 补回
    （Quasar outline 底色为 transparent !important，覆盖需同为 important） */
 .ref-demo-btn
   min-height: 44px
   white-space: nowrap
-  background: #e0f2f1 !important
+  background: var(--vs-soft) !important
 
 /* 次操作「查看构形」允许紧凑栏内的 40px */
 .ref-figure-btn

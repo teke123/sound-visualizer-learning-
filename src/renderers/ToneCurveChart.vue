@@ -7,7 +7,7 @@
  * - 哼鸣 A/B 试听：听标准音高 / 听我的音高 / 按我的音域听标准，播放游标同步。
  * 本组件由页面异步加载，echarts 不进首屏包（§9）。
  */
-import { computed, provide, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, provide, ref } from 'vue'
 import { use as echartsUse } from 'echarts/core'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent, MarkLineComponent } from 'echarts/components'
@@ -35,6 +35,30 @@ provide('echartsTheme', undefined)
 
 const player = usePlayerStore()
 const view = ref<ViewMode>('degree')
+
+/* 图表容器实测尺寸：卡片异步渲染 / 字体回填会改变宽度，
+   仅在挂载时量一次会把绘图区画成很窄的一条，这里用 ResizeObserver 跟随容器重排 */
+const wrapEl = ref<HTMLElement | null>(null)
+const chartRef = ref<InstanceType<typeof VChart> | null>(null)
+let resizeObserver: ResizeObserver | null = null
+
+function resizeChart() {
+  chartRef.value?.resize()
+}
+
+onMounted(() => {
+  requestAnimationFrame(resizeChart)
+  window.setTimeout(resizeChart, 150)
+  if (wrapEl.value && typeof ResizeObserver !== 'undefined') {
+    resizeObserver = new ResizeObserver(resizeChart)
+    resizeObserver.observe(wrapEl.value)
+  }
+})
+
+onBeforeUnmount(() => {
+  resizeObserver?.disconnect()
+  resizeObserver = null
+})
 
 const chartHeight = computed(() => `${props.height ?? 320}px`)
 const unavailable = computed(() => props.curve.status !== 'ok')
@@ -197,13 +221,13 @@ const option = computed(() => {
     },
     yAxis: (() => {
       if (view.value === 'hz') {
-        return { type: 'log' as const, name: 'Hz（对数）', min: 50, max: 800, splitLine: { show: true, lineStyle: { color: '#eceff1' } } }
+        return { type: 'log' as const, name: 'Hz（对数）', min: 50, max: 800, splitLine: { show: true, lineStyle: { color: '#e4eef7' } } }
       }
       if (view.value === 'st') {
         return {
           type: 'value' as const, name: '相对半音（音域中心 = 0）',
           min: yMin.value, max: yMax.value,
-          splitLine: { show: true, lineStyle: { color: '#eceff1' } },
+          splitLine: { show: true, lineStyle: { color: '#e4eef7' } },
         }
       }
       return {
@@ -215,10 +239,10 @@ const option = computed(() => {
       }
     })(),
     series: [
-      ...(showUser.value ? [lineSeries('我的曲线', userSolid, '#0288d1', false, false)] : []),
-      ...(showUser.value ? [lineSeries('我的曲线', userDotted, '#0288d1', true, false)] : []),
-      ...(showRef.value ? [lineSeries('标准曲线', refSolid, '#6a4c93', false, true)] : []),
-      ...(showRef.value ? [lineSeries('标准曲线', refDotted, '#6a4c93', true, true)] : []),
+      ...(showUser.value ? [lineSeries('我的曲线', userSolid, '#1e93e8', false, false)] : []),
+      ...(showUser.value ? [lineSeries('我的曲线', userDotted, '#1e93e8', true, false)] : []),
+      ...(showRef.value ? [lineSeries('标准曲线', refSolid, '#93a8c4', false, true)] : []),
+      ...(showRef.value ? [lineSeries('标准曲线', refDotted, '#93a8c4', true, true)] : []),
       {
         name: '分隔',
         type: 'line' as const,
@@ -227,8 +251,8 @@ const option = computed(() => {
           silent: true,
           symbol: 'none',
           animation: false,
-          lineStyle: { color: '#b0bec5', type: 'solid', width: 1 },
-          label: { position: 'insideEndTop', fontSize: 11, color: '#546e7a' },
+          lineStyle: { color: '#c9d6e6', type: 'solid', width: 1 },
+          label: { position: 'insideEndTop', fontSize: 11, color: '#566a80' },
           data: markLines,
         },
       },
@@ -303,10 +327,10 @@ const durationNotes = computed(() =>
 </script>
 
 <template>
-  <div class="tone-curve-chart">
+  <div ref="wrapEl" class="tone-curve-chart">
     <div v-if="unavailable" class="curve-unavailable">
       <p>本次没有可用的音高曲线。</p>
-      <p class="reason">{{ curve.note ?? '这条录音未能提取有效音高，不做伪造展示。' }}</p>
+      <p class="reason">{{ curve.note ?? '这条录音没有提取到有效音高。' }}</p>
     </div>
     <template v-else>
       <div class="chart-toolbar">
@@ -332,7 +356,7 @@ const durationNotes = computed(() =>
         </div>
       </div>
 
-      <VChart :option="option" :style="{ height: chartHeight, width: '100%' }" autoresize />
+      <VChart ref="chartRef" :option="option" :style="{ height: chartHeight, width: '100%' }" autoresize />
 
       <div v-if="durationNotes.length" class="duration-notes">
         <p v-for="(note, i) in durationNotes" :key="i">{{ note }}</p>
@@ -370,15 +394,15 @@ const durationNotes = computed(() =>
 .curve-unavailable
   padding: 20px 12px
   text-align: center
-  color: #546e7a
-  background: #fafafa
-  border: 1px dashed #cfd8dc
+  color: var(--vs-sub)
+  background: var(--vs-panel)
+  border: 1px dashed var(--vs-line2)
   border-radius: 8px
   p
     margin: 4px 0
   .reason
     font-size: 13px
-    color: #90a4ae
+    color: var(--vs-mute)
 
 .chart-toolbar
   display: flex
@@ -390,22 +414,22 @@ const durationNotes = computed(() =>
 
 .view-switch
   display: inline-flex
-  border: 1px solid #cfd8dc
+  border: 1px solid var(--vs-line2)
   border-radius: 999px
   overflow: hidden
 
 .view-btn
   border: none
-  background: #fff
-  color: #546e7a
+  background: var(--vs-card)
+  color: var(--vs-sub)
   font-size: 12px
   padding: 6px 12px
   cursor: pointer
   &.active
-    background: #00897b
-    color: #fff
+    background: var(--vs-brand)
+    color: var(--vs-card)
   & + &
-    border-left: 1px solid #cfd8dc
+    border-left: 1px solid var(--vs-line2)
 
 .legend-chips
   display: inline-flex
@@ -415,12 +439,12 @@ const durationNotes = computed(() =>
   display: inline-flex
   align-items: center
   gap: 6px
-  border: 1px solid #eceff1
-  background: #fff
+  border: 1px solid var(--vs-line)
+  background: var(--vs-card)
   border-radius: 999px
   padding: 4px 10px
   font-size: 12px
-  color: #37474f
+  color: var(--vs-ink)
   cursor: pointer
   &.off
     opacity: 0.4
@@ -428,13 +452,13 @@ const durationNotes = computed(() =>
     display: inline-block
     width: 18px
     height: 0
-    border-top: 2.5px solid #0288d1
+    border-top: 2.5px solid var(--vs-brand)
     &.dashed
-      border-top: 2.5px dashed #6a4c93
+      border-top: 2.5px dashed #93a8c4
 
 .duration-notes
   font-size: 12px
-  color: #78909c
+  color: var(--vs-mute)
   p
     margin: 2px 0
 
@@ -449,13 +473,13 @@ const durationNotes = computed(() =>
   min-height: 36px
   padding: 4px 14px
   border-radius: 999px
-  border: 1px solid #4db6ac
-  background: #e0f2f1
-  color: #00695c
+  border: 1px solid var(--vs-sand)
+  background: var(--vs-soft)
+  color: var(--vs-coffee)
   font-size: 13px
   cursor: pointer
 
 .hum-hint
   font-size: 12px
-  color: #90a4ae
+  color: var(--vs-mute)
 </style>

@@ -25,8 +25,8 @@ const routes: RouteRecordRaw[] = [
   // P03 发音地图：?compare= 打开比较
   { path: '/map', name: 'map', component: () => import('@/pages/MapPage.vue'), meta: { pageCode: 'P03', title: '发音地图' } },
 
-  // P04 原理子站：目录 + 文章
-  { path: '/principles', name: 'principles', component: () => import('@/pages/PrinciplesPage.vue'), meta: { pageCode: 'P04', title: '发音原理' } },
+  // P04 专业资料子站：目录 + 文章
+  { path: '/principles', name: 'principles', component: () => import('@/pages/PrinciplesPage.vue'), meta: { pageCode: 'P04', title: '专业资料' } },
   { path: '/principles/:slug', name: 'article', component: () => import('@/pages/ArticlePage.vue'), meta: { pageCode: 'P04', title: '文章' } },
 
   // P05 关卡页：学习与录音检测一体；/learn 重定向 /library；#record 等锚点由页面处理

@@ -39,9 +39,9 @@ const retryHint = computed(() =>
   align-items: center
   gap: 16px
   padding: 28px 18px
-  border: 1px solid #eceff1
+  border: 1px solid var(--vs-line)
   border-radius: 12px
-  background: #fff
+  background: var(--vs-card)
 
 .stage-spinner
   flex-shrink: 0
@@ -50,12 +50,12 @@ const retryHint = computed(() =>
   margin: 0
   font-size: 17px
   font-weight: 700
-  color: #00695c
+  color: var(--vs-coffee)
 
 .stage-sub
   margin: 4px 0 0
   font-size: 13px
-  color: #78909c
+  color: var(--vs-mute)
   &.muted
-    color: #b0bec5
+    color: var(--vs-mute-2)
 </style>

@@ -189,7 +189,7 @@ export const handlers = [
     }
     if (id.startsWith('img-')) {
       const label = decodeURIComponent(id)
-      return new HttpResponse(makeMouthSvg(label, '#26a69a'), {
+      return new HttpResponse(makeMouthSvg(label, '#cb3a2e'), {
         headers: { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'no-cache' },
       })
     }

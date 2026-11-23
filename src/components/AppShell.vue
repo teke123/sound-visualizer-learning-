@@ -1,262 +1,468 @@
 <script setup lang="ts">
 /**
- * AppShell（Quasar QLayout 外壳）：桌面左侧常驻 QDrawer（标题下常驻搜索 + 一级页面 + 账号入口）与
- * 手机端 QHeader 细栏 + QFooter 底部 5 标签（首页 / 地图 / 发音库 / 档案 / 我的）。
- * 断点沿用旧版的 760px：useMediaQuery 控制 QHeader / QFooter / QDrawer 显隐
- * （不用 $q.screen，Quasar 默认断点 1024/768 会造成观感漂移）。
- * view 用 hHh…fFf：大写 H/F 让手机端 QHeader/QFooter 视口固定（对应旧版 sticky / fixed），
- * 大写 L 让桌面 QDrawer 视口固定（position: fixed）——侧栏不随页面滚动，
- * 底部登录入口常驻可见；页面让位仍由 QPageContainer 的 padding 负责，不受大小写影响。
+ * AppShell · V5（清透蓝 / 右侧竖导航）
+ * 右侧固定竖导航（可收起）+ 内容滚动区 + 页脚；窄屏改为顶部品牌条 + 抽屉式导航。
  */
-import { useRoute, useRouter } from 'vue-router'
-import { useMediaQuery } from '@vueuse/core'
-import {
-  QLayout,
-  QHeader,
-  QToolbar,
-  QDrawer,
-  QPageContainer,
-  QFooter,
-  QTabs,
-  QRouteTab,
-  QList,
-  QItem,
-  QItemSection,
-} from 'quasar'
-import { useContextStore } from '@/stores/context'
-import SearchBox from './SearchBox.vue'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import AppIcon from '@/components/ui/AppIcon.vue'
 
 const route = useRoute()
-const router = useRouter()
-const contextStore = useContextStore()
 
-/** ≤760px 判定为手机端（与下方 CSS media query 断点一致） */
-const isMobile = useMediaQuery('(max-width: 760px)')
-
-const navLinks = [
-  { to: '/', label: '首页' },
-  { to: '/map', label: '发音地图' },
-  { to: '/principles', label: '发音原理' },
-  { to: '/library', label: '发音库' },
-  { to: '/archive', label: '声音档案' },
-]
-
-const bottomTabs = [
-  { to: '/', label: '首页' },
-  { to: '/map', label: '地图' },
-  { to: '/library', label: '发音库' },
-  { to: '/archive', label: '档案' },
-  { to: '/account', label: '我的' },
-]
-
-function onSearch(q: string) {
-  void router.push({ path: '/search', query: { q } })
+interface RailItem {
+  to: string
+  label: string
+  desc: string
+  icon: string
 }
+
+const studyItems: RailItem[] = [
+  { to: '/', label: '首页', desc: '面板与快捷入口', icon: 'home' },
+  { to: '/map', label: '发音地图', desc: '单韵母 / 声母 / 拼读', icon: 'map' },
+  { to: '/library', label: '发音库', desc: '按声母 / 韵母分册', icon: 'book' },
+]
+
+const toolItems: RailItem[] = [
+  { to: '/principles', label: '专业资料', desc: '发音原理与依据', icon: 'doc' },
+  { to: '/archive', label: '声音档案', desc: '练过的关与录音', icon: 'folder' },
+  { to: '/account', label: '账号', desc: '资料、音域与数据', icon: 'user' },
+]
+
+const railHidden = ref(false)
+const mobileOpen = ref(false)
 
 function isActive(to: string): boolean {
   if (to === '/') return route.path === '/'
+  if (to === '/library') return route.path === '/library' || route.path.startsWith('/learn')
+  if (to === '/archive') return route.path === '/archive' || route.path.startsWith('/result')
   return route.path === to || route.path.startsWith(`${to}/`)
 }
+
+function isNarrow(): boolean {
+  return typeof window !== 'undefined' && window.innerWidth <= 900
+}
+
+function toggleRail() {
+  if (isNarrow()) {
+    mobileOpen.value = !mobileOpen.value
+    return
+  }
+  railHidden.value = !railHidden.value
+}
+
+function closeMobile() {
+  mobileOpen.value = false
+}
+
+watch(
+  () => route.fullPath,
+  () => {
+    closeMobile()
+  },
+)
+
+function onResize() {
+  if (!isNarrow()) mobileOpen.value = false
+}
+
+onMounted(() => {
+  window.addEventListener('resize', onResize)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', onResize)
+})
 </script>
 
 <template>
-  <QLayout view="hHh LpR fFf" class="app-shell">
-    <!-- 桌面左侧 240px 常驻侧栏（非覆盖式；≤760px 整体不渲染） -->
-    <QDrawer v-if="!isMobile" :model-value="true" :width="240" :breakpoint="0">
-      <div class="side-nav">
-        <div class="side-head">
-          <RouterLink to="/" class="brand">看得见的声音</RouterLink>
-          <SearchBox @search="onSearch" />
+  <div
+    class="app-shell"
+    :class="{ 'rail-hidden': railHidden, 'mobile-open': mobileOpen }"
+  >
+    <aside class="rail" aria-label="主导航">
+      <RouterLink to="/" class="rail-brand" title="回到首页">
+        <span class="mark"><AppIcon name="wave" size="sm" /></span>
+        <div>
+          <b>看得见的声音</b>
+          <span>普通话发音学习</span>
         </div>
-        <!-- QList 渲染为 nav（默认 role=list 会顶掉 nav 地标语义，断言传 null 抹掉该属性；QItem 带 to 渲染为链接、不依赖 listitem） -->
-        <QList tag="nav" :role="(null as unknown as string)" class="side-links" aria-label="一级导航">
-          <QItem
-            v-for="link in navLinks"
-            :key="link.to"
-            :to="link.to"
-            class="side-link"
-            :class="{ active: isActive(link.to) }"
-          >
-            <QItemSection>{{ link.label }}</QItemSection>
-          </QItem>
-        </QList>
-        <div class="side-foot">
-          <RouterLink to="/account" class="account-entry">
-            {{ contextStore.isAuthenticated ? contextStore.context.username : '登录 / 注册' }}
-          </RouterLink>
-        </div>
-      </div>
-    </QDrawer>
+      </RouterLink>
 
-    <!-- 手机顶部细栏（>760px 不渲染） -->
-    <QHeader v-if="isMobile" class="mobile-bar">
-      <QToolbar class="mobile-toolbar">
-        <RouterLink to="/" class="brand">看得见的声音</RouterLink>
-        <RouterLink to="/account" class="account-entry">
-          {{ contextStore.isAuthenticated ? contextStore.context.username : '登录 / 注册' }}
+      <p class="rail-sec">学习</p>
+      <RouterLink
+        v-for="item in studyItems"
+        :key="item.to"
+        :to="item.to"
+        class="ritem"
+        :class="{ on: isActive(item.to) }"
+        @click="closeMobile"
+      >
+        <span class="ic"><AppIcon :name="item.icon" size="sm" /></span>
+        <span class="tx"><b>{{ item.label }}</b><small>{{ item.desc }}</small></span>
+      </RouterLink>
+
+      <p class="rail-sec">家长与检测</p>
+      <RouterLink
+        v-for="item in toolItems"
+        :key="item.to"
+        :to="item.to"
+        class="ritem"
+        :class="{ on: isActive(item.to) }"
+        @click="closeMobile"
+      >
+        <span class="ic"><AppIcon :name="item.icon" size="sm" /></span>
+        <span class="tx"><b>{{ item.label }}</b><small>{{ item.desc }}</small></span>
+      </RouterLink>
+    </aside>
+
+    <button
+      type="button"
+      class="rail-toggle"
+      :aria-expanded="isNarrow() ? mobileOpen : !railHidden"
+      :aria-label="isNarrow() ? '打开导航' : railHidden ? '展开导航' : '收起导航'"
+      :title="isNarrow() ? '打开导航' : railHidden ? '展开导航' : '收起导航'"
+      @click="toggleRail"
+    >
+      <AppIcon name="chev" size="sm" />
+    </button>
+
+    <div class="rail-scrim" aria-hidden="true" @click="closeMobile" />
+
+    <div class="pane">
+      <header class="app-header">
+        <RouterLink to="/" class="logo" title="回到首页">
+          <span class="mark"><AppIcon name="wave" size="sm" /></span>
+          看得见的声音
         </RouterLink>
-      </QToolbar>
-    </QHeader>
+        <button type="button" class="btn-quiet" @click="toggleRail">
+          <span>更多</span>
+          <AppIcon name="chev" size="sm" />
+        </button>
+      </header>
 
-    <!-- QPageContainer 依据 header/footer/drawer 尺寸自动让位，内部仍是普通容器 div -->
-    <QPageContainer>
-      <main class="shell-main">
+      <main class="pane-main">
         <slot />
       </main>
-    </QPageContainer>
-
-    <!-- 手机底部固定 5 标签（>760px 不渲染） -->
-    <QFooter v-if="isMobile" class="bottom-tabs">
-      <nav aria-label="手机导航">
-        <QTabs align="justify">
-          <QRouteTab
-            v-for="tab in bottomTabs"
-            :key="tab.to"
-            :to="tab.to"
-            :label="tab.label"
-            no-caps
-            :ripple="false"
-            :class="{ active: isActive(tab.to) }"
-          />
-        </QTabs>
-      </nav>
-    </QFooter>
-  </QLayout>
+    </div>
+  </div>
 </template>
 
 <style scoped lang="sass">
 .app-shell
-  background: #f7f9fa
-  /* QDrawer 会把外部 class 挂到滚动内容层，白底侧栏本体需 :deep 定位 aside */
-  > :deep(aside.q-drawer)
-    background: #fff
-    border-right: 1px solid #eceff1
-    box-shadow: 4px 0 16px rgba(69, 90, 100, 0.04)
-
-/* —— 桌面左侧导航栏 —— */
-.side-nav
   min-height: 100%
+
+/* ============================ 右侧竖导航 ============================ */
+
+.rail
+  position: fixed
+  top: 16px
+  right: 16px
+  bottom: 16px
+  width: 236px
+  z-index: 58
   display: flex
   flex-direction: column
-  gap: 18px
-  padding: 20px 14px 16px
-  box-sizing: border-box
+  background: linear-gradient(178deg, #2596da 0%, #1a79c0 46%, #0e528c 100%)
+  color: rgba(255, 255, 255, 0.92)
+  padding: 16px 12px 12px
+  border-radius: 22px
+  border: 1px solid rgba(255, 255, 255, 0.22)
+  overflow-y: auto
+  overscroll-behavior: contain
+  box-shadow: 0 28px 64px rgba(10, 45, 80, 0.26), 0 6px 18px rgba(10, 45, 80, 0.12)
+  transition: transform 0.42s var(--vs-ease), opacity 0.3s var(--vs-ease)
 
-/* 标题与搜索组成一组，置于导航链接上方 */
-.side-head
+.rail::-webkit-scrollbar
+  width: 0
+
+.rail::before
+  content: ''
+  position: absolute
+  left: 0
+  right: 0
+  top: 0
+  height: 240px
+  pointer-events: none
+  background: radial-gradient(120% 100% at 82% 0%, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0) 68%)
+
+.rail > *
+  position: relative
+
+.rail-hidden .rail
+  transform: translateX(calc(100% + 30px))
+  opacity: 0
+  pointer-events: none
+
+.rail-brand
   display: flex
-  flex-direction: column
-  gap: 14px
-  padding-bottom: 16px
-  border-bottom: 1px solid #f1f4f5
-
-.brand
-  display: block
-  padding: 2px 2px 0
-  font-weight: 800
-  font-size: 18px
-  color: #00695c
+  align-items: center
+  gap: 10px
+  padding: 2px 8px 14px
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2)
+  color: #fff
   text-decoration: none
-  white-space: nowrap
 
-.side-links
-  display: flex
-  flex-direction: column
-  gap: 4px
-
-/* QItem 默认 padding 8px 16px / min-height 48px，对齐旧版 10px 12px / 42px */
-.side-link
-  padding: 10px 12px
-  border-radius: 10px
-  color: #455a64
-  font-size: 14px
-  min-height: 42px
-  transition: background 0.15s ease, color 0.15s ease
-  &:hover
-    background: #e0f2f1
-  &.active
-    background: #e0f2f1
-    color: #00695c
-    font-weight: 700
-  /* 隐藏 Quasar focus-helper 悬停遮罩，保留旧版纯浅青底悬停 + 浏览器默认焦点圈 */
-  :deep(.q-focus-helper)
-    display: none
-  &:focus-visible
-    outline: auto
-
-.side-foot
-  margin-top: auto
-  border-top: 1px solid #f1f4f5
-  padding-top: 14px
-
-.account-entry
+.rail-brand .mark
+  width: 36px
+  height: 36px
+  border-radius: 12px
+  flex: none
+  color: #fff
   display: flex
   align-items: center
   justify-content: center
-  white-space: nowrap
-  padding: 10px 14px
-  border-radius: 999px
-  background: #e0f2f1
-  color: #00695c
+  background: linear-gradient(135deg, #52b0ec, #22a7d8)
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.34)
+
+.rail-brand b
+  display: block
+  font-size: 14.5px
+  font-weight: 800
+  letter-spacing: 0.4px
+  line-height: 1.35
+
+.rail-brand span
+  display: block
+  font-size: 10.5px
+  color: rgba(255, 255, 255, 0.88)
+  margin-top: 1px
+
+.rail-sec
+  margin: 16px 9px 6px
+  font-size: 10.5px
+  font-weight: 800
+  letter-spacing: 1.6px
+  color: rgba(255, 255, 255, 0.7)
+
+.ritem
+  display: flex
+  align-items: center
+  gap: 10px
+  width: 100%
+  border: none
+  background: transparent
+  cursor: pointer
+  font-family: inherit
+  text-align: left
+  color: #eaf6ff
+  padding: 7px 9px
+  border-radius: 12px
+  margin-bottom: 2px
   text-decoration: none
-  font-size: 14px
+  transition: background 0.2s var(--vs-ease), color 0.2s var(--vs-ease), box-shadow 0.2s var(--vs-ease)
+
+.ritem .ic
+  flex: none
+  width: 30px
+  height: 30px
+  border-radius: 9px
+  display: flex
+  align-items: center
+  justify-content: center
+  background: rgba(255, 255, 255, 0.17)
+  color: #eaf6ff
+  transition: background 0.2s var(--vs-ease), color 0.2s var(--vs-ease)
+
+.ritem .tx
+  min-width: 0
+
+.ritem b
+  display: block
+  font-size: 13px
   font-weight: 600
-  min-height: 42px
+  color: #fff
+
+.ritem small
+  display: block
+  font-size: 10.5px
+  color: rgba(255, 255, 255, 0.88)
+  margin-top: 1px
+  white-space: nowrap
   overflow: hidden
   text-overflow: ellipsis
 
-/* —— 手机顶部细栏（QHeader 默认 primary 底，对齐旧版白底） —— */
-.mobile-bar
-  background: #fff
-  border-bottom: 1px solid #eceff1
+.ritem:hover
+  background: rgba(255, 255, 255, 0.15)
 
-/* QToolbar 默认 padding 0 12px，对齐旧版 10px 16px */
-.mobile-toolbar
-  padding: 10px 16px
-  justify-content: space-between
-  gap: 12px
-  .brand
-    padding: 0
-    font-size: 17px
-  .account-entry
-    min-height: 40px
+.ritem:hover .ic
+  background: rgba(255, 255, 255, 0.26)
+  color: #fff
 
-/* —— 主内容区 —— */
-.shell-main
-  max-width: 1080px
+.ritem.on
+  background: linear-gradient(135deg, #ffffff 0%, #eaf5fe 100%)
+  box-shadow: 0 10px 24px rgba(8, 58, 98, 0.3)
+
+.ritem.on b
+  color: #0f63a8
+
+.ritem.on small
+  color: #4a87b2
+
+.ritem.on .ic
+  background: rgba(30, 147, 232, 0.12)
+  color: #1573bc
+
+/* 导航收起开关：贴在导航左侧中缝 */
+.rail-toggle
+  position: fixed
+  top: 50%
+  right: 254px
+  transform: translateY(-50%)
+  z-index: 59
+  width: 30px
+  height: 70px
+  padding: 0
+  border: 1px solid rgba(20, 38, 57, 0.08)
+  cursor: pointer
+  border-radius: 16px
+  display: flex
+  align-items: center
+  justify-content: center
+  background: rgba(255, 255, 255, 0.94)
+  color: #1467a8
+  box-shadow: 0 10px 26px rgba(10, 45, 80, 0.16), 0 2px 8px rgba(10, 45, 80, 0.08)
+  transition: right 0.42s var(--vs-ease), opacity 0.25s var(--vs-ease)
+
+.rail-toggle .vs-ico
+  transform: rotate(-90deg)
+  transition: transform 0.42s var(--vs-ease)
+
+.rail-hidden .rail-toggle
+  right: 10px
+  opacity: 0.6
+
+.rail-hidden .rail-toggle .vs-ico
+  transform: rotate(90deg)
+
+.rail-scrim
+  display: none
+
+/* ============================ 内容区 ============================ */
+
+.pane
+  margin-right: 288px
+  transition: margin-right 0.42s var(--vs-ease)
+
+.rail-hidden .pane
+  margin-right: 0
+
+.pane-main
+  max-width: 1040px
   margin: 0 auto
-  padding: 24px 28px 56px
-  box-sizing: border-box
+  padding: 24px 32px 40px
 
-/* —— 手机底部标签（QFooter 默认 primary 底，对齐旧版白底） —— */
-.bottom-tabs
-  background: #fff
-  border-top: 1px solid #eceff1
-  /* 安全区内衬与旧版逐项 padding 等效，白底延伸覆盖 home indicator */
-  padding-bottom: env(safe-area-inset-bottom)
-  color: #78909c
-  :deep(.q-tab)
-    min-height: 52px
-    padding: 10px 0
+.app-header
+  display: none
+
+/* ============================ 窄屏 ============================ */
+
+@media (max-width: 1280px)
+  .pane-main
+    padding-left: 24px
+    padding-right: 24px
+
+@media (max-width: 900px)
+  .rail
+    top: 10px
+    right: 10px
+    bottom: 10px
+    width: 264px
+    border-radius: 20px
+    z-index: 70
+    transform: translateX(calc(100% + 30px))
+    opacity: 0
+    pointer-events: none
+
+  .mobile-open .rail
+    transform: translateX(0)
     opacity: 1
-    transition: none
-    &:focus-visible
-      outline: auto
-  :deep(.q-tab .q-focus-helper)
-    display: none
-  :deep(.q-tab .q-tab__content)
-    padding: 0
-  :deep(.q-tab .q-tab__indicator)
-    display: none
-  :deep(.q-tab .q-tab__label)
-    font-size: 13px
-    font-weight: 400
-  :deep(.q-tab.active)
-    color: #00897b
-    .q-tab__label
-      font-weight: 700
+    pointer-events: auto
 
-@media (max-width: 760px)
-  .shell-main
-    padding: 16px 16px 96px
+  .pane
+    margin-right: 0
+
+  .rail-toggle
+    z-index: 71
+    width: 28px
+    height: 62px
+    right: 10px
+    opacity: 0.6
+
+  .mobile-open .rail-toggle
+    right: 278px
+    opacity: 1
+
+  .rail-scrim
+    display: block
+    position: fixed
+    inset: 0
+    z-index: 57
+    background: rgba(20, 38, 57, 0.38)
+    opacity: 0
+    pointer-events: none
+    transition: opacity 0.3s var(--vs-ease)
+
+  .mobile-open .rail-scrim
+    opacity: 1
+    pointer-events: auto
+
+  .app-header
+    position: sticky
+    top: 0
+    z-index: 50
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 12px
+    padding: 12px 14px
+    background: rgba(247, 250, 252, 0.82)
+    backdrop-filter: blur(14px)
+    -webkit-backdrop-filter: blur(14px)
+    border-radius: 0 0 20px 20px
+    box-shadow: 0 1px 0 rgba(228, 238, 247, 0.9)
+
+  .logo
+    display: flex
+    align-items: center
+    gap: 8px
+    font-size: 17px
+    font-weight: 800
+    color: var(--vs-ink)
+    text-decoration: none
+    white-space: nowrap
+
+  .logo .mark
+    width: 34px
+    height: 34px
+    border-radius: 11px
+    flex: none
+    color: #fff
+    display: flex
+    align-items: center
+    justify-content: center
+    background: linear-gradient(135deg, #52b0ec, #22a7d8)
+
+  .btn-quiet
+    border: none
+    cursor: pointer
+    border-radius: 999px
+    padding: 8px 16px
+    min-height: 44px
+    background: var(--vs-card)
+    color: var(--vs-ink)
+    font-size: 13px
+    font-weight: 600
+    box-shadow: var(--vs-sh-1)
+    display: flex
+    align-items: center
+    justify-content: center
+    gap: 8px
+    font-family: inherit
+
+  .btn-quiet:hover
+    background: var(--vs-brand-soft)
+
+  .pane-main
+    padding: 16px 20px 32px
+
 </style>

@@ -6,12 +6,12 @@
  * 上传与提交期间禁用按钮防重复提交；有未提交录音时 beforeunload 由流程挂载。
  */
 import { computed, onBeforeUnmount } from 'vue'
-import { QBtn } from 'quasar'
 import type { FlowError, FlowState } from '@/features/assessment'
 import { RECORD_MAX_MS, type RecorderStatus } from '@/stores/recorder'
 import { usePlayerStore } from '@/stores/player'
 import type { PitchRangeHz, ToneValue } from '@/utils/realtimeAcoustics'
 import { errorCopy } from '@/copy/usePageCopy'
+import AppIcon from '@/components/ui/AppIcon.vue'
 import RealtimeAcousticCanvas from '@/components/RealtimeAcousticCanvas.vue'
 import RecordingTips from './RecordingTips.vue'
 import MicPermissionGuide from './MicPermissionGuide.vue'
@@ -26,6 +26,8 @@ const props = defineProps<{
   error: FlowError | null
   busy: boolean
   recorderError: string | null
+  /** 是否已登录：录音与结果都要落账号，未登录时入口直接改为「登录后录音」 */
+  authenticated: boolean
   /** 实时反馈主视图：声母关看包络，其余看音高轨迹（FR-907 按关卡聚焦） */
   focus?: 'pitch' | 'onset'
   /** 本关目标调型（可推导时），画五度刻度 */
@@ -36,6 +38,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'begin'): void
+  (e: 'login'): void
   (e: 'retry-mic'): void
   (e: 'start'): void
   (e: 'stop'): void
@@ -65,44 +68,63 @@ onBeforeUnmount(() => player.stop())
 
 const elapsedSec = () => (props.elapsedMs / 1000).toFixed(1)
 const progressPercent = () => Math.min(100, (props.elapsedMs / maxMs) * 100)
+
+const startLabel = computed(() => {
+  if (props.state === 'mic-request') return '正在开启麦克风…'
+  return props.authenticated ? '点一下开始录' : '登录后录音'
+})
 </script>
 
 <template>
   <div class="recorder-panel">
     <!-- 未开始（mic-request：授权在途，防重复点击）；按钮下方附一行环境提醒 -->
     <div v-if="state === 'idle' || state === 'mic-request'" class="panel-center">
-      <QBtn
-        unelevated
-        no-caps
-        rounded
-        color="red-8"
-        class="record-btn primary"
-        :disable="state === 'mic-request'"
-        @click="emit('begin')"
+      <button
+        type="button"
+        class="rec-btn"
+        :class="{ busy: state === 'mic-request' }"
+        :disabled="state === 'mic-request'"
+        @click="authenticated ? emit('begin') : emit('login')"
       >
-        {{ state === 'mic-request' ? '正在开启麦克风…' : '开始录音' }}
-      </QBtn>
+        <AppIcon name="mic" size="lg" />
+        <span>{{ startLabel }}</span>
+      </button>
+      <p v-if="!authenticated" class="auth-hint">录音与检测结果会存到你的账号里，先登录再开始。</p>
       <RecordingTips />
+    </div>
+
+    <!-- 未登录 / 会话过期：录音入口改为登录引导（登录后回跳本关重新录） -->
+    <div v-else-if="state === 'auth-required'" class="failed-box auth-box">
+      <p class="state-note">录音检测需要登录</p>
+      <p class="state-sub">
+        录音、检测结果与声音档案都保存在账号里。登录后会回到本关，重新录一遍即可提交。
+      </p>
+      <div class="panel-row">
+        <button type="button" class="vs-btn" @click="emit('login')">去登录</button>
+      </div>
     </div>
 
     <!-- 麦克风被拒 -->
     <div v-else-if="state === 'mic-denied'">
       <MicPermissionGuide />
       <div class="panel-center">
-        <QBtn outline no-caps rounded color="blue-grey-4" text-color="blue-grey-9" class="record-btn" @click="emit('retry-mic')">已开启，重试</QBtn>
+        <button type="button" class="vs-btn vs-btn--ghost" @click="emit('retry-mic')">已开启，重试</button>
       </div>
     </div>
 
     <!-- 待机（回退态）：直录开播失败或重录后落在此处，点击立即开始录音 -->
     <div v-else-if="state === 'ready'" class="panel-center">
-      <QBtn unelevated no-caps rounded color="red-8" class="record-btn primary" @click="emit('start')">● 开始录音</QBtn>
+      <button type="button" class="rec-btn" @click="emit('start')">
+        <AppIcon name="mic" size="lg" />
+        <span>点一下开始录</span>
+      </button>
       <RecordingTips />
     </div>
 
     <!-- 录音中 / 已录制：实时反馈画布常驻 -->
     <div v-if="canvasVisible" class="recording-box" :class="{ recorded: !isRecording }">
       <p v-if="isRecording" class="recording-hint">
-        录音中…边发声边看着轨迹调整，读完提示词后点「停止」，{{ Math.round(maxMs / 1000) }} 秒会自动停止
+        正在录。读完提示词后点「停止」，{{ Math.round(maxMs / 1000) }} 秒会自动停止。
       </p>
       <RealtimeAcousticCanvas
         :active="isRecording"
@@ -114,8 +136,8 @@ const progressPercent = () => Math.min(100, (props.elapsedMs / maxMs) * 100)
       />
       <div v-if="isRecording" class="recording-meta">
         <span class="elapsed">{{ elapsedSec() }}s</span>
-        <div class="progress"><div class="progress-fill" :style="{ width: `${progressPercent()}%` }"></div></div>
-        <QBtn unelevated no-caps rounded color="blue-grey-8" class="record-btn stop" @click="emit('stop')">■ 停止</QBtn>
+        <div class="progress"><div class="progress-fill" :style="{ width: `${progressPercent()}%` }" /></div>
+        <button type="button" class="vs-btn vs-btn--ghost" @click="emit('stop')">停止</button>
       </div>
       <template v-else>
         <p class="recorded-hint">已录好一段（{{ elapsedSec() }} 秒），先试听一下再提交：</p>
@@ -126,31 +148,22 @@ const progressPercent = () => Math.min(100, (props.elapsedMs / maxMs) * 100)
           <p v-if="error.requestId" class="request-id">requestId：{{ error.requestId }}</p>
         </template>
         <div class="panel-row">
-          <QBtn
+          <button
             v-if="blobUrl"
-            outline
-            no-caps
-            rounded
-            color="blue-grey-4"
-            text-color="blue-grey-9"
-            class="record-btn"
+            type="button"
+            class="vs-btn vs-btn--ghost"
             @click="player.play({ key: 'take-preview', url: blobUrl!, label: '试听' })"
           >
-            {{ player.isCurrent('take-preview') ? '⏸ 暂停试听' : '▶ 试听' }}
-          </QBtn>
-          <QBtn outline no-caps rounded color="blue-grey-4" text-color="blue-grey-9" class="record-btn" :disable="busy" @click="emit('re-record')">重录</QBtn>
+            <AppIcon :name="player.isCurrent('take-preview') ? 'pause' : 'play'" size="sm" />
+            {{ player.isCurrent('take-preview') ? '暂停试听' : '试听' }}
+          </button>
+          <button type="button" class="vs-btn vs-btn--ghost" :disabled="busy" @click="emit('re-record')">
+            <AppIcon name="mic" size="sm" />重录
+          </button>
         </div>
-        <QBtn
-          unelevated
-          no-caps
-          rounded
-          color="red-8"
-          class="record-btn primary submit"
-          :disable="busy || !hasTake"
-          @click="emit('submit')"
-        >
+        <button type="button" class="vs-btn submit-btn" :disabled="busy || !hasTake" @click="emit('submit')">
           {{ busy ? '提交中…' : '提交检测' }}
-        </QBtn>
+        </button>
       </template>
     </div>
 
@@ -167,8 +180,8 @@ const progressPercent = () => Math.min(100, (props.elapsedMs / maxMs) * 100)
       <p class="state-sub">{{ error?.copy.hint ?? '请重试。' }}</p>
       <p v-if="error?.requestId" class="request-id">requestId：{{ error.requestId }}</p>
       <div class="panel-row">
-        <QBtn v-if="hasTake" unelevated no-caps rounded color="red-8" class="record-btn primary" @click="emit('submit')">重试提交</QBtn>
-        <QBtn v-else outline no-caps rounded color="blue-grey-4" text-color="blue-grey-9" class="record-btn" @click="emit('begin')">重新开始</QBtn>
+        <button v-if="hasTake" type="button" class="vs-btn" @click="emit('submit')">重试提交</button>
+        <button v-else type="button" class="vs-btn vs-btn--ghost" @click="emit('begin')">重新开始</button>
       </div>
     </div>
 
@@ -186,7 +199,7 @@ const progressPercent = () => Math.min(100, (props.elapsedMs / maxMs) * 100)
   display: flex
   flex-direction: column
   align-items: center
-  gap: 10px
+  gap: 12px
   padding: 8px 0
 
 .panel-row
@@ -195,32 +208,54 @@ const progressPercent = () => Math.min(100, (props.elapsedMs / maxMs) * 100)
   justify-content: center
   flex-wrap: wrap
 
-.record-btn
-  min-height: 48px
-  min-width: 120px
-  font-size: 16px
-  /* 原版 .record-btn.primary（实底红 #d32f2f）字重 700 */
-  &.primary
-    font-weight: 700
-  &.submit
-    margin-top: 4px
+/* 圆形录音键：深咖啡渐变，录音时换成品牌红并呼吸（对应原型 .rec-btn） */
+.rec-btn
+  width: 136px
+  height: 136px
+  border: none
+  cursor: pointer
+  border-radius: 50%
+  color: var(--vs-on-coffee)
+  font-family: inherit
+  font-size: 14px
+  font-weight: 700
+  line-height: 1.5
+  background: linear-gradient(180deg, var(--vs-coffee-a), var(--vs-coffee-b))
+  box-shadow: 0 10px 26px rgba(var(--vs-shadow-rgb), 0.32)
+  display: flex
+  flex-direction: column
+  align-items: center
+  justify-content: center
+  gap: 6px
+  transition: transform 0.2s var(--vs-ease), background 0.2s var(--vs-ease)
+  -webkit-tap-highlight-color: transparent
+  user-select: none
+
+.rec-btn:hover:not(:disabled)
+  transform: translateY(-2px)
+
+.rec-btn.busy,
+.rec-btn:disabled
+  opacity: 0.45
+  cursor: default
 
 .recording-box
   display: flex
   flex-direction: column
   align-items: center
-  gap: 10px
-  border: 2px solid #ffcdd2
-  border-radius: 12px
-  padding: 14px
+  gap: 12px
+  border: 1px solid var(--vs-danger-line)
+  border-radius: 8px
+  padding: 16px
+  background: var(--vs-danger-soft)
   &.recorded
-    border-color: #b2dfdb
-    background: #ffffff
+    border-color: var(--vs-line2)
+    background: var(--vs-card)
 
 .recording-hint
   margin: 0
-  font-size: 14px
-  color: #5d4037
+  font-size: 13.5px
+  color: var(--vs-ink2)
 
 .recording-meta
   display: flex
@@ -230,55 +265,69 @@ const progressPercent = () => Math.min(100, (props.elapsedMs / maxMs) * 100)
 
 .elapsed
   font-variant-numeric: tabular-nums
-  color: #d32f2f
+  color: var(--vs-brand)
   font-weight: 700
   min-width: 44px
 
 .progress
   flex: 1
   height: 6px
-  background: #eceff1
+  background: var(--vs-line2)
   border-radius: 3px
   overflow: hidden
 
 .progress-fill
   height: 100%
-  background: #d32f2f
+  background: var(--vs-brand)
   transition: width 0.12s linear
 
 .recorded-hint
   margin: 0
-  font-size: 14px
-  color: #5d4037
+  font-size: 13.5px
+  color: var(--vs-ink2)
+
+.submit-btn
+  width: 100%
 
 .state-note
   margin: 0
   font-size: 15px
+  font-weight: 600
   &.err
-    color: #c62828
+    color: var(--vs-brand-d)
 
 .state-sub
   margin: 4px 0 0
   font-size: 13px
-  color: #78909c
+  color: var(--vs-sub)
   text-align: center
 
 .request-id
   font-size: 12px
-  color: #b0bec5
+  color: var(--vs-mute)
 
 .failed-box
   display: flex
   flex-direction: column
   align-items: center
   gap: 6px
-  border: 1px solid #ffcdd2
-  background: #fff5f5
-  border-radius: 10px
-  padding: 14px
+  border: 1px solid var(--vs-danger-line)
+  background: var(--vs-danger-soft)
+  border-radius: 8px
+  padding: 16px
 
 .recorder-error
-  color: #c62828
+  color: var(--vs-brand-d)
   font-size: 13px
   margin: 0
+
+.auth-hint
+  margin: 0
+  font-size: 13px
+  color: var(--vs-sub)
+  text-align: center
+
+.auth-box
+  border-color: var(--vs-brand-line)
+  background: var(--vs-brand-soft)
 </style>

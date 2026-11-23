@@ -17,7 +17,7 @@ defineProps<{ steps: string[] }>()
 
 <style scoped lang="sass">
 .practice-empty
-  color: #90a4ae
+  color: var(--vs-mute)
 
 .practice-list
   list-style: none
@@ -35,11 +35,11 @@ defineProps<{ steps: string[] }>()
 .practice-no
   flex-shrink: 0
   font-size: 13px
-  color: #90a4ae
+  color: var(--vs-mute)
   font-variant-numeric: tabular-nums
 
 .practice-text
   margin: 0
   line-height: 1.8
-  color: #37474f
+  color: var(--vs-ink)
 </style>

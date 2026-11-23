@@ -148,7 +148,7 @@ function itemClass(item: { level: LevelSummary | null; hit: boolean }): { lit: b
   gap: 8px
 
 .im-empty
-  color: #90a4ae
+  color: var(--vs-mute)
   font-size: 14px
   padding: 24px 8px
   margin: 0
@@ -156,9 +156,9 @@ function itemClass(item: { level: LevelSummary | null; hit: boolean }): { lit: b
 
 .im-scroll
   overflow: auto
-  border: 1px solid #eceff1
+  border: 1px solid var(--vs-line)
   border-radius: 12px
-  background: #fff
+  background: var(--vs-card)
 
 .im-table
   border-collapse: separate
@@ -170,14 +170,14 @@ function itemClass(item: { level: LevelSummary | null; hit: boolean }): { lit: b
     position: sticky
     top: 0
     z-index: 2
-    background: #e6f2f0
-    color: #37474f
+    background: var(--vs-soft-2)
+    color: var(--vs-ink)
     font-size: 13px
     font-weight: 600
     padding: 9px 8px
     white-space: nowrap
-    border-bottom: 1px solid #cfe5e2
-    border-right: 1px solid #f2f7f6
+    border-bottom: 1px solid var(--vs-line)
+    border-right: 1px solid var(--vs-soft-2)
 
   .im-corner
     position: sticky
@@ -189,32 +189,32 @@ function itemClass(item: { level: LevelSummary | null; hit: boolean }): { lit: b
     position: sticky
     left: 0
     z-index: 1
-    background: #fff
+    background: var(--vs-card)
     text-align: left
     font-size: 13px
     font-weight: 500
-    color: #546e7a
+    color: var(--vs-sub)
     white-space: nowrap
     padding: 8px 10px
-    border-right: 1px solid #eceff1
+    border-right: 1px solid var(--vs-line)
 
   td
     padding: 4px
-    border-bottom: 1px solid #f2f6f6
-    border-right: 1px solid #f6f9f9
+    border-bottom: 1px solid var(--vs-soft-2)
+    border-right: 1px solid var(--vs-card)
     vertical-align: top
 
 .im-place-en
   display: block
   font-size: 10px
   font-weight: 400
-  color: #90a4ae
+  color: var(--vs-mute)
 
 .im-manner-en
   display: block
   font-size: 10px
   font-weight: 400
-  color: #90a4ae
+  color: var(--vs-mute)
 
 .im-cells
   display: flex
@@ -229,46 +229,45 @@ function itemClass(item: { level: LevelSummary | null; hit: boolean }): { lit: b
   min-height: 44px
   min-width: 64px
   padding: 6px 8px
-  border: 1.5px solid #cfd8dc
-  border-radius: 12px
-  background: #fff
+  border: 1.5px solid var(--vs-line2)
+  border-radius: 8px
+  background: var(--vs-card)
   &:hover
-    border-color: #4db6ac
+    border-color: var(--vs-sand)
   &.lit
-    border-color: #00897b
-    background: #e0f2f1
+    border-color: var(--vs-line-strong)
   &.hl
-    border-color: #0288d1
-    box-shadow: 0 0 0 3px rgba(2, 136, 209, 0.22)
+    border-color: var(--vs-brand)
+    box-shadow: 0 0 0 3px rgba(var(--vs-brand-rgb), 0.18)
 
 .im-pinyin
   font-size: 18px
   font-weight: 700
-  color: #263238
+  color: var(--vs-ink)
   line-height: 1.1
   font-family: var(--font-ipa)
 
 .im-ipa
   font-size: 11px
-  color: #78909c
+  color: var(--vs-mute)
   font-family: var(--font-ipa)
 
 .im-char
   font-size: 12px
-  color: #546e7a
+  color: var(--vs-sub)
 
 .im-badge
   font-size: 10px
   line-height: 1.2
-  color: #4527a0
-  background: #ede7f6
-  border-radius: 999px
+  color: var(--vs-coffee)
+  background: var(--vs-soft)
+  border-radius: 6px
   padding: 1px 8px
 
 .im-legend
   margin: 0
   padding: 8px 12px
   font-size: 12px
-  color: #90a4ae
-  border-top: 1px solid #f2f6f6
+  color: var(--vs-mute)
+  border-top: 1px solid var(--vs-soft-2)
 </style>

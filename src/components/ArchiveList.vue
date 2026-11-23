@@ -4,12 +4,12 @@
  * 播放、删除（二次确认）。
  */
 import { computed, ref } from 'vue'
-import { QBadge, QBtn } from 'quasar'
 import { audioFileUrl, type ArchiveRecordingSummary } from '@/api'
 import { usePlayerStore } from '@/stores/player'
 import { useArchive } from '@/features/archive'
 import { errorCopy } from '@/copy/usePageCopy'
 import { formatDateTime } from '@/utils'
+import AppIcon from '@/components/ui/AppIcon.vue'
 import DangerConfirmDialog from './DangerConfirmDialog.vue'
 
 const archive = useArchive()
@@ -39,22 +39,17 @@ function scoreText(score: NonNullable<ArchiveRecordingSummary['score']>): string
 
 <template>
   <div class="archive-list">
-    <p v-if="archive.loading.value" class="al-loading">读取中…</p>
-    <p v-else-if="groups.length === 0 && !archive.error.value" class="al-empty">
+    <p v-if="archive.loading.value" class="al-note">读取中…</p>
+    <p v-else-if="groups.length === 0 && !archive.error.value" class="al-note">
       还没有保存的录音。去关卡页录一关，结果会自动保存到这里。
     </p>
     <p v-else-if="archive.error.value" class="al-error">{{ errorCopy(archive.error.value).title }}</p>
 
     <div v-if="groups.length > 0" class="al-toolbar">
-      <QBtn
-        outline
-        no-caps
-        color="red-3"
-        text-color="red-9"
-        class="al-clear"
-        label="清空全部档案"
-        @click="clearing = true"
-      />
+      <span class="al-total">{{ groups.length }} 关 · {{ archive.items.value.length }} 条记录</span>
+      <button type="button" class="vs-btn vs-btn--ghost vs-btn--small al-danger" @click="clearing = true">
+        <AppIcon name="trash" size="sm" />清空全部档案
+      </button>
     </div>
 
     <section v-for="group in groups" :key="group.levelId" class="al-group">
@@ -66,23 +61,20 @@ function scoreText(score: NonNullable<ArchiveRecordingSummary['score']>): string
         <li v-for="item in group.items" :key="item.recordingId" class="al-item">
           <div class="al-main">
             <span class="al-date">{{ formatDateTime(item.createdAt ?? undefined) }}</span>
-            <QBadge :class="['al-verdict', item.verdict]">{{ item.verdict === 'pass' ? '录音质量良好' : '录音质量欠佳' }}</QBadge>
+            <span class="vs-tag" :class="item.verdict === 'pass' ? 'al-pass' : 'al-fail'">
+              {{ item.verdict === 'pass' ? '录音质量良好' : '录音质量欠佳' }}
+            </span>
             <span v-if="item.score" class="al-score">{{ scoreText(item.score) }}</span>
           </div>
           <div class="al-actions">
-            <QBtn outline no-caps color="blue-grey-4" text-color="blue-grey-9" class="al-action" @click="play(item)">
-              {{ player.isCurrent(`audio:${item.audioId}`) ? '⏸ 暂停' : '▶ 播放' }}
-            </QBtn>
-            <RouterLink class="al-btn" :to="`/result/${item.recordingId}`">查看</RouterLink>
-            <QBtn
-              outline
-              no-caps
-              color="red-3"
-              text-color="red-9"
-              class="al-action"
-              label="删除"
-              @click="deleting = item"
-            />
+            <button type="button" class="vs-btn vs-btn--ghost vs-btn--small" @click="play(item)">
+              <AppIcon :name="player.isCurrent(`audio:${item.audioId}`) ? 'pause' : 'play'" size="sm" />
+              {{ player.isCurrent(`audio:${item.audioId}`) ? '暂停' : '播放' }}
+            </button>
+            <RouterLink class="vs-btn vs-btn--small" :to="`/result/${item.recordingId}`">查看</RouterLink>
+            <button type="button" class="vs-btn vs-btn--ghost vs-btn--small al-danger" @click="deleting = item">
+              <AppIcon name="trash" size="sm" />删除
+            </button>
           </div>
         </li>
       </ul>
@@ -90,20 +82,15 @@ function scoreText(score: NonNullable<ArchiveRecordingSummary['score']>): string
 
     <!-- 键集分页：超过一页（默认 20 条）时加载更多，避免列表被静默截断 -->
     <div v-if="archive.hasMore.value" class="al-more-row">
-      <QBtn
-        outline
-        no-caps
-        color="blue-grey-3"
-        text-color="blue-grey-9"
-        class="al-more"
-        :disable="archive.loadingMore.value"
+      <button
+        type="button"
+        class="vs-btn vs-btn--ghost vs-btn--small"
+        :disabled="archive.loadingMore.value"
         @click="archive.loadMore()"
       >
         {{ archive.loadingMore.value ? '加载中…' : '加载更多记录' }}
-      </QBtn>
-      <span v-if="archive.loadMoreError.value" class="al-error">
-        加载更多失败，请再试一次。
-      </span>
+      </button>
+      <span v-if="archive.loadMoreError.value" class="al-error">加载更多失败，请再试一次。</span>
     </div>
 
     <DangerConfirmDialog
@@ -126,24 +113,34 @@ function scoreText(score: NonNullable<ArchiveRecordingSummary['score']>): string
 </template>
 
 <style scoped lang="sass">
-.al-loading, .al-empty
-  color: #90a4ae
+.al-note
+  color: var(--vs-sub)
   padding: 16px 0
+  font-size: 14px
 
 .al-error
-  color: #c62828
+  color: var(--vs-brand-d)
+  font-size: 13px
 
 .al-toolbar
   display: flex
-  justify-content: flex-end
-  margin-bottom: 6px
+  justify-content: space-between
+  align-items: center
+  gap: 10px
+  flex-wrap: wrap
+  margin-bottom: 4px
+
+.al-total
+  font-size: 12.5px
+  color: var(--vs-mute)
 
 .al-group
   margin-top: 12px
-  border: 1px solid #eceff1
-  border-radius: 12px
-  padding: 14px
-  background: #fff
+  border: 1px solid var(--vs-line)
+  border-radius: 8px
+  padding: 18px 20px
+  background: var(--vs-card)
+  box-shadow: var(--vs-sh-1)
 
 .al-group-head
   display: flex
@@ -152,10 +149,11 @@ function scoreText(score: NonNullable<ArchiveRecordingSummary['score']>): string
   h3
     margin: 0
     font-size: 16px
+    font-weight: 800
 
 .al-count
   font-size: 12px
-  color: #90a4ae
+  color: var(--vs-mute)
 
 .al-items
   list-style: none
@@ -163,7 +161,6 @@ function scoreText(score: NonNullable<ArchiveRecordingSummary['score']>): string
   padding: 0
   display: flex
   flex-direction: column
-  gap: 8px
 
 .al-item
   display: flex
@@ -171,63 +168,47 @@ function scoreText(score: NonNullable<ArchiveRecordingSummary['score']>): string
   align-items: center
   gap: 10px
   flex-wrap: wrap
-  border-bottom: 1px dashed #eceff1
-  padding: 8px 0
+  border-top: 1px solid var(--vs-line)
+  padding: 12px 0
+
+.al-item:first-child
+  border-top: none
 
 .al-main
   display: flex
   gap: 10px
   align-items: center
   flex-wrap: wrap
+  min-width: 0
 
 .al-date
   font-size: 13px
-  color: #546e7a
+  color: var(--vs-ink2)
 
-.al-verdict
-  font-size: 12px
-  &.pass
-    background: #e8f5e9
-    color: #2e7d32
-  &.fail
-    background: #fff3e0
-    color: #8d5b00
+.al-pass
+  background: var(--vs-green-soft)
+  color: var(--vs-green)
+
+.al-fail
+  background: var(--vs-amber-soft)
+  color: var(--vs-amber-ink)
 
 .al-score
   font-weight: 700
-
-.al-version
-  font-size: 11px
-  color: #b0bec5
+  font-size: 13px
+  color: var(--vs-ink2)
+  font-variant-numeric: tabular-nums
 
 .al-actions
   display: flex
   gap: 8px
+  flex-wrap: wrap
 
-/* RouterLink「查看」保留手写按钮观感（RouterLink 不换成 QBtn），与相邻 QBtn outline 视觉对齐 */
-.al-btn
-  min-height: 40px
-  padding: 2px 14px
-  border: 1px solid #90a4ae
-  border-radius: 8px
-  background: #fff
-  cursor: pointer
-  color: #37474f
-  text-decoration: none
-  display: inline-flex
-  align-items: center
-
-/* QBtn 恢复原版 .al-btn/.al-clear 的 8px 小圆角与 40px 高度 */
-.al-action, .al-clear
-  border-radius: 8px
-  min-height: 40px
-
-/* 原 .al-more 为 #b0bec5 描边胶囊（半径走全局 999px），仅补回 40px 高度 */
-.al-more
-  min-height: 40px
+.al-danger
+  color: var(--vs-brand-d)
 
 .al-more-row
-  margin-top: 14px
+  margin-top: 16px
   display: flex
   align-items: center
   gap: 12px

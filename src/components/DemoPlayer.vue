@@ -76,7 +76,7 @@ const grouped = computed(() => ({
           :class="{ active: isPlaying(item), slow: item.speed === 'slow' }"
           no-caps
           color="primary"
-          :text-color="isPlaying(item) ? 'white' : 'teal-9'"
+          :text-color="isPlaying(item) ? 'white' : 'primary'"
           size="13px"
           :unelevated="isPlaying(item)"
           :outline="!isPlaying(item)"
@@ -111,35 +111,40 @@ const grouped = computed(() => ({
 .demo-group
   display: flex
   flex-wrap: wrap
-  gap: 10px
+  gap: 6px
 
 /* 原 .demo-btn 32px 浅青胶囊：未选中浅青底 / 悬停深一档 / 慢速虚线描边由 scoped 补回。
    Quasar outline 底色为 transparent !important，填充需 important（仅限 .q-btn--outline 未选中态，
    不覆盖选中时的实底青）；选中实底青 + 白字 + 600 字重为原版 .active 形态，由 QBtn unelevated + 全局字重承担 */
 .demo-btn
   min-height: 32px
+  font-size: 12.5px
   &.q-btn--outline
-    background: #e0f2f1 !important
+    background: var(--vs-soft) !important
     &:hover
-      background: #b2dfdb !important
+      background: var(--vs-brand-line) !important
   &.slow:before
     border-style: dashed
+
+.demo-btn :deep(.q-btn__content)
+  padding: 0 8px
+  gap: 4px
 
 .demo-speed-tag
   font-size: 11px
   line-height: 1
   padding: 2px 4px
   border-radius: 4px
-  background: rgba(0, 137, 123, 0.12)
+  background: rgba(var(--vs-brand-rgb), 0.12)
   .demo-btn.active &
     background: rgba(255, 255, 255, 0.25)
 
 .demo-error
   font-size: 13px
-  color: #c62828
+  color: var(--vs-brand-d)
   margin: 0
 
 .demo-empty
-  color: #90a4ae
+  color: var(--vs-mute)
   font-size: 14px
 </style>

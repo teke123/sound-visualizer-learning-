@@ -119,16 +119,21 @@ watch(
 <style scoped lang="sass">
 .result-section
   h2
-    font-size: 18px
+    font-size: 20px
+    font-weight: 900
+    letter-spacing: -0.3px
     margin: 0 0 10px
   h3
-    font-size: 16px
+    font-size: 17px
+    font-weight: 800
+    letter-spacing: -0.2px
     margin: 0 0 8px
 
 .curve-note
   font-size: 13px
-  color: #78909c
+  color: var(--vs-sub)
   margin: 0 0 8px
+  line-height: 1.7
 
 .score-row
   display: flex
@@ -139,5 +144,5 @@ watch(
 .spectrogram-img
   max-width: 100%
   border-radius: 8px
-  background: #fff
+  background: var(--vs-card)
 </style>

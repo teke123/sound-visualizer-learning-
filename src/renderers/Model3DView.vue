@@ -213,7 +213,7 @@ onBeforeUnmount(() => {
           no-caps
           dense
           color="primary"
-          text-color="teal-9"
+          text-color="primary"
           size="12px"
           class="anim-toggle"
           :icon="animationPlaying ? 'pause' : 'play_arrow'"
@@ -237,8 +237,8 @@ onBeforeUnmount(() => {
   position: relative
   width: 100%
   height: 300px
-  background: #fff
-  border: 1px solid #e0e0e0
+  background: var(--vs-card)
+  border: 1px solid var(--vs-line2)
   border-radius: 12px
   overflow: hidden
   canvas
@@ -246,7 +246,7 @@ onBeforeUnmount(() => {
 
 .model3d-caption
   font-size: 13px
-  color: #78909c
+  color: var(--vs-mute)
   margin-top: 6px
   text-align: center
   display: flex
@@ -255,7 +255,7 @@ onBeforeUnmount(() => {
   gap: 10px
   flex-wrap: wrap
   .error
-    color: #c62828
+    color: var(--vs-brand-d)
 
 .anim-toggle
   min-height: 28px

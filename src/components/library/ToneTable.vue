@@ -92,7 +92,7 @@ const REF_LINES = [5, 4, 3, 2, 1].map((d) => ({ d, y: 7 + (34 * (5 - d)) / 4 }))
   gap: 8px
 
 .tt-empty
-  color: #90a4ae
+  color: var(--vs-mute)
   font-size: 14px
   padding: 24px 8px
   margin: 0
@@ -100,9 +100,9 @@ const REF_LINES = [5, 4, 3, 2, 1].map((d) => ({ d, y: 7 + (34 * (5 - d)) / 4 }))
 
 .tt-scroll
   overflow: auto
-  border: 1px solid #eceff1
+  border: 1px solid var(--vs-line)
   border-radius: 12px
-  background: #fff
+  background: var(--vs-card)
 
 .tt-rows
   border-collapse: separate
@@ -113,23 +113,23 @@ const REF_LINES = [5, 4, 3, 2, 1].map((d) => ({ d, y: 7 + (34 * (5 - d)) / 4 }))
     position: sticky
     top: 0
     z-index: 2
-    background: #e6f2f0
-    color: #37474f
+    background: var(--vs-soft-2)
+    color: var(--vs-ink)
     font-size: 13px
     font-weight: 600
     text-align: left
     padding: 10px 12px
-    border-bottom: 1px solid #cfe5e2
+    border-bottom: 1px solid var(--vs-line)
 
   tbody td
     padding: 10px 12px
-    border-bottom: 1px solid #f2f6f6
+    border-bottom: 1px solid var(--vs-soft-2)
     vertical-align: middle
 
 .tt-row
   cursor: pointer
   &:hover
-    background: #f5faf9
+    background: var(--vs-card)
 
 .tt-head-shape
   width: 72px
@@ -143,12 +143,12 @@ const REF_LINES = [5, 4, 3, 2, 1].map((d) => ({ d, y: 7 + (34 * (5 - d)) / 4 }))
   display: block
 
 .tt-ref
-  stroke: #eceff1
+  stroke: var(--vs-line)
   stroke-width: 1
 
 .tt-contour
   fill: none
-  stroke: #0288d1
+  stroke: var(--vs-brand)
   stroke-width: 3
   stroke-linecap: round
   stroke-linejoin: round
@@ -156,18 +156,18 @@ const REF_LINES = [5, 4, 3, 2, 1].map((d) => ({ d, y: 7 + (34 * (5 - d)) / 4 }))
 .tt-name
   font-size: 15px
   font-weight: 600
-  color: #263238
+  color: var(--vs-ink)
   white-space: nowrap
 
 .tt-value
   font-size: 16px
   font-weight: 700
-  color: #01579b
+  color: var(--vs-brand-d)
   font-variant-numeric: tabular-nums
 
 .tt-ipa
   font-size: 13px
   font-weight: 400
-  color: #546e7a
+  color: var(--vs-sub)
   font-family: var(--font-ipa)
 </style>

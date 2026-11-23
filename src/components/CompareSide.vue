@@ -60,7 +60,7 @@ function playDemo() {
       outline
       no-caps
       color="primary"
-      text-color="teal-9"
+      text-color="primary"
       class="compare-demo-btn"
       @click="playDemo"
     >
@@ -71,12 +71,15 @@ function playDemo() {
 
 <style scoped lang="sass">
 .compare-side
-  border: 1px solid #eceff1
-  border-radius: 10px
+  border: 1px solid var(--vs-line)
+  border-radius: 8px
+  background: var(--vs-card)
+  box-shadow: 0 1px 2px rgba(var(--vs-shadow-rgb), 0.05), 0 1px 3px rgba(var(--vs-shadow-rgb), 0.04)
   padding: 14px
   display: flex
   flex-direction: column
   gap: 8px
+  min-width: 0
   h3
     margin: 0
     font-size: 16px
@@ -87,13 +90,15 @@ function playDemo() {
   gap: 6px
 
 .compare-label
-  color: #00695c
-  background: #e0f2f1
+  color: var(--vs-coffee)
+  background: var(--vs-soft)
   border: 1px solid transparent
+  max-width: 100%
+  white-space: normal
   &.diff
-    color: #bf360c
-    background: #fff3e0
-    border-color: #ffb74d
+    color: var(--vs-brand-d)
+    background: var(--vs-amber-soft)
+    border-color: var(--vs-sand)
     font-weight: 600
 
 .diff-mark
@@ -105,12 +110,11 @@ function playDemo() {
   border-radius: 8px
 
 .compare-nofigure
-  color: #b0bec5
+  color: var(--vs-mute-2)
   font-size: 13px
   margin: 0
 
 .compare-demo-btn
   min-height: 44px
   width: fit-content
-  background: #e0f2f1 !important /* Quasar outline 底色 transparent !important，覆盖需同为 important */
 </style>

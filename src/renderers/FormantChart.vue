@@ -79,8 +79,8 @@ const option = computed(() => {
               data: circle,
               showSymbol: false,
               smooth: true,
-              lineStyle: { width: 2, type: 'dashed' as const, color: '#6a4c93' },
-              itemStyle: { color: '#6a4c93' },
+              lineStyle: { width: 2, type: 'dashed' as const, color: '#93a8c4' },
+              itemStyle: { color: '#93a8c4' },
               silent: true,
             },
           ]
@@ -90,7 +90,7 @@ const option = computed(() => {
         type: 'scatter',
         data: userPoint,
         symbolSize: 18,
-        itemStyle: { color: '#0288d1', borderColor: '#01579b', borderWidth: 2 },
+        itemStyle: { color: '#cb3a2e', borderColor: '#98241c', borderWidth: 2 },
         z: 10,
       },
     ],
@@ -103,7 +103,7 @@ const option = computed(() => {
     <div v-if="unavailable" class="formant-unavailable">
       <p>本次没有可用的共振峰对比。</p>
       <p class="reason">
-        {{ formants.note ?? '共振峰对比需要先完成元音空间标定；没有有效数据时不做伪造展示。' }}
+        {{ formants.note ?? '共振峰需要先完成元音空间标定。' }}
       </p>
     </div>
     <VChart v-else :option="option" :style="{ height: `${height ?? 300}px`, width: '100%' }" autoresize />
@@ -120,18 +120,18 @@ const option = computed(() => {
 .formant-unavailable
   padding: 20px 12px
   text-align: center
-  color: #546e7a
-  background: #fafafa
-  border: 1px dashed #cfd8dc
+  color: var(--vs-sub)
+  background: var(--vs-panel)
+  border: 1px dashed var(--vs-line2)
   border-radius: 8px
   p
     margin: 4px 0
   .reason
     font-size: 13px
-    color: #90a4ae
+    color: var(--vs-mute)
 
 .formant-region-note
   font-size: 12px
-  color: #90a4ae
+  color: var(--vs-mute)
   margin: 6px 0 0
 </style>

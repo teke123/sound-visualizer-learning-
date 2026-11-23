@@ -8,6 +8,7 @@ import LayerMap from '@/components/LayerMap.vue'
 import ConfusablePairList from '@/components/ConfusablePairList.vue'
 import ComparePanel from '@/components/ComparePanel.vue'
 import PageState from '@/components/PageState.vue'
+import PageHead from '@/components/ui/PageHead.vue'
 
 const levelsStore = useLevelsStore()
 const progressStore = useProgressStore()
@@ -26,9 +27,7 @@ function openPair(pair: { a: string; b: string }) {
 
 <template>
   <div class="map-page">
-    <header class="map-head">
-      <h1>发音地图</h1>
-    </header>
+    <PageHead title="发音地图" icon="map" />
 
     <PageState v-if="levelsStore.loading && !levelsStore.loaded" state="loading" />
     <PageState
@@ -61,14 +60,5 @@ function openPair(pair: { a: string; b: string }) {
 .map-page
   display: flex
   flex-direction: column
-  gap: 24px
-
-.map-head
-  h1
-    margin: 0 0 4px
-    font-size: 24px
-  p
-    margin: 0
-    color: #78909c
-    font-size: 14px
+  gap: 20px
 </style>

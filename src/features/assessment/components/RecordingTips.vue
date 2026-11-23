@@ -20,8 +20,8 @@ const recorder = useRecorderStore()
 .recording-tip
   margin: 0
   font-size: 12px
-  color: #90a4ae
+  color: var(--vs-mute)
   &.warn
-    color: #ef6c00
+    color: var(--vs-amber-ink)
     font-weight: 600
 </style>

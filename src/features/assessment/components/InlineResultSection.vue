@@ -8,10 +8,10 @@
  */
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { QBtn } from 'quasar'
 import { audioFileUrl } from '@/api'
 import { useRecordingResult } from '@/features/result'
 import { usePlayerStore } from '@/stores/player'
+import AppIcon from '@/components/ui/AppIcon.vue'
 import ProcessingStage from './ProcessingStage.vue'
 import ResultBody from './ResultBody.vue'
 
@@ -60,14 +60,12 @@ function playRecording() {
     <p v-else-if="phase === 'not-found'" class="inline-note">记录不存在或不可见。</p>
 
     <!-- 失败（504 / 500 等） -->
-    <div v-else-if="phase === 'failed'" class="inline-failed">
+    <div v-else-if="phase === 'failed'" class="inline-failed vs-card">
       <h3>这次检测没有完成</h3>
       <p class="fail-hint">可能是评分服务繁忙或处理超时。</p>
       <div class="fail-actions">
-        <QBtn v-if="retryable" unelevated no-caps color="primary" class="act-qbtn" @click="onRetrySubmission">
-          重试本次提交
-        </QBtn>
-        <QBtn outline no-caps color="blue-grey-4" text-color="blue-grey-9" class="act-qbtn" @click="emit('reRecord')">重新录音</QBtn>
+        <button v-if="retryable" type="button" class="vs-btn" @click="onRetrySubmission">重试本次提交</button>
+        <button type="button" class="vs-btn vs-btn--ghost" @click="emit('reRecord')">重新录音</button>
       </div>
     </div>
 
@@ -81,16 +79,19 @@ function playRecording() {
         :formant-height="260"
       >
         <template #score-actions>
-          <QBtn outline no-caps color="blue-grey-4" text-color="blue-grey-9" class="act-qbtn" @click="playRecording">
-            {{ player.isCurrent(playbackKey) ? '⏸ 暂停本次录音' : '▶ 回放本次录音' }}
-          </QBtn>
+          <button type="button" class="vs-btn vs-btn--ghost" @click="playRecording">
+            <AppIcon :name="player.isCurrent(playbackKey) ? 'pause' : 'play'" size="sm" />
+            {{ player.isCurrent(playbackKey) ? '暂停本次录音' : '回放本次录音' }}
+          </button>
         </template>
       </ResultBody>
 
       <!-- 底部操作 -->
       <div class="act-row">
-        <QBtn unelevated no-caps color="primary" class="act-qbtn" @click="emit('reRecord')">● 再录一次</QBtn>
-        <RouterLink :to="`/result/${recordingId}`" class="act-btn">查看完整报告 →</RouterLink>
+        <button type="button" class="vs-btn" @click="emit('reRecord')">
+          <AppIcon name="mic" size="sm" />再录一次
+        </button>
+        <RouterLink :to="`/result/${recordingId}`" class="vs-btn vs-btn--ghost">查看完整报告 →</RouterLink>
       </div>
     </template>
   </div>
@@ -105,20 +106,22 @@ function playRecording() {
 .inline-note
   margin: 0
   font-size: 14px
-  color: #78909c
+  color: var(--vs-mute)
   text-align: center
   padding: 18px 0
 
 .inline-failed
   text-align: center
-  padding: 16px 0
+  padding: 24px
   h3
-    font-size: 17px
+    font-size: 18px
+    font-weight: 800
     margin: 0 0 6px
-  .fail-hint
-    color: #78909c
-    font-size: 13px
-    margin: 0 0 14px
+
+.fail-hint
+  color: var(--vs-sub)
+  font-size: 13px
+  margin: 0 0 14px
 
 .fail-actions, .act-row
   display: flex
@@ -127,24 +130,6 @@ function playRecording() {
   justify-content: center
 
 .act-row
-  padding-top: 4px
-  border-top: 1px solid #eceff1
-
-/* QBtn 化的操作按钮补回原 .act-btn 的 44px 触达高度（原 .act-btn.primary 字重 600 与全局 $button-font-weight 一致，无需另补） */
-.act-qbtn
-  min-height: 44px
-
-/* RouterLink「查看完整报告」保留手写按钮观感（RouterLink 不换成 QBtn），与相邻 QBtn outline 视觉对齐 */
-.act-btn
-  min-height: 44px
-  display: inline-flex
-  align-items: center
-  padding: 4px 18px
-  border-radius: 999px
-  border: 1px solid #90a4ae
-  background: #fff
-  color: #37474f
-  text-decoration: none
-  cursor: pointer
-  font-size: 14px
+  padding-top: 12px
+  border-top: 1px solid var(--vs-line)
 </style>

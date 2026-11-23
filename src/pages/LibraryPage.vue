@@ -13,6 +13,7 @@ import { useLevelsStore } from '@/stores/levels'
 import { useComparePanel } from '@/features/compare'
 import ComparePanel from '@/components/ComparePanel.vue'
 import PageState from '@/components/PageState.vue'
+import PageHead from '@/components/ui/PageHead.vue'
 import InitialMatrix from '@/components/library/InitialMatrix.vue'
 import FinalMatrix from '@/components/library/FinalMatrix.vue'
 import SyllableMatrix from '@/components/library/SyllableMatrix.vue'
@@ -174,49 +175,47 @@ onMounted(() => {
 
 <template>
   <div class="library-page">
-    <header class="lib-head">
-      <h1>发音库</h1>
-      <QInput
-        v-model="query"
-        type="search"
-        outlined
-        rounded
-        placeholder="搜拼音 / IPA / 代表字 / 关卡"
-        aria-label="搜索发音库"
-        class="lib-search"
-      />
-    </header>
+    <PageHead title="发音库" icon="book" />
 
     <div class="lib-controls">
-      <QTabs
-        :model-value="view"
-        no-caps
-        active-color="primary"
-        indicator-color="primary"
-        @update:model-value="onViewChange"
-      >
-        <QTab v-for="v in VIEWS" :key="v.key" :name="v.key" :label="v.label" no-caps />
-      </QTabs>
+      <div class="lib-topline">
+        <QTabs
+          :model-value="view"
+          no-caps
+          active-color="primary"
+          indicator-color="primary"
+          @update:model-value="onViewChange"
+        >
+          <QTab v-for="v in VIEWS" :key="v.key" :name="v.key" :label="v.label" no-caps />
+        </QTabs>
+        <QInput
+          v-model="query"
+          type="search"
+          outlined
+          dense
+          clearable
+          placeholder="搜拼音 / IPA / 代表字 / 关卡"
+          aria-label="搜索发音库"
+          class="lib-search"
+        />
+      </div>
       <div class="lib-filters">
         <QCheckbox v-model="showChar" label="显示汉字" class="lib-check" />
         <QCheckbox v-model="showIpa" label="显示 IPA" class="lib-check" />
-      </div>
-      <div class="lib-groups">
-        <span class="groups-label">易混组</span>
-        <QBtn
-          v-for="g in CONFUSABLE_GROUPS"
-          :key="g.key"
-          no-caps
-          :color="activeGroupKey === g.key ? 'teal-1' : 'blue-grey-4'"
-          :text-color="activeGroupKey === g.key ? 'teal-9' : 'blue-grey-9'"
-          :unelevated="activeGroupKey === g.key"
-          :outline="activeGroupKey !== g.key"
-          :title="g.hint"
-          :aria-pressed="activeGroupKey === g.key"
-          @click="toggleGroup(g.key)"
-        >
-          {{ g.name }}
-        </QBtn>
+        <span class="lib-groups">
+          <span class="groups-label">易混组</span>
+          <button
+            v-for="g in CONFUSABLE_GROUPS"
+            :key="g.key"
+            type="button"
+            class="vs-chip"
+            :aria-pressed="activeGroupKey === g.key"
+            :title="g.hint"
+            @click="toggleGroup(g.key)"
+          >
+            {{ g.name }}
+          </button>
+        </span>
       </div>
     </div>
 
@@ -329,14 +328,14 @@ onMounted(() => {
           :key="`${p.a}-${p.b}`"
           outline
           no-caps
-          :color="p.ready ? 'blue-grey-4' : 'blue-grey-3'"
-          :text-color="p.ready ? 'blue-grey-9' : 'blue-grey-6'"
+          :color="p.ready ? 'primary' : 'grey-4'"
+          :text-color="p.ready ? 'primary' : 'grey-5'"
           :disable="!p.ready"
           :title="p.ready ? `${p.levelA?.title} vs ${p.levelB?.title}` : '该对立组尚未开放关卡'"
           @click="p.ready && p.levelA && p.levelB && comparePair(p.levelA.id, p.levelB.id)"
         >
           {{ pairLabel(p.a) }} vs {{ pairLabel(p.b) }}
-          <QBadge v-if="!p.ready" class="pair-off" outline color="blue-grey-4" label="未开放" />
+          <QBadge v-if="!p.ready" class="pair-off" outline color="primary" label="未开放" />
         </QBtn>
       </div>
     </section>
@@ -356,35 +355,41 @@ onMounted(() => {
 .library-page
   display: flex
   flex-direction: column
-  gap: 18px
+  gap: 16px
 
-.lib-head
-  display: flex
-  justify-content: space-between
-  align-items: center
-  gap: 12px
-  flex-wrap: wrap
-  h1
-    margin: 0
-    font-size: 24px
-
-.lib-search
-  width: min(340px, 100%)
-
+/* 筛选区：一张卡片装下页签、搜索与易混组，避免控件散落在背景上 */
 .lib-controls
   display: flex
   flex-direction: column
-  gap: 10px
+  gap: 4px
+  background: var(--vs-card)
+  border: 1px solid var(--vs-line)
+  border-radius: 8px
+  padding: 8px 16px 12px
+  box-shadow: var(--vs-sh-1)
+
+.lib-topline
+  display: flex
+  align-items: center
+  justify-content: space-between
+  gap: 12px
+  flex-wrap: wrap
+
+.lib-search
+  width: min(320px, 100%)
+  margin: 6px 0
 
 .lib-filters
   display: flex
   align-items: center
   gap: 16px
   flex-wrap: wrap
+  border-top: 1px dashed var(--vs-line2)
+  padding-top: 10px
 
 .lib-check
   // QCheckbox 行高对齐筛选项
-  min-height: 44px
+  min-height: 36px
 
 .lib-groups
   display: flex
@@ -394,7 +399,7 @@ onMounted(() => {
 
 .groups-label
   font-size: 13px
-  color: #78909c
+  color: var(--vs-mute)
 
 .lib-main
   display: flex
@@ -403,15 +408,15 @@ onMounted(() => {
 
 // 正词法折叠区：折叠交互由 QExpansionItem 提供，容器保持卡片外观
 .lib-ortho
-  border: 1px solid #eceff1
-  border-radius: 12px
-  background: #fff
+  border: 1px solid var(--vs-line)
+  border-radius: 8px
+  background: var(--vs-card)
   overflow: hidden
 
 // QExpansionItem 的 header 是其内部元素，需 :deep() 才能命中
 .lib-ortho :deep(.lib-ortho-header)
   font-size: 14px
-  color: #546e7a
+  color: var(--vs-ink2)
 
 .lib-ortho-list
   margin: 0 16px 12px
@@ -421,7 +426,7 @@ onMounted(() => {
   gap: 6px
   li
     font-size: 13px
-    color: #607d8b
+    color: var(--vs-sub)
     line-height: 1.6
     font-family: var(--font-ipa)
 
@@ -433,24 +438,28 @@ onMounted(() => {
   flex: 0 0 320px
   width: 320px
   position: sticky
-  top: 16px
+  top: 84px
 
 @media (max-width: 1080px)
+  // 列向下 flex-start 会让每个子项按 fit-content 撑宽，矩阵表格把整页顶到 1200px；
+  // 触屏宽度下改为 stretch，横向滚动交给 .im-scroll
   .lib-main
     flex-direction: column
+    align-items: stretch
   .lib-side
     position: static
     width: 100%
     flex: 1 1 auto
 
 .lib-tray
-  border: 1px solid #eceff1
-  border-radius: 12px
-  background: #fff
+  border: 1px solid var(--vs-line)
+  border-radius: 8px
+  background: var(--vs-card)
   padding: 12px 14px
   display: flex
   flex-direction: column
   gap: 10px
+  box-shadow: var(--vs-sh-1)
 
 .tray-items
   display: flex
@@ -462,15 +471,15 @@ onMounted(() => {
   display: inline-flex
   align-items: center
   gap: 6px
-  background: #e0f2f1
-  color: #00695c
+  background: var(--vs-soft)
+  color: var(--vs-coffee)
   border-radius: 999px
   padding: 4px 6px 4px 14px
   font-size: 14px
   max-width: 100%
 
 .tray-vs
-  color: #90a4ae
+  color: var(--vs-mute)
   font-size: 13px
 
 .tray-pairs
@@ -481,7 +490,7 @@ onMounted(() => {
 
 .pairs-label
   font-size: 13px
-  color: #78909c
+  color: var(--vs-mute)
 
 .pair-off
   margin-left: 8px

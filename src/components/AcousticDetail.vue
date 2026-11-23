@@ -78,35 +78,35 @@ const isApiError = (e: unknown) => e instanceof ApiError
 
 <style scoped lang="sass">
 .acoustic-detail
-  border: 1px dashed #cfd8dc
+  border: 1px dashed var(--vs-line2)
   border-radius: 10px
-  background: #fafafa
+  background: var(--vs-panel)
 
 .ac-toggle
   width: 100%
   min-height: 48px
   font-size: 14px
-  color: #546e7a
+  color: var(--vs-sub)
 
 .ac-body
   padding: 0 16px 14px
   h4
     margin: 10px 0 4px
     font-size: 14px
-    color: #37474f
+    color: var(--vs-ink)
   p
     font-size: 13px
-    color: #607d8b
+    color: var(--vs-sub)
     margin: 2px 0
 
 .ac-loading, .ac-error
-  color: #90a4ae
+  color: var(--vs-mute)
 
 .ac-error
-  color: #c62828
+  color: var(--vs-brand-d)
 
 .ac-png
   max-width: 100%
   border-radius: 8px
-  background: #fff
+  background: var(--vs-card)
 </style>

@@ -34,10 +34,10 @@ export function makeToneWav(options: { durationSec?: number; freq?: number; samp
 /** 生成一个简单的口型示意 SVG（演示用占位图） */
 export function makeMouthSvg(label: string, color: string): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" width="320" height="200">
-  <rect width="320" height="200" fill="#fafafa"/>
+  <rect width="320" height="200" fill="#fef8ef"/>
   <ellipse cx="160" cy="100" rx="120" ry="66" fill="${color}" opacity="0.25" stroke="${color}" stroke-width="3"/>
-  <ellipse cx="160" cy="100" rx="70" ry="30" fill="#37474f" opacity="0.75"/>
-  <text x="160" y="182" text-anchor="middle" font-size="16" fill="#546e7a">${label}</text>
+  <ellipse cx="160" cy="100" rx="70" ry="30" fill="#33231a" opacity="0.75"/>
+  <text x="160" y="182" text-anchor="middle" font-size="16" fill="#7c6450">${label}</text>
 </svg>`
 }
 

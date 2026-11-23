@@ -5,8 +5,8 @@
  * 不承载专业说明与 IPA；完成标记来自进度门面。
  */
 import { computed } from 'vue'
-import { QBadge, QCard, QCardSection } from 'quasar'
 import type { LevelSkeleton, LevelSummary } from '@/api'
+import AppIcon from '@/components/ui/AppIcon.vue'
 
 const props = withDefaults(
   defineProps<{
@@ -25,10 +25,10 @@ interface MapNode {
   completed: boolean
 }
 
-const LAYERS: Array<{ key: LevelSummary['layer']; name: string }> = [
-  { key: 'vowel', name: '单韵母' },
-  { key: 'initial', name: '声母' },
-  { key: 'syllable', name: '拼读' },
+const LAYERS: Array<{ key: LevelSummary['layer']; name: string; desc: string }> = [
+  { key: 'vowel', name: '单韵母', desc: '先把嘴巴和舌头的固定姿势练稳' },
+  { key: 'initial', name: '声母', desc: '再看气从哪里出、舌头挡在哪儿' },
+  { key: 'syllable', name: '拼读', desc: '最后把声母和韵母连起来读' },
 ]
 
 const layers = computed(() =>
@@ -53,45 +53,48 @@ const layers = computed(() =>
         published: false,
         completed: false,
       }))
-    return { ...layer, nodes: [...published, ...skeleton].sort((a, b) => a.order - b.order) }
+    const nodes = [...published, ...skeleton].sort((a, b) => a.order - b.order)
+    return { ...layer, nodes, openCount: published.length }
   }),
 )
 </script>
 
 <template>
   <div class="layer-map">
-    <QCard
-      v-for="layer in layers"
+    <section
+      v-for="(layer, index) in layers"
       :key="layer.key"
-      tag="section"
-      flat
-      bordered
       class="map-layer"
       :aria-label="layer.name"
     >
-      <QCardSection>
-        <header class="layer-head">
-          <h2>{{ layer.name }}</h2>
-        </header>
-        <div class="layer-nodes">
-          <template v-for="node in layer.nodes" :key="node.id">
-            <RouterLink
-              v-if="node.published"
-              :to="`/learn/${node.id}`"
-              class="map-node published"
-              :class="{ completed: node.completed }"
-            >
-              <span class="node-sound">{{ node.label }}</span>
-              <QBadge v-if="node.completed" class="node-done" color="positive" aria-label="已完成">✓</QBadge>
-            </RouterLink>
-            <span v-else class="map-node skeleton" aria-label="未开放">
-              <span class="node-sound">{{ node.label }}</span>
-              <QBadge class="node-id" color="grey-3" text-color="grey-7">未开放</QBadge>
-            </span>
-          </template>
-        </div>
-      </QCardSection>
-    </QCard>
+      <header class="layer-head">
+        <span class="vs-tag">第 {{ index + 1 }} 层</span>
+        <h2>{{ layer.name }}</h2>
+        <span class="layer-range">已开放 {{ layer.openCount }} 个音</span>
+      </header>
+      <p class="layer-desc">{{ layer.desc }}</p>
+      <div class="layer-nodes">
+        <template v-for="node in layer.nodes" :key="node.id">
+          <RouterLink
+            v-if="node.published"
+            :to="`/learn/${node.id}`"
+            class="node"
+            :class="{ completed: node.completed }"
+            :aria-label="`${node.label}${node.completed ? '（已完成）' : ''}`"
+          >
+            <span class="node-sound">{{ node.label }}</span>
+            <small>
+              <AppIcon v-if="node.completed" name="check" size="sm" />
+              {{ node.completed ? '已完成' : '能录音' }}
+            </small>
+          </RouterLink>
+          <span v-else class="node locked" aria-label="未开放">
+            <span class="node-sound">{{ node.label }}</span>
+            <small>未开放</small>
+          </span>
+        </template>
+      </div>
+    </section>
   </div>
 </template>
 
@@ -99,51 +102,81 @@ const layers = computed(() =>
 .layer-map
   display: flex
   flex-direction: column
-  gap: 24px
+  gap: 16px
+
+.map-layer
+  background: var(--vs-card)
+  border: 1px solid var(--vs-line)
+  border-radius: 8px
+  padding: 24px
+  box-shadow: var(--vs-sh-1)
 
 .layer-head
+  display: flex
+  align-items: center
+  gap: 8px
+  flex-wrap: wrap
   h2
-    margin: 0 0 12px
-    font-size: 17px
+    font-size: 22px
+    font-weight: 900
+    letter-spacing: -0.3px
+    margin: 0
+
+.layer-range
+  font-size: 12px
+  color: var(--vs-mute)
+
+.layer-desc
+  margin: 6px 0 0
+  font-size: 13px
+  color: var(--vs-sub)
 
 .layer-nodes
   display: flex
   flex-wrap: wrap
-  gap: 10px
+  gap: 8px
+  margin-top: 16px
 
-.map-node
-  width: 72px
-  height: 72px
-  border-radius: 12px
+.node
+  border: 1px solid var(--vs-line2)
+  background: var(--vs-card)
+  color: var(--vs-ink)
+  cursor: pointer
+  border-radius: 8px
+  padding: 8px 12px
+  font-size: 15px
+  font-weight: 700
   display: flex
   flex-direction: column
-  align-items: center
+  align-items: flex-start
   justify-content: center
-  gap: 2px
-  position: relative
+  min-width: 72px
+  line-height: 1.4
   text-decoration: none
+  transition: border-color 0.16s var(--vs-ease), background 0.16s var(--vs-ease)
 
-  &.published
-    background: #e0f2f1
-    border: 2px solid #26a69a
-    color: #004d40
-    &:hover
-      background: #b2dfdb
-    &.completed
-      background: #c8e6c9
-      border-color: #66bb6a
+.node small
+  font-weight: 400
+  font-size: 11px
+  color: var(--vs-sub)
+  display: inline-flex
+  align-items: center
+  gap: 2px
 
-  &.skeleton
-    background: #fafafa
-    border: 2px dashed #cfd8dc
-    color: #b0bec5
+.node:hover
+  border-color: var(--vs-line-strong)
+  background: var(--vs-brand-soft)
 
-.node-sound
-  font-size: 20px
-  font-weight: 700
+.node.completed
+  border-color: var(--vs-green-line)
+  background: var(--vs-green-soft)
 
-.node-done
-  position: absolute
-  top: 4px
-  right: 6px
+.node.completed small
+  color: var(--vs-green)
+
+.node.locked
+  cursor: not-allowed
+  background: var(--vs-panel)
+  color: var(--vs-mute)
+  border-style: dashed
 </style>

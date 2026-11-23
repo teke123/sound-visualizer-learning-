@@ -80,9 +80,17 @@ async function submit() {
 @use './auth-shared'
 
 .auth-form
-  max-width: 380px
-  margin: 0 auto
+  max-width: 420px
+  margin: 16px auto
+  padding: 32px
+  background: var(--vs-card)
+  border: 1px solid var(--vs-line)
+  border-radius: 8px
+  box-shadow: var(--vs-sh-2)
 
   h2
     margin: 0 0 6px
+    font-size: 24px
+    font-weight: 900
+    letter-spacing: -0.3px
 </style>

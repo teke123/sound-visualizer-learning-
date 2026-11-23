@@ -1,24 +1,25 @@
 <script setup lang="ts">
 /**
- * LevelCard：P01 / P02 / P06 共用卡片（FR-302 / FR-702）：
- * 名称、拼音、代表字、试听、进入。
+ * LevelCard：首页 / 搜索 / 发音库目录共用的关卡卡（V3 卡片语言）：
+ * 编号 + 拼音大字 + 代表字 + 类型标签 + 可录音状态 + 试听 / 进入。
  */
 import { computed } from 'vue'
-import { QBadge, QBtn, QCard, QCardSection } from 'quasar'
-import type { LevelSummary } from '@/api'
-import { mediaUrl } from '@/api'
+import { mediaUrl, type LevelSummary } from '@/api'
 import { usePlayerStore } from '@/stores/player'
+import AppIcon from '@/components/ui/AppIcon.vue'
 
 const props = defineProps<{
   level: LevelSummary
-  /** 显示完成标记（P01/P02 不带进度时不传） */
+  /** 显示完成标记（首页 / 搜索带进度时） */
   completed?: boolean
-  /** 试听开关（P06 目录、P02 结果默认开启） */
+  /** 试听开关（默认开启） */
   showListen?: boolean
 }>()
 
 const player = usePlayerStore()
 const listenKey = computed(() => `demo:${props.level.id}`)
+const canEnter = computed(() => props.level.availability !== 'closed')
+const longPinyin = computed(() => props.level.pinyin.length > 2)
 
 function playDemo() {
   if (!props.level.demoMediaId) return
@@ -27,100 +28,112 @@ function playDemo() {
 </script>
 
 <template>
-  <QCard flat bordered tag="article" class="level-card" :data-level-id="level.id">
-    <QCardSection class="card-body">
-      <div class="card-head">
-        <span class="card-id">{{ level.id }}</span>
-        <h3 class="card-title">{{ level.title }}</h3>
-        <QBadge v-if="completed" color="positive" class="card-done">已学完</QBadge>
-      </div>
-      <p class="card-sub">
-        <span class="card-pinyin">{{ level.pinyin }}</span>
-        <span v-if="level.representativeChar" class="card-char">「{{ level.representativeChar }}」</span>
-        <span class="card-type">{{ level.type }}</span>
-      </p>
-      <div class="card-actions">
-        <QBtn
-          v-if="showListen !== false && level.demoMediaId"
-          outline
-          no-caps
-          color="blue-grey-4"
-          text-color="blue-grey-9"
-          class="card-btn"
-          :label="player.isCurrent(listenKey) ? '⏸ 暂停' : '▶ 试听'"
-          @click="playDemo"
-        />
-        <QBtn
-          v-if="level.availability !== 'closed'"
-          outline
-          no-caps
-          color="primary"
-          text-color="teal-9"
-          class="card-btn primary"
-          label="进入关卡"
-          :to="`/learn/${level.id}`"
-        />
-        <QBtn v-else outline no-caps color="blue-grey-3" text-color="blue-grey-3" class="card-btn" label="未开放" disable />
-      </div>
-    </QCardSection>
-  </QCard>
+  <article class="lv" :data-level-id="level.id">
+    <div class="lv-top">
+      <span class="lv-id">{{ level.id }}</span>
+      <span v-if="completed" class="vs-tag vs-tag--ok">已学完</span>
+    </div>
+    <div class="lv-py" :class="{ long: longPinyin }">{{ level.pinyin }}</div>
+    <div class="lv-hz">{{ level.representativeChar ? `「${level.representativeChar}」` : level.targetSound }}</div>
+    <div class="lv-foot">
+      <span class="vs-tag">{{ level.type }}</span>
+      <span class="lv-state" :class="{ on: canEnter }">
+        <i class="lv-dot" />{{ canEnter ? '能录音' : '未开放' }}
+      </span>
+    </div>
+    <div class="lv-actions">
+      <button
+        v-if="showListen !== false && level.demoMediaId"
+        type="button"
+        class="vs-btn vs-btn--ghost vs-btn--small"
+        @click="playDemo"
+      >
+        <AppIcon :name="player.isCurrent(listenKey) ? 'pause' : 'sound'" size="sm" />
+        {{ player.isCurrent(listenKey) ? '暂停' : '试听' }}
+      </button>
+      <RouterLink v-if="canEnter" :to="`/learn/${level.id}`" class="vs-btn vs-btn--small">
+        进入关卡
+      </RouterLink>
+      <span v-else class="vs-btn vs-btn--small" aria-disabled="true">暂未开放</span>
+    </div>
+  </article>
 </template>
 
 <style scoped lang="sass">
-.level-card
+.lv
+  border: 1px solid var(--vs-line)
+  border-radius: 8px
+  background: var(--vs-card)
+  box-shadow: var(--vs-sh-1)
+  padding: 16px
   display: flex
   flex-direction: column
+  transition: transform 0.2s var(--vs-ease), box-shadow 0.2s var(--vs-ease), border-color 0.2s var(--vs-ease)
 
-.card-body
-  flex: 1
-  display: flex
-  flex-direction: column
-  gap: 8px
+.lv:hover
+  transform: translateY(-2px)
+  box-shadow: var(--vs-sh-2)
+  border-color: var(--vs-line-hover)
 
-.card-head
+.lv-top
   display: flex
   align-items: center
+  justify-content: space-between
   gap: 8px
 
-.card-id
-  font-size: 12px
-  background: #e0f2f1
-  color: #00695c
-  border-radius: 4px
-  padding: 1px 6px
+.lv-id
+  font-size: 11.5px
+  font-weight: 600
+  color: var(--vs-mute)
+  letter-spacing: 0.4px
 
-.card-title
-  margin: 0
-  font-size: 17px
+.lv-py
+  margin-top: 4px
+  font-size: 26px
+  font-weight: 800
+  color: var(--vs-ink)
+  line-height: 1.25
+  letter-spacing: -0.5px
+  &.long
+    font-size: 18px
 
-.card-done
-  margin-left: auto
+.lv-hz
+  margin-top: 2px
+  font-size: 13px
+  color: var(--vs-sub)
 
-.card-sub
+.lv-foot
+  margin-top: 16px
+  display: flex
+  align-items: center
+  justify-content: space-between
+  gap: 8px
+  flex-wrap: wrap
+
+.lv-state
+  font-size: 11.5px
+  color: var(--vs-sub)
+  display: inline-flex
+  align-items: center
+  gap: 4px
+
+.lv-dot
+  width: 6px
+  height: 6px
+  border-radius: 50%
+  display: inline-block
+  flex: none
+  background: var(--vs-line2)
+
+.lv-state.on .lv-dot
+  background: var(--vs-brand)
+
+.lv-actions
+  margin-top: 12px
   display: flex
   gap: 8px
-  align-items: baseline
-  margin: 0
-  color: #607d8b
-  font-size: 14px
+  flex-wrap: wrap
 
-.card-type
-  font-size: 12px
-  border: 1px solid #cfd8dc
-  border-radius: 999px
-  padding: 0 8px
-
-.card-actions
-  display: flex
-  gap: 10px
-  margin-top: auto
-
-/* 原 .card-btn：44px 触达高度 / 8px 圆角（非胶囊）；
-   .primary 浅青底 + 字重 600（Quasar outline 底色为 transparent !important，填充需 important 补回） */
-.card-btn
-  min-height: 44px
-  border-radius: 8px
-  &.primary
-    background: #e0f2f1 !important
-    font-weight: 600
+.lv-actions .vs-btn
+  flex: 1 1 auto
 </style>

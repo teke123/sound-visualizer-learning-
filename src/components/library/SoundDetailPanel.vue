@@ -160,7 +160,6 @@ watch(
             <QBtn
               unelevated
               no-caps
-              rounded
               color="primary"
               class="sdp-btn"
               @click="emit('enterLevel', matchedLevel.id)"
@@ -170,9 +169,8 @@ watch(
             <QBtn
               outline
               no-caps
-              rounded
               color="primary"
-              text-color="teal-9"
+              text-color="primary"
               class="sdp-btn"
               @click="emit('addCompare', matchedLevel.id)"
             >
@@ -209,25 +207,25 @@ watch(
 
 .sdp-pinyin
   font-size: 26px
-  font-weight: 700
-  color: #00695c
+  font-weight: 800
+  color: var(--vs-ink)
   font-family: var(--font-ipa)
 
 .sdp-ipa
   font-size: 15px
-  color: #78909c
+  color: var(--vs-mute)
   font-family: var(--font-ipa)
 
 .sdp-close
   min-width: 44px
   min-height: 44px
   font-size: 16px
-  color: #78909c
+  color: var(--vs-mute)
 
 .sdp-char
   margin: 0
   font-size: 16px
-  color: #37474f
+  color: var(--vs-ink)
 
 .sdp-labels
   display: flex
@@ -235,11 +233,12 @@ watch(
   gap: 6px
 
 .sdp-label
-  font-size: 12px
-  color: #4527a0
-  background: #ede7f6
-  border-radius: 999px
-  padding: 2px 10px
+  font-size: 11.5px
+  font-weight: 600
+  color: var(--vs-ink2)
+  background: var(--vs-soft)
+  border-radius: 6px
+  padding: 2px 8px
 
 .sdp-level
   display: flex
@@ -250,14 +249,14 @@ watch(
   margin: 0
   font-size: 13px
   font-weight: 600
-  color: #00695c
+  color: var(--vs-coffee)
 
 .sdp-hint
   margin: 0
   font-size: 13px
-  color: #90a4ae
+  color: var(--vs-mute)
   &.error
-    color: #c62828
+    color: var(--vs-brand-d)
 
 .sdp-figure
   max-height: 260px
@@ -276,6 +275,6 @@ watch(
   margin: 0
   padding: 18px 0
   text-align: center
-  color: #b0bec5
+  color: var(--vs-mute-2)
   font-size: 14px
 </style>

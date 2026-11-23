@@ -9,6 +9,7 @@
  */
 import { computed, defineAsyncComponent, ref, watch, type Component } from 'vue'
 import type { Articulation } from '@/api'
+import AppIcon from '@/components/ui/AppIcon.vue'
 import Model3DView from './Model3DView.vue'
 
 const props = defineProps<{
@@ -57,6 +58,7 @@ watch(
 
 <template>
   <section class="articulation-figure" aria-label="构形">
+    <h3 class="fig-title"><AppIcon name="mouth" size="sm" />看见口型</h3>
     <div class="view-tabs" v-if="availableViews.length > 1" role="tablist">
       <button
         v-for="view in availableViews"
@@ -71,7 +73,15 @@ watch(
       </button>
     </div>
 
-    <div v-if="availableViews.length === 0" class="figure-empty">本关暂无构形内容</div>
+    <div v-if="availableViews.length === 0" class="figure-empty">
+      <svg width="176" height="108" viewBox="0 0 176 108" aria-hidden="true">
+        <ellipse cx="88" cy="54" rx="72" ry="46" fill="#fdf6ea" />
+        <ellipse cx="88" cy="64" rx="38" ry="19" fill="#faecd8" stroke="#e3c2a0" stroke-width="2.5" />
+        <path d="M61 64c8-12 46-12 54 0-8 12-46 12-54 0Z" fill="#e9b49e" />
+        <path d="M61 64h54" stroke="#c08068" stroke-width="1.6" />
+      </svg>
+      <p>本关暂无构形素材。</p>
+    </div>
 
     <!-- 内容媒体视图：交互动画组件 / 图 / 动画 / 视频 -->
     <div v-if="activeView === 'media' && hasMedia" class="media-view">
@@ -96,10 +106,24 @@ watch(
 
 <style scoped lang="sass">
 .articulation-figure
-  background: #fff
-  border: 1px solid #eceff1
-  border-radius: 12px
-  padding: 16px
+  background: var(--vs-card)
+  border: 1px solid var(--vs-line)
+  border-radius: 8px
+  padding: 24px
+  box-shadow: 0 1px 2px rgba(var(--vs-shadow-rgb), 0.05), 0 1px 3px rgba(var(--vs-shadow-rgb), 0.04)
+
+.fig-title
+  display: flex
+  align-items: center
+  gap: 8px
+  margin: 0 0 12px
+  font-size: 20px
+  font-weight: 900
+  letter-spacing: -0.3px
+
+.fig-title .ico,
+.fig-title .vs-ico
+  color: var(--vs-brand)
 
 .view-tabs
   display: flex
@@ -110,20 +134,38 @@ watch(
   min-height: 36px
   padding: 4px 16px
   border-radius: 999px
-  border: 1px solid #cfd8dc
-  background: #fff
+  border: 1px solid var(--vs-line2)
+  background: var(--vs-card)
   cursor: pointer
+  font-family: inherit
   font-size: 14px
+  color: var(--vs-ink2)
+  transition: background 0.16s ease, border-color 0.16s ease
   &.active
-    background: #e0f2f1
-    border-color: #00897b
-    color: #00695c
+    background: var(--vs-soft)
+    border-color: var(--vs-coffee)
+    color: var(--vs-coffee)
     font-weight: 600
+  &:hover
+    border-color: var(--vs-line-hover)
 
 .figure-empty
-  color: #90a4ae
-  padding: 24px 0
+  color: var(--vs-sub)
+  padding: 16px 0
   text-align: center
+  display: flex
+  flex-direction: column
+  align-items: center
+  gap: 8px
+  svg
+    max-width: 100%
+    height: auto
+  p
+    margin: 0
+    max-width: 100%
+    font-size: 12.5px
+    line-height: 1.7
+    overflow-wrap: anywhere
 
 .media-view
   display: grid
@@ -135,10 +177,10 @@ watch(
   img, video
     width: 100%
     border-radius: 8px
-    background: #f5f5f5
+    background: var(--vs-soft-2)
   figcaption
     font-size: 13px
-    color: #607d8b
+    color: var(--vs-sub)
     margin-top: 6px
   &.interactive
     grid-column: 1 / -1

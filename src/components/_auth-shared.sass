@@ -1,38 +1,37 @@
 // 登录 / 注册表单共享样式（被 LoginForm / RegisterForm @use）。
 // 剩余职责：Quasar 控件之外的排版与文案样式——
 //   .auth-note 说明文字、.auth-field QInput 字段间距、.form-error 表单级错误文案、
-//   .auth-submit QBtn 主按钮的布局占位、.auth-alt 底部辅助链接。
-// 输入框（底色/边框/聚焦）与按钮（底色/圆角/禁用态）外观已由 QInput / QBtn + 语义色接管。
+//   .auth-submit 主按钮布局占位、.auth-alt 底部辅助链接。
+// 输入框与按钮的底色 / 边框 / 圆角由 src/css/theme.sass 统一接管。
 .auth-note
   font-size: 13px
-  color: #8d6e63
-  background: #fff8e1
-  border: 1px solid #ffe082
+  color: var(--vs-sub)
+  background: var(--vs-brand-soft)
+  border: 1px solid var(--vs-brand-line)
   border-radius: 8px
   padding: 8px 12px
   line-height: 1.7
 
-// QInput 字段间距（取代原手写 .field 布局）
+// QInput 字段间距
 .auth-field
   margin-top: 14px
 
 .form-error
-  color: #c62828
+  color: var(--vs-brand-d)
   font-size: 13px
   margin: 12px 0 0
 
-// QBtn 主按钮（type="submit"）的布局占位：整行宽 + 间距；底色由 color="primary" 接管，
-// 圆角还原原版 10px 直角圆角（全局按钮胶囊不适用于此宽按钮）
+// QBtn 主按钮（type="submit"）的布局占位：整行宽 + 间距
 .auth-submit
   margin-top: 18px
   width: 100%
   min-height: 48px
-  border-radius: 10px
+  border-radius: 8px
 
 .auth-alt
   font-size: 13px
-  color: #78909c
+  color: var(--vs-mute)
   text-align: center
   margin-top: 14px
   a
-    color: #00897b
+    color: var(--vs-brand)

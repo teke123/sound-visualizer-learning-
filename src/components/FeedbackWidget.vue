@@ -53,8 +53,8 @@ async function submitDetail() {
           no-caps
           class="fb-chip"
           size="13px"
-          :color="subtype === option.key ? 'teal-1' : 'blue-grey-2'"
-          :text-color="subtype === option.key ? 'teal-9' : 'blue-grey-6'"
+          :color="subtype === option.key ? 'primary' : 'grey-3'"
+          :text-color="subtype === option.key ? 'primary' : 'grey-5'"
           :unelevated="subtype === option.key"
           :outline="subtype !== option.key"
           @click="subtype = option.key as typeof subtype"
@@ -75,7 +75,7 @@ async function submitDetail() {
         outline
         no-caps
         color="primary"
-        text-color="teal-9"
+        text-color="primary"
         class="fb-submit"
         :disable="!detail.trim() || feedback.submitting.value"
         @click="submitDetail"
@@ -104,7 +104,7 @@ async function submitDetail() {
   gap: 8px
 
 .fb-title
-  color: #90a4ae
+  color: var(--vs-mute)
 
 .fb-row
   display: flex
@@ -114,7 +114,7 @@ async function submitDetail() {
 /* 页底低调的入口按钮：保留灰色下划线文字形态（中性灰，非品牌语义色） */
 .fb-toggle
   font-size: 13px
-  color: #78909c
+  color: var(--vs-mute)
   text-decoration: underline
 
 .fb-expand
@@ -126,7 +126,7 @@ async function submitDetail() {
 
 .fb-label
   font-size: 12px
-  color: #b0bec5
+  color: var(--vs-mute-2)
 
 /* 原 .fb-chip 32px 高的紧凑 chip（半径走全局 999px 胶囊） */
 .fb-chip
@@ -146,7 +146,7 @@ async function submitDetail() {
   margin: 6px 0 0
   font-size: 12px
   &.ok
-    color: #2e7d32
+    color: var(--vs-green)
   &.err
-    color: #c62828
+    color: var(--vs-brand-d)
 </style>

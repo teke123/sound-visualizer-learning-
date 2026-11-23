@@ -146,7 +146,7 @@ const sides = computed<SideView[]>(() => {
       envelope: userEnvelope.value,
       failed: userFailed.value,
       span: props.vot.user,
-      color: '#0288d1',
+      color: '#cb3a2e',
     },
   ]
   if (hasReference.value) {
@@ -156,7 +156,7 @@ const sides = computed<SideView[]>(() => {
       envelope: referenceEnvelope.value,
       failed: referenceFailed.value,
       span: props.vot.reference,
-      color: '#6a4c93',
+      color: '#93a8c4',
     })
   }
   return list
@@ -217,8 +217,8 @@ function optionFor(side: SideView) {
           silent: true,
           symbol: 'none',
           animation: false,
-          lineStyle: { color: '#00897b', type: 'solid' as const, width: 1.5 },
-          label: { formatter: '嗓音起始', position: 'insideEndTop' as const, fontSize: 11, color: '#546e7a' },
+          lineStyle: { color: '#cb3a2e', type: 'solid' as const, width: 1.5 },
+          label: { formatter: '嗓音起始', position: 'insideEndTop' as const, fontSize: 11, color: '#566a80' },
           data: span ? [{ xAxis: span.voicingOnsetSec }] : [],
         },
       },
@@ -241,7 +241,7 @@ function optionFor(side: SideView) {
   <div class="vot-waveform-chart">
     <div v-if="unavailable" class="curve-unavailable">
       <p>本次没有可用的送气段对比。</p>
-      <p class="reason">{{ vot.note ?? '这条录音未能定位清辅音起始与嗓音起始，不做伪造展示。' }}</p>
+      <p class="reason">{{ vot.note ?? '这条录音没有定位到清辅音起始与嗓音起始。' }}</p>
     </div>
 
     <template v-else>
@@ -272,7 +272,7 @@ function optionFor(side: SideView) {
 
 .vot-summary
   font-size: 13px
-  color: #546e7a
+  color: var(--vs-sub)
   margin: 0 0 10px
 
 .vot-side
@@ -282,7 +282,7 @@ function optionFor(side: SideView) {
 .side-title
   font-size: 13px
   font-weight: 600
-  color: #37474f
+  color: var(--vs-ink)
   margin: 0 0 4px
 
 .side-placeholder
@@ -293,29 +293,29 @@ function optionFor(side: SideView) {
   padding: 0 16px
   text-align: center
   font-size: 13px
-  color: #90a4ae
-  background: #fafafa
-  border: 1px dashed #cfd8dc
+  color: var(--vs-mute)
+  background: var(--vs-panel)
+  border: 1px dashed var(--vs-line2)
   border-radius: 8px
 
   &.loading
-    color: #b0bec5
+    color: var(--vs-mute-2)
 
 .reference-missing-note
   font-size: 12px
-  color: #90a4ae
+  color: var(--vs-mute)
   margin: 8px 0 0
 
 .curve-unavailable
   padding: 20px 12px
   text-align: center
-  color: #546e7a
-  background: #fafafa
-  border: 1px dashed #cfd8dc
+  color: var(--vs-sub)
+  background: var(--vs-panel)
+  border: 1px dashed var(--vs-line2)
   border-radius: 8px
   p
     margin: 4px 0
   .reason
     font-size: 13px
-    color: #90a4ae
+    color: var(--vs-mute)
 </style>

@@ -30,5 +30,5 @@ const options: ReadonlyArray<{ label: string; value: string }> = [
 
 .gender-label
   font-size: 14px
-  color: #37474f
+  color: var(--vs-ink)
 </style>

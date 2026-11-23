@@ -40,13 +40,13 @@ const next = computed(() => toItem(props.level.nav?.next, '下一关'))
 <template>
   <nav class="level-nav" aria-label="关卡导航">
     <div class="nav-slot nav-prev">
-      <QBtn v-if="prev?.available" outline no-caps color="blue-grey-4" text-color="blue-grey-9" class="nav-link" :to="`/learn/${prev.id}`">
+      <QBtn v-if="prev?.available" outline no-caps color="primary" text-color="primary" class="nav-link" :to="`/learn/${prev.id}`">
         <span class="nav-text">
           <span class="nav-label">← {{ prev.label }}</span>
           <span class="nav-title">{{ prev.title }}</span>
         </span>
       </QBtn>
-      <QBtn v-else-if="prev" outline no-caps color="blue-grey-4" text-color="blue-grey-9" class="nav-link" disable>
+      <QBtn v-else-if="prev" outline no-caps color="primary" text-color="primary" class="nav-link" disable>
         <span class="nav-text">
           <span class="nav-label">← {{ prev.label }}</span>
           <span class="nav-title">{{ prev.title }}（暂不可进入）</span>
@@ -54,13 +54,13 @@ const next = computed(() => toItem(props.level.nav?.next, '下一关'))
       </QBtn>
     </div>
     <div class="nav-slot nav-next">
-      <QBtn v-if="next?.available" outline no-caps color="blue-grey-4" text-color="blue-grey-9" class="nav-link" :to="`/learn/${next.id}`">
+      <QBtn v-if="next?.available" outline no-caps color="primary" text-color="primary" class="nav-link" :to="`/learn/${next.id}`">
         <span class="nav-text">
           <span class="nav-label">{{ next.label }} →</span>
           <span class="nav-title">{{ next.title }}</span>
         </span>
       </QBtn>
-      <QBtn v-else-if="next" outline no-caps color="blue-grey-4" text-color="blue-grey-9" class="nav-link" disable>
+      <QBtn v-else-if="next" outline no-caps color="primary" text-color="primary" class="nav-link" disable>
         <span class="nav-text">
           <span class="nav-label">{{ next.label }} →</span>
           <span class="nav-title">{{ next.title }}（暂不可进入）</span>
@@ -109,7 +109,7 @@ const next = computed(() => toItem(props.level.nav?.next, '下一关'))
 
 .nav-label
   font-size: 12px
-  color: #90a4ae
+  color: var(--vs-mute)
 
 .nav-title
   font-size: 15px

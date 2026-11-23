@@ -41,13 +41,13 @@ const phonology = computed(() =>
 /* ------------------- 粘性头部的让位测量（运行时实测） ------------------- */
 const headerEl = ref<HTMLElement | null>(null)
 
-/** 顶部让位：AppShell 手机顶栏（≤760px 显示，sticky）实测高度；桌面为 0 */
+/** 顶部让位：窄屏顶部品牌条（sticky）实测高度；桌面隐藏时为 0 */
 const topOffsetPx = ref(0)
 /** 头部实际高度：sticky 冻结后，左栏参照区的让位距离 */
 const headerHeightPx = ref(0)
 
 function readOffsets() {
-  const appTopBar = document.querySelector('.app-shell > .mobile-bar')
+  const appTopBar = document.querySelector('.app-shell .app-header')
   const barH = appTopBar ? appTopBar.getBoundingClientRect().height : 0
   topOffsetPx.value = barH > 0 ? Math.round(barH) : 0
   headerHeightPx.value = headerEl.value
@@ -80,9 +80,10 @@ onBeforeUnmount(() => {
 
 <template>
   <article class="level-view" :style="cssVars">
-    <!-- 关卡头部：标题 + 拼音 + IPA 徽章；冻结于页面顶部，滚动可见 -->
+    <!-- 关卡头部：类型 / 拼音 / IPA；冻结于页面顶部，滚动可见 -->
     <header ref="headerEl" class="level-header">
       <div class="level-identity">
+        <span class="vs-tag">{{ level.type }}</span>
         <h1>{{ level.title }}</h1>
         <span class="level-pinyin">{{ level.pinyin }}</span>
         <span v-if="phonology.ipa" class="ipa-badge">[{{ phonology.ipa }}]</span>
@@ -157,48 +158,77 @@ onBeforeUnmount(() => {
 .sec-result
   order: 5
 
-/* 头部冻结：贴着页面顶部（手机端让位于 AppShell 顶栏），滚动时常驻可见。
-   整体压紧：标题行与标签行紧贴，与主体内容的间距尽量小。 */
+/* 头部冻结：贴着页面顶部（顶栏下方），滚动时常驻可见；底色与页面一致 + 模糊，卡片从下方穿过 */
 .level-header
   position: sticky
   top: var(--lv-top, 0px)
   z-index: 50
-  background: #f7f9fa
+  background: rgba(var(--vs-bg-rgb), 0.92)
+  -webkit-backdrop-filter: blur(10px)
+  backdrop-filter: blur(10px)
   margin-bottom: 10px
-  padding: 4px 0 8px
-  border-bottom: 1px solid #eceff1
+  padding: 10px 0 10px
+  border-bottom: 1px solid var(--vs-line2)
 
 .level-identity
   display: flex
-  align-items: baseline
+  align-items: center
   gap: 8px
   flex-wrap: wrap
 
 .level-header h1
-  font-size: 21px
+  font-family: var(--vs-font-display)
+  font-size: 23px
   margin: 0
   line-height: 1.25
+  font-weight: 600
+  letter-spacing: -0.01em
 
 .level-pinyin
-  color: #607d8b
+  color: var(--vs-ink2)
   font-size: 15px
 
 .ipa-badge
   font-size: 15px
-  color: #00695c
-  background: #e0f2f1
-  border: 1px solid #b2dfdb
+  color: var(--vs-coffee)
+  background: var(--vs-soft)
+  border: 1px solid var(--vs-brand-line)
   border-radius: 6px
   padding: 0 6px
+  font-family: var(--font-ipa)
 
-/* 小标题：与全局各页一致（18px 粗体、无装饰竖线） */
+/* 每个模块一张卡：内容区留白与边框统一 */
 .level-section
-  margin-top: 26px
+  margin-top: 16px
+  background: var(--vs-card)
+  border: 1px solid var(--vs-line)
+  border-radius: 8px
+  padding: 24px
+  box-shadow: var(--vs-sh-1)
   h2
-    font-size: 18px
-    font-weight: 700
-    color: #263238
-    margin: 0 0 10px
+    font-size: 20px
+    font-weight: 900
+    letter-spacing: -0.3px
+    color: var(--vs-ink)
+    margin: 0 0 12px
+    display: flex
+    align-items: center
+    gap: 8px
+  h2::before
+    content: ''
+    display: block
+    flex: none
+    width: 4px
+    height: 18px
+    border-radius: 2px
+    background: linear-gradient(180deg, var(--vs-sand), var(--vs-brand))
+
+/* 构形自带卡片外观，不再套一层 */
+.sec-figure
+  background: transparent
+  border: none
+  box-shadow: none
+  padding: 0
 
 /* 每栏首个内容模块紧贴标题栏，不吃 section 的上边距 */
 .level-aside .level-section:first-child,
@@ -206,29 +236,40 @@ onBeforeUnmount(() => {
 .sec-figure
   margin-top: 0
 
-/* 桌面（≥1024px）：双栏工作台。左栏为主（58%，构形/示范常驻参照，sticky），
-   右栏 42% 训练与检测流；行距收紧让主体贴近冻结头部。 */
+/* 桌面（≥1024px）：双栏工作台。整页高度固定为一屏，
+   左栏（构形 / 示范）与头部完全不动，只有右栏（训练与检测流）内部滚动。 */
 @media (min-width: 1024px)
   .level-view
-    max-width: 1200px
+    max-width: 1100px
+    flex: 1 1 auto
+    min-height: 0
     display: grid
     grid-template-columns: 58fr 42fr
+    grid-template-rows: auto minmax(0, 1fr)
     grid-template-areas: "header header" "aside main"
     gap: 14px 28px
-    align-content: start
+    align-content: stretch
 
   .level-header
     grid-area: header
+    position: static
+    backdrop-filter: none
+    -webkit-backdrop-filter: none
+    background: transparent
 
   .level-aside
     display: block
     grid-area: aside
-    position: sticky
-    /* 让位冻结头部：顶栏高度 + 头部自身高度 + 原有间隙 */
-    top: calc(var(--lv-top, 0px) + var(--lv-head-h, 0px) + 16px)
-    align-self: start
+    position: static
+    align-self: stretch
+    overflow-y: auto
+    padding-right: 4px
+    overscroll-behavior: contain
 
   .level-main
     display: block
     grid-area: main
+    overflow-y: auto
+    padding-right: 8px
+    overscroll-behavior: contain
 </style>

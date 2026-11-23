@@ -106,7 +106,7 @@ function optionVisual(question: QuizQuestion, index: number): { filled: boolean;
   gap: 20px
 
 .quiz-empty
-  color: #90a4ae
+  color: var(--vs-mute)
 
 .quiz-head
   display: flex
@@ -116,13 +116,13 @@ function optionVisual(question: QuizQuestion, index: number): { filled: boolean;
 
 .quiz-no
   font-weight: 600
-  color: #37474f
+  color: var(--vs-ink)
 
 .quiz-stimulus
   min-height: 40px
 
 .quiz-prompt
-  color: #546e7a
+  color: var(--vs-sub)
   font-size: 14px
 
 .quiz-options
@@ -137,13 +137,13 @@ function optionVisual(question: QuizQuestion, index: number): { filled: boolean;
   font-size: 15px
 
 .quiz-option-play
-  color: #0288d1
+  color: var(--vs-brand)
   font-size: 13px
 
 .quiz-explain
   margin: 10px 0 0
   font-size: 14px
-  color: #c62828
+  color: var(--vs-brand-d)
   &.ok
-    color: #2e7d32
+    color: var(--vs-green)
 </style>

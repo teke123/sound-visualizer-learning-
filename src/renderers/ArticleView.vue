@@ -146,7 +146,7 @@ const demoMediaIds = computed(() => (props.article.demo?.mediaId ? [props.articl
   margin: 0 0 8px
 
 .article-excerpt
-  color: #607d8b
+  color: var(--vs-sub)
   margin: 0 0 16px
 
 .article-demo
@@ -154,28 +154,28 @@ const demoMediaIds = computed(() => (props.article.demo?.mediaId ? [props.articl
   align-items: center
   gap: 10px
   padding: 10px 12px
-  background: #e0f7fa
+  background: var(--vs-soft-2)
   border-radius: 8px
   margin-bottom: 14px
 
 .article-demo-btn
   min-height: 40px
   padding: 4px 16px
-  border: 1px solid #00acc1
+  border: 1px solid var(--vs-brand-line)
   border-radius: 999px
-  background: #fff
-  color: #00838f
+  background: var(--vs-card)
+  color: var(--vs-brand-d)
   cursor: pointer
   font-size: 14px
 
 .article-demo-text
-  color: #00695f
+  color: var(--vs-coffee)
   font-size: 14px
 
 .article-body
   font-size: 16px
   line-height: 1.8
-  color: #263238
+  color: var(--vs-ink)
   overflow-wrap: break-word
 
   :deep(h2)
@@ -194,58 +194,58 @@ const demoMediaIds = computed(() => (props.article.demo?.mediaId ? [props.articl
     align-items: center
     gap: 10px
     padding: 10px 12px
-    background: #e0f7fa
+    background: var(--vs-soft-2)
     border-radius: 8px
     margin: 12px 0
 
   :deep(.md-audio-btn)
     min-height: 36px
     padding: 4px 14px
-    border: 1px solid #00acc1
+    border: 1px solid var(--vs-brand-line)
     border-radius: 999px
-    background: #fff
-    color: #00838f
+    background: var(--vs-card)
+    color: var(--vs-brand-d)
     cursor: pointer
     font-size: 14px
 
   :deep(.md-audio-text)
-    color: #00695f
+    color: var(--vs-coffee)
     font-size: 14px
 
   :deep(.md-image)
     margin: 12px 0
     figcaption
       font-size: 13px
-      color: #607d8b
+      color: var(--vs-sub)
       margin-top: 4px
 
   :deep(.md-level-chip)
     display: inline-block
     margin: 0 8px 8px 0
     padding: 4px 12px
-    border: 1px solid #80cbc4
+    border: 1px solid var(--vs-line2)
     border-radius: 999px
-    color: #00695c
+    color: var(--vs-coffee)
     cursor: pointer
     font-size: 14px
-    background: #fff
+    background: var(--vs-card)
     &.unavailable
-      border-color: #cfd8dc
-      color: #90a4ae
+      border-color: var(--vs-line2)
+      color: var(--vs-mute)
       cursor: default
 
   :deep(.md-practice), :deep(.md-pro)
-    border: 1px solid #cfd8dc
+    border: 1px solid var(--vs-line2)
     border-radius: 8px
     padding: 10px 14px
     margin: 12px 0
     summary
       cursor: pointer
       font-weight: 600
-      color: #37474f
+      color: var(--vs-ink)
 
 .article-rendering
-  color: #90a4ae
+  color: var(--vs-mute)
   font-size: 13px
 
 .article-section
@@ -267,16 +267,16 @@ const demoMediaIds = computed(() => (props.article.demo?.mediaId ? [props.articl
 .level-chip
   margin: 0 8px 8px 0
   padding: 6px 14px
-  border: 1px solid #80cbc4
+  border: 1px solid var(--vs-line2)
   border-radius: 999px
-  background: #fff
-  color: #00695c
+  background: var(--vs-card)
+  color: var(--vs-coffee)
   cursor: pointer
   font-size: 14px
   min-height: 36px
   &.unavailable
-    border-color: #cfd8dc
-    color: #90a4ae
+    border-color: var(--vs-line2)
+    color: var(--vs-mute)
     cursor: default
 
 .article-references
@@ -284,12 +284,12 @@ const demoMediaIds = computed(() => (props.article.demo?.mediaId ? [props.articl
   padding: 0
   li
     padding: 8px 0
-    border-bottom: 1px dashed #eceff1
+    border-bottom: 1px dashed var(--vs-line)
     display: flex
     flex-direction: column
     gap: 2px
 
 .reference-meta
   font-size: 13px
-  color: #78909c
+  color: var(--vs-mute)
 </style>

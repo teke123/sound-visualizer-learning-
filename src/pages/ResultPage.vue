@@ -8,7 +8,6 @@
  */
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { QBtn } from 'quasar'
 import { audioFileUrl } from '@/api'
 import { useRecordingResult } from '@/features/result'
 import { usePlayerStore } from '@/stores/player'
@@ -17,6 +16,8 @@ import { useContextStore } from '@/stores/context'
 import AcousticDetail from '@/components/AcousticDetail.vue'
 import ProcessingStage from '@/features/assessment/components/ProcessingStage.vue'
 import PageState from '@/components/PageState.vue'
+import PageHead from '@/components/ui/PageHead.vue'
+import AppIcon from '@/components/ui/AppIcon.vue'
 import ResultBody from '@/features/assessment/components/ResultBody.vue'
 
 const route = useRoute()
@@ -93,27 +94,18 @@ async function onRetrySubmission() {
     />
 
     <!-- 失败（504 / 500 等） -->
-    <div v-else-if="phase === 'failed'" class="result-failed">
+    <div v-else-if="phase === 'failed'" class="result-failed vs-card">
       <h1>这次检测没有完成</h1>
       <p class="fail-hint">可能是评分服务繁忙或处理超时。</p>
       <div class="fail-actions">
-        <QBtn
-          v-if="retryable"
-          unelevated
-          no-caps
-          color="primary"
-          label="重试本次提交"
-          @click="onRetrySubmission"
-        />
-        <QBtn outline no-caps color="blue-grey-4" text-color="blue-grey-9" label="重新录音" :to="result.retakeRoute()" />
+        <button v-if="retryable" type="button" class="vs-btn" @click="onRetrySubmission">重试本次提交</button>
+        <RouterLink :to="result.retakeRoute()" class="vs-btn vs-btn--ghost">重新录音</RouterLink>
       </div>
     </div>
 
     <!-- 已完成 -->
     <template v-else-if="assessment && recording">
-      <header class="result-head">
-        <h1>{{ levelTitle }} · 检测结果</h1>
-      </header>
+      <PageHead :title="`${levelTitle} · 检测结果`" icon="wave" />
 
       <!-- 完成态公共主体：质量 / 分数 / 声学对比图 / 现象与四步（与页内结果共用） -->
       <ResultBody :result="assessment" :audio-id="recording.audioId" :recording-id="recordingId">
@@ -121,45 +113,33 @@ async function onRetrySubmission() {
         <template #after-quality>
           <div v-if="contextStore.isAuthenticated && !contextStore.calibrationValid" class="calib-entry">
             <p>本次结果用的是通用参考范围，还没有你的个人音域与元音空间。</p>
-            <QBtn
-              unelevated
-              no-caps
-              color="primary"
-              label="去标定以获得更精准个人对比"
-              to="/account#calibration"
-            />
+            <RouterLink to="/account#calibration" class="vs-btn vs-btn--small">去标定以获得更精准对比</RouterLink>
           </div>
         </template>
       </ResultBody>
 
       <!-- 专业与声学说明（FR-610 改版）：正文自关卡页后移至此 -->
-      <section v-if="professionalText" class="result-section" aria-label="专业与声学说明">
+      <section v-if="professionalText" class="result-section vs-card" aria-label="专业与声学说明">
         <h2>专业与声学说明</h2>
         <p class="pro-content">{{ professionalText }}</p>
       </section>
 
       <!-- 回放与行动（FR-1008） -->
-      <section class="result-section" aria-label="回放与下一步">
+      <section class="result-section vs-card" aria-label="回放与下一步">
         <h2>回放与下一步</h2>
         <div class="act-row">
-          <QBtn
-            outline
-            no-caps
-            color="blue-grey-4"
-            text-color="blue-grey-9"
-            :label="player.isCurrent(playbackKey) ? '⏸ 暂停本次录音' : '▶ 回放本次录音'"
-            @click="playRecording"
-          />
-          <QBtn
+          <button type="button" class="vs-btn vs-btn--ghost" @click="playRecording">
+            <AppIcon :name="player.isCurrent(playbackKey) ? 'pause' : 'play'" size="sm" />
+            {{ player.isCurrent(playbackKey) ? '暂停本次录音' : '回放本次录音' }}
+          </button>
+          <RouterLink
             v-if="levelsStore.byId.get(recording.levelId)"
-            outline
-            no-caps
-            color="blue-grey-4"
-            text-color="blue-grey-9"
-            label="回关卡练习"
             :to="`/learn/${recording.levelId}`"
-          />
-          <QBtn outline no-caps color="blue-grey-4" text-color="blue-grey-9" label="重录一次" :to="result.retakeRoute()" />
+            class="vs-btn vs-btn--ghost"
+          >
+            回关卡练习
+          </RouterLink>
+          <RouterLink :to="result.retakeRoute()" class="vs-btn vs-btn--ghost">重录一次</RouterLink>
         </div>
       </section>
 
@@ -171,31 +151,31 @@ async function onRetrySubmission() {
 
 <style scoped lang="sass">
 .result-page
-  max-width: 760px
+  max-width: 820px
   margin: 0 auto
   display: flex
   flex-direction: column
-  gap: 20px
-
-.result-head h1
-  margin: 0
-  font-size: 22px
+  gap: 16px
 
 .result-section
+  padding: 24px
   h2
-    font-size: 18px
+    font-size: 20px
+    font-weight: 900
+    letter-spacing: -0.3px
     margin: 0 0 10px
 
 .pro-content
   white-space: pre-wrap
   line-height: 1.8
-  color: #37474f
+  color: var(--vs-ink2)
   margin: 0
+  font-size: 13.5px
 
 .calib-entry
-  background: #f1f8f6
-  border: 1px solid #cce7e1
-  border-radius: 14px
+  background: var(--vs-brand-soft)
+  border: 1px solid var(--vs-brand-line)
+  border-radius: 8px
   padding: 14px 18px
   display: flex
   align-items: center
@@ -204,17 +184,18 @@ async function onRetrySubmission() {
   flex-wrap: wrap
   p
     margin: 0
-    font-size: 14px
-    color: #546e7a
+    font-size: 13.5px
+    color: var(--vs-sub)
 
 .result-failed
   text-align: center
-  padding: 32px 0
+  padding: 40px 24px
   h1
     font-size: 20px
+    font-weight: 900
     margin: 0 0 6px
   .fail-hint
-    color: #78909c
+    color: var(--vs-sub)
     font-size: 14px
     margin: 0 0 16px
 

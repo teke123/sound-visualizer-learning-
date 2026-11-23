@@ -20,8 +20,8 @@ defineProps<{ phenomena: Phenomenon[] }>()
 </script>
 
 <template>
-  <section class="phenomena-list" aria-label="检测到的现象">
-    <h2>听到了什么</h2>
+  <section class="phenomena-list vs-card" aria-label="检测到的现象">
+    <h3>听到了什么</h3>
     <p v-if="phenomena.length === 0" class="phen-empty">本次没有检出明显问题，继续保持！</p>
     <ul v-else class="phen-list">
       <li v-for="(item, index) in phenomena" :key="`${item.tag}-${index}`" class="phen-item">
@@ -35,13 +35,18 @@ defineProps<{ phenomena: Phenomenon[] }>()
 
 <style scoped lang="sass">
 .phenomena-list
-  h2
-    font-size: 18px
-    margin: 0 0 10px
+  padding: 24px
+
+.phenomena-list h3
+  font-size: 20px
+  font-weight: 900
+  letter-spacing: -0.3px
+  margin: 0 0 10px
 
 .phen-empty
-  color: #2e7d32
-  font-size: 14px
+  color: var(--vs-green)
+  font-size: 13.5px
+  margin: 0
 
 .phen-list
   list-style: none
@@ -52,22 +57,25 @@ defineProps<{ phenomena: Phenomenon[] }>()
   gap: 10px
 
 .phen-item
-  border: 1px solid #eceff1
-  border-left: 4px solid #ff8a65
+  border: 1px solid var(--vs-line)
+  border-left: 4px solid var(--vs-sand)
   border-radius: 8px
+  background: var(--vs-panel)
   padding: 10px 14px
 
 .phen-label
   font-weight: 700
   font-size: 15px
+  color: var(--vs-ink)
 
 .phen-position
   margin-left: 8px
   font-size: 13px
-  color: #00838f
+  color: var(--vs-brand-d)
 
 .phen-desc
   margin: 4px 0 0
-  font-size: 14px
-  color: #455a64
+  font-size: 13.5px
+  color: var(--vs-ink2)
+  line-height: 1.7
 </style>

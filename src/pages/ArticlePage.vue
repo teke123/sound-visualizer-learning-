@@ -77,7 +77,7 @@ function openLevel(levelId: string) {
 .back-nav
   margin-bottom: 12px
   a
-    color: #00897b
+    color: var(--vs-brand)
     text-decoration: none
     font-size: 14px
 </style>

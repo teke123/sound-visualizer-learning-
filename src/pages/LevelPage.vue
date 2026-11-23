@@ -77,4 +77,8 @@ watch(
 <style scoped lang="sass">
 .level-page
   padding-bottom: 20px
+
+@media (min-width: 1024px)
+  .level-page
+    padding-bottom: 0
 </style>

@@ -64,8 +64,8 @@ function confirm() {
         <QBtn
           outline
           no-caps
-          color="blue-grey-4"
-          text-color="blue-grey-9"
+          color="primary"
+          text-color="primary"
           class="danger-cancel"
           label="再想想"
           @click="emit('cancel')"
@@ -88,23 +88,23 @@ function confirm() {
   h2
     margin: 0 0 8px
     font-size: 18px
-    color: #b71c1c
+    color: var(--vs-brand-d)
 
 .danger-message
   font-size: 14px
-  color: #455a64
+  color: var(--vs-ink2)
   line-height: 1.8
   white-space: pre-line
 
 .danger-password
   margin-top: 12px
 
-/* 原 .danger-btn 灰描边（#90a4ae）8px 圆角 44px 高 */
+/* 原 .danger-btn 灰描边（var(--vs-mute)）8px 圆角 44px 高 */
 .danger-cancel
   border-radius: 8px
   min-height: 44px
 
 .danger-error
-  color: #c62828
+  color: var(--vs-brand-d)
   font-size: 13px
 </style>

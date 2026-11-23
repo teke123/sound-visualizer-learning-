@@ -60,8 +60,8 @@ async function submit() {
         <QBtn
           outline
           no-caps
-          color="blue-grey-4"
-          text-color="blue-grey-9"
+          color="primary"
+          text-color="primary"
           class="wish-close"
           label="关闭"
           @click="emit('close')"
@@ -85,21 +85,21 @@ async function submit() {
     margin: 0 0 6px
     font-size: 18px
 
-/* 原 .wish-btn 灰描边（#90a4ae）8px 圆角 44px 高 */
+/* 原 .wish-btn 灰描边（var(--vs-mute)）8px 圆角 44px 高 */
 .wish-close
   border-radius: 8px
   min-height: 44px
 
 .wish-hint
   font-size: 13px
-  color: #90a4ae
+  color: var(--vs-mute)
   margin: 0 0 10px
 
 .wish-ok
-  color: #2e7d32
+  color: var(--vs-green)
   font-size: 14px
 
 .wish-error
-  color: #c62828
+  color: var(--vs-brand-d)
   font-size: 14px
 </style>

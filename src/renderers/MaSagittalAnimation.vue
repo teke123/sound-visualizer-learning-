@@ -356,23 +356,23 @@ onBeforeUnmount(() => {
 <style scoped lang="sass">
 /* 调色板与 backend/assets/ma/ma-sagittal.html（原始 codex 主题浅色推导值）保持一致 */
 .ma-sagittal
-  --ma-ink: #37474f
-  --ma-tissue: #eceff1
-  --ma-tissue-edge: #78909c
-  --ma-bone: #f1ecdc
-  --ma-bone-edge: #8ba0ab
-  --ma-tongue: #e7a59e
-  --ma-tongue-edge: #a6827f
-  --ma-lip: #e6999b
-  --ma-velum: #bce0cd
-  --ma-velum-edge: #90b8a4
-  --ma-air: #1f9eb2
-  --ma-background: #fff
+  --ma-ink: var(--vs-ink)
+  --ma-tissue: var(--vs-line)
+  --ma-tissue-edge: var(--vs-mute)
+  --ma-bone: var(--vs-soft-2)
+  --ma-bone-edge: var(--vs-mute)
+  --ma-tongue: var(--vs-danger-line)
+  --ma-tongue-edge: var(--vs-mute)
+  --ma-lip: var(--vs-danger-line)
+  --ma-velum: var(--vs-green-line)
+  --ma-velum-edge: var(--vs-green-line)
+  --ma-air: var(--vs-sand)
+  --ma-background: var(--vs-card)
   margin: 0
   max-width: 560px
   width: 100%
   margin-inline: auto
-  color: #37474f
+  color: var(--vs-ink)
 
 .anatomy
   width: 100%
@@ -440,15 +440,15 @@ onBeforeUnmount(() => {
 
 .phase
   font-weight: 600
-  color: #00695c
+  color: var(--vs-coffee)
   font-family: var(--font-ipa)
 
 .dot
-  color: #90a4ae
+  color: var(--vs-mute)
 
 .progress
   width: 100%
-  accent-color: #00897b
+  accent-color: var(--vs-brand)
 
 .transport
   display: flex

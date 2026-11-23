@@ -6,7 +6,6 @@
  */
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { QBtn } from 'quasar'
 import { useContextStore } from '@/stores/context'
 import { dialectLabel, genderLabel, useAuth } from '@/features/auth'
 import { errorCopy } from '@/copy/usePageCopy'
@@ -14,6 +13,8 @@ import CalibrationPanel from '@/features/assessment/components/CalibrationPanel.
 import DangerConfirmDialog from '@/components/DangerConfirmDialog.vue'
 import DialectSelector from '@/components/DialectSelector.vue'
 import GenderSelector from '@/components/GenderSelector.vue'
+import PageHead from '@/components/ui/PageHead.vue'
+import AppIcon from '@/components/ui/AppIcon.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -85,14 +86,15 @@ function openClearArchive() {
 
 <template>
   <div class="account-page">
-    <h1>账号</h1>
+    <PageHead title="账号" icon="user" />
 
     <!-- 未登录 -->
-    <section v-if="!authenticated" class="guest-panel">
-      <p class="guest-note">注册并登录后使用：学习进度与录音结果自动保存到你的账号。注册 / 登录即代表同意服务条款。</p>
+    <section v-if="!authenticated" class="panel guest-panel">
+      <h2>注册或登录</h2>
+      <p class="panel-note">注册并登录后使用：学习进度与录音结果自动保存到你的账号。注册 / 登录即代表同意服务条款。</p>
       <div class="guest-actions">
-        <RouterLink to="/account/login" class="acc-btn primary">登录</RouterLink>
-        <RouterLink to="/account/register" class="acc-btn">注册</RouterLink>
+        <RouterLink to="/account/login" class="vs-btn">登录</RouterLink>
+        <RouterLink to="/account/register" class="vs-btn vs-btn--ghost">注册</RouterLink>
       </div>
       <ul class="guest-facts">
         <li>用户名 + 密码即可，不收集邮箱或手机号</li>
@@ -101,38 +103,50 @@ function openClearArchive() {
     </section>
 
     <!-- 已登录 -->
-    <section v-else class="profile-card">
-      <h2>{{ contextStore.context.username }}</h2>
-      <p class="cal-status">
-        音域：{{ contextStore.context.calibration.status === 'personal' ? '已标定' : '未标定（可在录音前标定，也可跳过）' }}
-      </p>
-      <p class="dialect-status">
-        方言区 / 母语背景：{{ contextStore.context.dialectBackground ? dialectLabel(contextStore.context.dialectBackground) : '未填写' }}
-      </p>
-      <p class="dialect-status">
-        性别：{{ contextStore.context.gender ? genderLabel(contextStore.context.gender) : '未填写' }}
-      </p>
+    <section v-else class="panel profile-card">
+      <div class="profile-head">
+        <span class="profile-mark"><AppIcon name="user" size="sm" /></span>
+        <div>
+          <h2>{{ contextStore.context.username }}</h2>
+        </div>
+      </div>
+
+      <dl class="profile-rows">
+        <div class="profile-row">
+          <dt>音域</dt>
+          <dd>{{ contextStore.context.calibration.status === 'personal' ? '已标定' : '未标定' }}</dd>
+        </div>
+        <div class="profile-row">
+          <dt>方言区 / 母语背景</dt>
+          <dd>{{ contextStore.context.dialectBackground ? dialectLabel(contextStore.context.dialectBackground) : '未填写' }}</dd>
+        </div>
+        <div class="profile-row">
+          <dt>性别</dt>
+          <dd>{{ contextStore.context.gender ? genderLabel(contextStore.context.gender) : '未填写' }}</dd>
+        </div>
+      </dl>
+
       <div class="dialect-edit">
         <DialectSelector v-model="dialectDraft" />
         <GenderSelector v-model="genderDraft" />
-        <QBtn
-          type="button"
-          unelevated
-          no-caps
-          color="primary"
-          :label="auth.busy.value ? '保存中…' : '保存资料'"
-          :disable="!profileDirty || auth.busy.value"
-          @click="saveProfile"
-        />
+        <button type="button" class="vs-btn" :disabled="!profileDirty || auth.busy.value" @click="saveProfile">
+          {{ auth.busy.value ? '保存中…' : '保存资料' }}
+        </button>
       </div>
       <p v-if="profileSaved" class="dialect-saved">✅ 已更新。</p>
       <p v-if="auth.error.value" class="dialect-error">{{ errorCopy(auth.error.value).title }}</p>
 
       <div class="profile-actions">
-        <QBtn type="button" outline no-caps color="blue-grey-4" text-color="blue-grey-9" label="重新标定音域" @click="recalibrateOpen = true" />
-        <QBtn type="button" outline no-caps color="blue-grey-4" text-color="blue-grey-9" label="删除录音 / 清空档案" @click="openClearArchive" />
-        <QBtn type="button" outline no-caps color="blue-grey-4" text-color="blue-grey-9" label="退出登录" @click="logout" />
-        <QBtn type="button" outline no-caps color="red-3" text-color="red-9" label="注销账号" @click="deleteOpen = true" />
+        <button type="button" class="vs-btn vs-btn--ghost vs-btn--small" @click="recalibrateOpen = true">
+          <AppIcon name="mic" size="sm" />重新标定音域
+        </button>
+        <button type="button" class="vs-btn vs-btn--ghost vs-btn--small" @click="openClearArchive">
+          <AppIcon name="folder" size="sm" />删除录音 / 清空档案
+        </button>
+        <button type="button" class="vs-btn vs-btn--ghost vs-btn--small" @click="logout">退出登录</button>
+        <button type="button" class="vs-btn vs-btn--ghost vs-btn--small danger" @click="deleteOpen = true">
+          <AppIcon name="trash" size="sm" />注销账号
+        </button>
       </div>
     </section>
 
@@ -165,96 +179,105 @@ function openClearArchive() {
 
 <style scoped lang="sass">
 .account-page
-  max-width: 640px
+  max-width: 760px
   margin: 0 auto
   display: flex
   flex-direction: column
-  gap: 20px
+  gap: 16px
 
-  h1
-    margin: 0
-    font-size: 24px
+.panel
+  background: var(--vs-card)
+  border: 1px solid var(--vs-line)
+  border-radius: 8px
+  box-shadow: var(--vs-sh-1)
+  padding: 24px
 
-.guest-panel
-  background: #fff
-  border: 1px solid #eceff1
-  border-radius: 14px
-  padding: 20px
+.panel h2
+  margin: 0
+  font-size: 20px
+  font-weight: 900
+  letter-spacing: -0.3px
 
-.guest-note
-  color: #546e7a
-  font-size: 14px
-  margin: 0 0 14px
+.panel-note
+  color: var(--vs-sub)
+  font-size: 13.5px
+  margin: 6px 0 0
+  line-height: 1.8
 
 .guest-actions
   display: flex
   gap: 10px
+  margin-top: 16px
 
 .guest-facts
-  margin: 16px 0 0
-  padding-left: 18px
-  color: #90a4ae
+  margin: 18px 0 0
+  padding: 14px 0 0 18px
+  border-top: 1px dashed var(--vs-line2)
+  color: var(--vs-mute)
   font-size: 13px
   line-height: 1.9
 
-.profile-card
-  background: #fff
-  border: 1px solid #eceff1
-  border-radius: 14px
-  padding: 20px
-  h2
-    margin: 0 0 6px
-    font-size: 20px
+.profile-head
+  display: flex
+  align-items: center
+  gap: 12px
 
-.cal-status
-  margin: 4px 0
-  font-size: 14px
-  color: #546e7a
+.profile-mark
+  width: 40px
+  height: 40px
+  border-radius: 8px
+  flex: none
+  display: flex
+  align-items: center
+  justify-content: center
+  background: var(--vs-soft)
+  color: var(--vs-brand)
+  box-shadow: inset 0 0 0 1px var(--vs-brand-line)
 
-.dialect-status
-  margin: 4px 0
-  font-size: 14px
-  color: #546e7a
+.profile-rows
+  margin: 18px 0 0
+  border-top: 1px solid var(--vs-line)
+
+.profile-row
+  display: flex
+  align-items: baseline
+  gap: 12px
+  padding: 10px 0
+  border-bottom: 1px solid var(--vs-line)
+  dt
+    flex: 0 0 120px
+    font-size: 13px
+    color: var(--vs-mute)
+  dd
+    margin: 0
+    font-size: 13.5px
+    color: var(--vs-ink2)
 
 .dialect-edit
   display: flex
   gap: 10px
   align-items: flex-end
-  margin-top: 8px
+  margin-top: 16px
   flex-wrap: wrap
 
 .dialect-saved
-  margin: 6px 0 0
+  margin: 8px 0 0
   font-size: 13px
-  color: #1b5e20
+  color: var(--vs-green)
 
 .dialect-error
-  margin: 6px 0 0
+  margin: 8px 0 0
   font-size: 13px
-  color: #c62828
+  color: var(--vs-brand-d)
 
 .profile-actions
   display: flex
   flex-wrap: wrap
-  gap: 10px
-  margin-top: 14px
+  gap: 8px
+  margin-top: 20px
+  padding-top: 16px
+  border-top: 1px solid var(--vs-line)
 
-// 未登录「登录 / 注册」入口的 RouterLink 胶囊样式（原按钮已换 QBtn，仅这两个链接仍用）
-.acc-btn
-  min-height: 44px
-  padding: 4px 18px
-  border-radius: 999px
-  border: 1px solid #90a4ae
-  background: #fff
-  color: #37474f
-  cursor: pointer
-  font-size: 14px
-  text-decoration: none
-  display: inline-flex
-  align-items: center
-  &.primary
-    background: #00897b
-    border-color: #00897b
-    color: #fff
-    font-weight: 600
+.profile-actions .danger
+  color: var(--vs-brand-d)
 </style>
