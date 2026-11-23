@@ -5,12 +5,16 @@
 
 环境变量命名（``<P>`` = profile 名大写、``-``/``.`` 转 ``_``）::
 
+    LLM_PROFILE           可选，不传 profile 参数时使用的默认档名（默认 "default"）
     LLM_<P>_BASE_URL      例 https://api.openai.com/v1
     LLM_<P>_API_KEY       例 sk-xxx（本地服务可留空）
     LLM_<P>_MODEL         例 gpt-4o-mini
     LLM_<P>_TEMPERATURE   可选，默认 0.7
     LLM_<P>_MAX_TOKENS    可选，不填则不下发
     LLM_<P>_TIMEOUT       可选，秒，默认 120
+    LLM_<P>_IMAGE_MAX_SIDE          可选，图像降采样最长边（像素），不填则不降采样
+    LLM_<P>_JSON_MAX_RETRIES        可选，结构化输出校验失败重试次数，默认 1
+    LLM_<P>_JSON_ALLOW_STRICT       可选，是否允许 json_schema strict 模式，默认 true
 
 回退规则：若 profile 非 default 且某项未配置，则回退到 ``LLM_DEFAULT_<X>``；
 显式传参（model / base_url / api_key ...）优先级最高。
@@ -103,6 +107,9 @@ class LLMConfig:
     temperature: float = 0.7
     max_tokens: int | None = None
     timeout: float = 120.0
+    image_max_side: int | None = None
+    json_max_retries: int = 1
+    json_allow_strict: bool = True
 
     @property
     def masked_key(self) -> str:
@@ -115,7 +122,7 @@ class LLMConfig:
 
 
 def resolve(
-    profile: str = DEFAULT_PROFILE,
+    profile: str | None = None,
     *,
     model: str | None = None,
     base_url: str | None = None,
@@ -123,11 +130,14 @@ def resolve(
     temperature: float | None = None,
     max_tokens: int | None = None,
     timeout: float | None = None,
+    image_max_side: int | None = None,
+    json_max_retries: int | None = None,
+    json_allow_strict: bool | None = None,
 ) -> LLMConfig:
     """解析出一次调用要用的配置；显式传参 > profile env > default env。"""
     _ensure_env_loaded()
 
-    p = (profile or DEFAULT_PROFILE).strip() or DEFAULT_PROFILE
+    p = (profile or os.environ.get("LLM_PROFILE", "").strip() or DEFAULT_PROFILE)
     env_prefix = _prefix(p)
 
     resolved_base = (base_url or _raw(p, "BASE_URL") or "").rstrip("/")
@@ -164,6 +174,30 @@ def resolve(
                 f"{env_prefix}_{env_field} 不是合法数字：{raw!r}"
             ) from exc
 
+    def _int(env_field: str) -> int | None:
+        raw = _raw(p, env_field)
+        if not raw:
+            return None
+        try:
+            return int(raw)
+        except ValueError as exc:
+            raise LLMConfigError(
+                f"{env_prefix}_{env_field} 不是合法整数：{raw!r}"
+            ) from exc
+
+    def _bool(env_field: str, default: bool) -> bool:
+        raw = _raw(p, env_field).lower()
+        if not raw:
+            return default
+        if raw in ("1", "true", "yes", "on", "y"):
+            return True
+        if raw in ("0", "false", "no", "off", "n"):
+            return False
+        raise LLMConfigError(
+            f"{env_prefix}_{env_field} 不是合法布尔值：{raw!r}"
+            "（可用 1/0、true/false、yes/no、on/off）"
+        )
+
     temp = temperature if temperature is not None else _num("TEMPERATURE", 0.7)
     limit = max_tokens if max_tokens is not None else None
     if limit is None:
@@ -178,6 +212,10 @@ def resolve(
     limit = limit or None
 
     tmo = timeout if timeout is not None else _num("TIMEOUT", 120.0)
+    side = image_max_side if image_max_side is not None else _int("IMAGE_MAX_SIDE")
+    raw_retries = json_max_retries if json_max_retries is not None else _int("JSON_MAX_RETRIES")
+    retries = 1 if raw_retries is None else raw_retries
+    strict = json_allow_strict if json_allow_strict is not None else _bool("JSON_ALLOW_STRICT", True)
 
     return LLMConfig(
         profile=p,
@@ -187,6 +225,9 @@ def resolve(
         temperature=float(temp),
         max_tokens=limit,
         timeout=float(tmo),
+        image_max_side=side,
+        json_max_retries=retries,
+        json_allow_strict=strict,
     )
 
 

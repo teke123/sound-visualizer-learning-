@@ -22,7 +22,7 @@ from typing import Any, Iterable, Iterator, Sequence
 import openai
 from openai import OpenAI
 
-from .config import DEFAULT_PROFILE, LLMConfig, resolve
+from .config import LLMConfig, resolve
 from .content import build_messages
 from .errors import LLMError, LLMSchemaError
 from .schema import (
@@ -119,13 +119,14 @@ def _prepare(
         max_tokens=max_tokens,
         timeout=timeout,
     )
+    side = image_max_side if image_max_side is not None else cfg.image_max_side
     messages = build_messages(
         system,
         user,
         images=images,
         audios=audios,
         history=history,
-        image_max_side=image_max_side,
+        image_max_side=side,
     )
     return cfg, messages
 
@@ -137,7 +138,7 @@ def chat(
     images: PathLike | Iterable[PathLike] | None = None,
     audios: PathLike | Iterable[PathLike] | None = None,
     history: Sequence[dict] | None = None,
-    profile: str = DEFAULT_PROFILE,
+    profile: str | None = None,
     model: str | None = None,
     base_url: str | None = None,
     api_key: str | None = None,
@@ -167,7 +168,7 @@ def chat_stream(
     images: PathLike | Iterable[PathLike] | None = None,
     audios: PathLike | Iterable[PathLike] | None = None,
     history: Sequence[dict] | None = None,
-    profile: str = DEFAULT_PROFILE,
+    profile: str | None = None,
     model: str | None = None,
     base_url: str | None = None,
     api_key: str | None = None,
@@ -232,7 +233,7 @@ def chat_json(
     images: PathLike | Iterable[PathLike] | None = None,
     audios: PathLike | Iterable[PathLike] | None = None,
     history: Sequence[dict] | None = None,
-    profile: str = DEFAULT_PROFILE,
+    profile: str | None = None,
     model: str | None = None,
     base_url: str | None = None,
     api_key: str | None = None,
@@ -240,8 +241,8 @@ def chat_json(
     max_tokens: int | None = None,
     timeout: float | None = None,
     image_max_side: int | None = None,
-    max_retries: int = 1,
-    allow_strict: bool = True,
+    max_retries: int | None = None,
+    allow_strict: bool | None = None,
 ) -> Any:
     """带 JSON Schema 的结构化调用，返回已校验的 Python 对象（dict / list）。
 
@@ -251,7 +252,9 @@ def chat_json(
     2. ``response_format={"type": "json_object"}`` + system 内嵌 schema
     3. 纯文本 + system 内嵌 schema
 
-    解析或校验失败时，把错误回灌给模型重试，最多 ``max_retries`` 次。
+    解析或校验失败时，把错误回灌给模型重试，最多 ``max_retries`` 次
+   （不传时取 ``LLM_<P>_JSON_MAX_RETRIES``，默认 1；``allow_strict`` 同理
+    取 ``LLM_<P>_JSON_ALLOW_STRICT``，默认 true）。
     """
     validate_schema_definition(schema)
     cfg, messages = _prepare(
@@ -259,12 +262,14 @@ def chat_json(
         profile, model, base_url, api_key, temperature, max_tokens, timeout,
     )
     client = _client(cfg)
-    json_schema_fmt = make_response_format(schema, allow_strict=allow_strict)
+    retries = max_retries if max_retries is not None else cfg.json_max_retries
+    strict = allow_strict if allow_strict is not None else cfg.json_allow_strict
+    json_schema_fmt = make_response_format(schema, allow_strict=strict)
 
     last_error: LLMSchemaError | None = None
     messages_now = messages
 
-    for attempt in range(max_retries + 1):
+    for attempt in range(retries + 1):
         accepted_any = False
         for mode in _MODE_ORDER:
             fmt = json_schema_fmt if mode == "json_schema" else (
@@ -309,7 +314,7 @@ def chat_json(
     raise last_error
 
 
-def is_available(profile: str = DEFAULT_PROFILE, timeout: float = 3.0) -> bool:
+def is_available(profile: str | None = None, timeout: float = 3.0) -> bool:
     """轻量可用性探测（GET /models）。供上层决定是否降级，不抛异常。"""
     try:
         cfg = resolve(profile=profile, timeout=timeout)

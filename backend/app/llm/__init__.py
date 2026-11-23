@@ -9,10 +9,13 @@
     from app.llm import LLMError, LLMConfigError, LLMMediaError, LLMSchemaError
     from app.llm import resolve, LLMConfig, DEFAULT_PROFILE
 
-配置：``backend/.env``（见 ``backend/.env.example``），支持多 profile::
+配置：``backend/.env``（见 ``backend/.env.example``），支持多 profile，全部参数均可
+由环境变量配置::
 
-    LLM_DEFAULT_BASE_URL / LLM_DEFAULT_API_KEY / LLM_DEFAULT_MODEL
-    LLM_VISION_BASE_URL  / LLM_VISION_API_KEY  / LLM_VISION_MODEL
+    LLM_PROFILE                              不传 profile 参数时的默认档名
+    LLM_DEFAULT_BASE_URL / _API_KEY / _MODEL / _TEMPERATURE / _MAX_TOKENS / _TIMEOUT
+    LLM_<P>_*                                同上按档名覆盖；未配项回退 LLM_DEFAULT_*
+    LLM_<P>_IMAGE_MAX_SIDE / _JSON_MAX_RETRIES / _JSON_ALLOW_STRICT
 """
 from .client import chat, chat_json, chat_stream, is_available
 from .config import (
