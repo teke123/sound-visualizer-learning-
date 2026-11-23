@@ -136,4 +136,5 @@ export interface FeedbackPayload {
 }
 
 export type FeedbackResponse = Schemas['FeedbackResponse']
-export type WishResponse = Schemas['WishResponse']
+/** 愿望与反馈共用一张表（kind='wish'），提交 /feedback/wishes 返回 FeedbackResponse */
+export type WishResponse = FeedbackResponse
