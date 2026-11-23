@@ -113,39 +113,122 @@ def _normalize_severity(raw, ftype) -> int:
     return _TYPE_TO_SEVERITY.get(str(ftype).strip(), 1)
 
 
-def generate_feedback_llm(diagnosis: dict) -> dict:
-    """反馈生成器（LLM 版）：调用本地大模型（qwen2.5）生成四步反馈。
+# ---------------------------------------------------------------------------
+# 提示词模板 V2（Z3 · 第 13 周）
+# 核心原则：检测结论由规则引擎定死，LLM 只负责把四步话术写得自然。
+# 这样保证 category/type/severity 与规则引擎 100% 一致、多次生成稳定。
+# ---------------------------------------------------------------------------
 
-    与规则引擎版 generate_feedback() 输入输出结构一致，可无缝切换。
+TONE_NAMES = {1: "第一声（阴平）", 2: "第二声（阳平）", 3: "第三声（上声）", 4: "第四声（去声）"}
+
+PROMPT_TEMPLATE = """你是普通话发音教练，正在为一名零基础学习者写四步反馈。
+
+【最重要规则 —— 必须遵守】
+1. 输出必须是合法 JSON，不要输出任何解释、注释或代码块标记。
+2. steps 数组里的每一项，category、type、severity、key_fact 四个字段必须【原样照抄】我给你的"结论清单"，一个字都不能改、不能少、不能多。
+3. steps 的数量必须【严格等于结论清单的条数】，一条都不能少。结论清单有 2 条就输出 2 步，有 3 条就输出 3 步。每一条结论都必须对应生成一步，不能遗漏任何一条。
+4. 你只能自己写 phenomenon / link / hint / practice 四个文字字段，其余字段照抄。每一步的四个文字字段都必须写满，不能留空字符串。
+5. 每一项的 phenomenon 必须包含对应的 key_fact 原文（逐字引用），不得改写、不得说反。
+   - 特别注意：若 key_fact 写"第三声"，就是学习者把音发成了第三声；若写"目标第一声"，第一声才是标准。不要说反。
+6. 语气温和鼓励，面向零基础孩子和家长，避免医学术语。练习必须安全、可在家完成、不超过1分钟。
+
+【结构化诊断】
+{diagnosis_json}
+
+【结论清单】（category/type/severity/key_fact 必须原样照抄到每一步）
+{conclusion_list}
+
+【输出格式】
+{{"overview":"一句话总评","steps":[
+  {{"category":"<照抄>","type":"<照抄>","severity":"<照抄整数>","key_fact":"<照抄>",
+    "phenomenon":"①现象，必须含 key_fact 原文","link":"②可能相关的发声环节",
+    "hint":"③可感知的改进提示","practice":"④安全的短练习"}}
+]}}
+
+只输出 JSON。"""
+
+
+def _build_key_facts(diagnosis: dict, rule_items: list) -> list:
+    """为规则引擎的每条结论生成一条必须逐字引用的关键事实。"""
+    target = diagnosis.get("target", {})
+    detected = diagnosis.get("detected_tone", 0)
+    facts = []
+    for it in rule_items:
+        cat = it.get("category")
+        if cat == "tone":
+            ref = target.get("tone", 1)
+            facts.append("目标%s，实际识别为%s" % (
+                TONE_NAMES.get(ref, "第一声"), TONE_NAMES.get(detected, "其他声调")))
+        elif cat == "pronunciation":
+            # 优先引用真正的声母/韵母错误，避免把声调事实串到音素步骤
+            for ph in diagnosis.get("phonemes", []):
+                if ph.get("phoneme") in ("声母", "韵母") and ph.get("score", 100) < 60:
+                    facts.append("%s目标「%s」，实际识别为「%s」" % (
+                        ph.get("phoneme", "音素"), ph.get("expected", "?"), ph.get("detected", "?")))
+                    break
+            else:
+                facts.append("目标「%s」，识别为「%s」" % (
+                    diagnosis.get("unit", "?"), diagnosis.get("recognized_text", "?")))
+        elif cat == "fluency":
+            facts.append("流利度偏低（%.0f分），存在停顿或拖音" % diagnosis.get("fluency", 0.0))
+        elif cat == "quality":
+            for q in diagnosis.get("quality", {}).get("items", []):
+                if q.get("status") == "warn":
+                    facts.append("录音质量提示：%s" % q.get("message", "录音环境需改善"))
+                    break
+            else:
+                facts.append("录音质量提示：建议改善录音环境")
+        else:
+            facts.append("发音与标准存在偏差")
+    return facts
+
+
+def generate_feedback_llm(diagnosis: dict) -> dict:
+    """反馈生成器（LLM 版 · 提示词模板 V2）。
+
+    检测结论由规则引擎定死（category/type/severity/key_fact 照抄），
+    LLM 只生成四步文字，保证「话术不改结论」+ 多次生成稳定。
     """
     import llm_service
 
-    prompt = f"""你是普通话发音教练。请根据下面的发音诊断结果，生成面向学习者的「四步反馈」。
+    # ① 规则引擎先定结论（不调用 LLM，保证结论权威）
+    rule_fb = generate_feedback(diagnosis)
+    rule_items = rule_fb.get("steps", [])
+    key_facts = _build_key_facts(diagnosis, rule_items)
 
-诊断结果（JSON）：
-{json.dumps(diagnosis, ensure_ascii=False)}
+    conclusion_list = json.dumps([
+        {
+            "category": it.get("category"),
+            "type": it.get("type"),
+            "severity": _normalize_severity(it.get("severity"), it.get("type")),
+            "key_fact": key_facts[i] if i < len(key_facts) else "发音与标准存在偏差",
+        }
+        for i, it in enumerate(rule_items)
+    ], ensure_ascii=False, indent=2)
 
-要求：
-1. 严格只输出一个 JSON 对象，不要输出任何其他文字、解释或代码块标记。
-2. JSON 结构必须为：
-{{"overview":"一句话总评","steps":[{{"category":"tone|pronunciation|fluency|quality","type":"error|warning|suggestion","severity":"error|warning|suggestion","phenomenon":"①检测到的现象","link":"②可能相关的发声环节","hint":"③可感知的改进提示","practice":"④一个安全短练习"}}]}}
-3. phenomenon 必须引用诊断结果里的具体事实（声调/声母/韵母/基频/流利度/录音质量等），不能空泛。
-4. 语气温和、鼓励式，面向零基础学习者，避免医学术语。"""
+    prompt = PROMPT_TEMPLATE.format(
+        diagnosis_json=json.dumps(diagnosis, ensure_ascii=False),
+        conclusion_list=conclusion_list,
+    )
 
-    reply = llm_service.chat([{"role": "user", "content": prompt}], temperature=0.3)
+    reply = llm_service.chat([{"role": "user", "content": prompt}], temperature=0.2)
     parsed = _parse_llm_json(reply)
+
+    # ② 结论字段强制从规则引擎覆盖（双保险：即使 LLM 抄错也纠正）
     steps = []
-    for s in parsed.get("steps", []):
+    for i, it in enumerate(rule_items):
+        gen = parsed.get("steps", [])[i] if i < len(parsed.get("steps", [])) else {}
+        fact = key_facts[i] if i < len(key_facts) else "发音与标准存在偏差"
         steps.append({
-            "category": s.get("category", ""),
-            "type": s.get("type", ""),
-            "severity": _normalize_severity(s.get("severity"), s.get("type")),
-            "phenomenon": s.get("phenomenon", ""),
-            "link": s.get("link", ""),
-            "hint": s.get("hint", ""),
-            "practice": s.get("practice", ""),
+            "category": it.get("category"),
+            "type": it.get("type"),
+            "severity": _normalize_severity(it.get("severity"), it.get("type")),
+            "phenomenon": str(gen.get("phenomenon", "")).strip() or fact,
+            "link": str(gen.get("link", "")).strip() or "可能与发音时的肌肉控制与气息有关。",
+            "hint": str(gen.get("hint", "")).strip() or "放慢速度，注意听示范音，再跟着模仿一次。",
+            "practice": str(gen.get("practice", "")).strip() or "跟着示范音练 3 遍，每次不超过 1 分钟。",
         })
-    return {"overview": parsed.get("overview", ""), "steps": steps}
+    return {"overview": parsed.get("overview", "") or "这次发音有几点可以改进，我们一步一步来。", "steps": steps}
 
 
 def flatten_text(feedback: dict) -> str:
