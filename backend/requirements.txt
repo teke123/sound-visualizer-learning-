@@ -16,6 +16,11 @@ argon2-cffi>=23        # 自研轻量认证密码哈希
 imageio-ffmpeg>=0.4   # ffmpeg 二进制分发（转码 44.1 kHz 单声道 PCM）
 websocket-client>=1.6  # 讯飞评测适配器（官方 Python SDK 同款 WS 客户端）
 
+# LLM 接入层（app/llm/）
+openai>=1.60
+python-dotenv>=1.0
+jsonschema>=4.21
+
 # 测试
 pytest>=8,<10
 httpx>=0.25,<0.29
