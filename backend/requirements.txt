@@ -20,7 +20,7 @@ websocket-client>=1.6  # 讯飞评测适配器（官方 Python SDK 同款 WS 客
 openai>=1.60
 python-dotenv>=1.0
 jsonschema>=4.21
+httpx>=0.25,<0.29
 
 # 测试
 pytest>=8,<10
-httpx>=0.25,<0.29

@@ -11,6 +11,7 @@ import { stripToneMarks } from '@/phonology/mandarin'
 import type {
   LevelsResponse,
   MeContext,
+  PronunciationAdviceResult,
   RecordingDTO,
   SearchResponse,
 } from '@/api'
@@ -443,6 +444,23 @@ export const handlers = [
       finishRecording(id)
     }
     return envelope({ recording: stored.recording, result: stored.recording.status === 'failed' ? undefined : stored.result ?? undefined })
+  }),
+
+  http.get('/api/recordings/:id/pronunciation-advice', ({ params }) => {
+    if (!currentUser()) return fail(401, 'AUTH_REQUIRED', '需要登录')
+    const stored = state.recordings.get(String(params.id))
+    if (!stored?.result?.hasPronunciationAdvice) return fail(404, 'NOT_FOUND', '发音建议不存在')
+    if (Date.now() - stored.createdAt < PROCESSING_MS + 2000) {
+      return envelope({ status: 'pending', items: [] } satisfies PronunciationAdviceResult)
+    }
+    const level = LEVEL_DETAILS[stored.recording.levelId]
+    const target = { index: 0, text: level?.representativeChar ?? '',
+      pinyin: level?.pinyin ?? '', part: 'tone' } as const
+    const item = stored.result.quality.signal?.verdict === 'fail'
+      ? { ...target, status: 'unable_to_assess', reasonCode: 'poor_audio' } as const
+      : { ...target, status: 'explained', analysis: '这次音高在末尾才开始下降，前半段基本持平。',
+          nextAction: '从音节前半段就开始往下读，听一听下降有没有贯穿整个音节。' } as const
+    return envelope({ status: 'ready', items: [item] } satisfies PronunciationAdviceResult)
   }),
 
   http.delete('/api/recordings/:id', ({ params }) => {

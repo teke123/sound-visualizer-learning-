@@ -344,10 +344,11 @@ def delete_category(db: Session, category_id: int) -> dict:
 
 
 def _category_names(db: Session, category_ids: set[int | None]) -> dict[int | None, str]:
-    rows = db.query(CategoryRow).filter(CategoryRow.id.in_(ids or {0})).all() \
-        if ids else []
+    if not category_ids:
+        return {}
+    rows = db.query(CategoryRow).filter(CategoryRow.id.in_(category_ids)).all()
     names = {r.id: r.name for r in rows}
-    return {cid: names.get(cid, "") for cid in ids}
+    return {cid: names.get(cid, "") for cid in category_ids}
 
 
 def articles_list(db: Session, category: str | None = None) -> dict:

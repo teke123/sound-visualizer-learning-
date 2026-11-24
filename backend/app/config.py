@@ -76,7 +76,8 @@ EXECUTOR_QUEUE_LIMIT: int = int(os.environ.get("SVS_EXECUTOR_QUEUE", "32"))
 
 # 声学算法版本：filtered AC F0 管线（五度 degree 1-5 坐标）；
 # acx-2.0.3：特征读取接口（extract_f0/extract_formants）统一到 f0_pipeline 后递增，作废旧特征缓存
-ALGORITHM_VERSION: str = "acx-2.0.3+tp0.1.0+pm0.5.0d16"
+# acx-2.0.4：共振峰提取统一到 acoustics.formants 并扩到 F1–F4 与带宽 B1–B4 后递增，作废旧特征缓存
+ALGORITHM_VERSION: str = "acx-2.0.4+tp0.1.0+pm0.5.0d16"
 
 # F0 管线纠偏开关（可在同一批录音上分别评测定参）
 F0_RESCUE_ENABLED: bool = os.environ.get("SVS_F0_RESCUE", "1") not in ("0", "false", "no")

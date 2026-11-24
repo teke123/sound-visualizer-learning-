@@ -4,6 +4,9 @@
 - F0 与评分、结果页共用 f0_pipeline（filtered AC + 四步清洗 + 五度值）。五度值按各自
   音域换算：调用方给出音域（个人标定结果、参考发音人的语料统计）时直接使用；否则按
   产品「跳过标定」路径（analysis.adaptive_range_from_hz）由本条录音估计，并在结果中注明。
+- 共振峰与带宽取自共振峰测量核心（app.acoustics.formants）：Burg 提取 F1–F4 与带宽 B1–B4；
+  共振峰上限优先用个人标定值（元音空间的 speaker_max_formant），否则按有声帧基频中位数分档。
+  带宽只在对应共振峰有效的帧上报告，取值范围外的带宽记为缺失。
 - 音素边界沿用对齐结果；除阻、浊音起点、噪声起点、鼻音 murmur 起点是在边界附近检测的
   声学事件点，用于细分音段内部。
 """
@@ -16,7 +19,7 @@ from pathlib import Path
 import numpy as np
 
 from app.acoustics import analysis as product_analysis
-from app.acoustics import f0_pipeline, transcode
+from app.acoustics import f0_pipeline, formants as formant_core, transcode
 from app.acoustics.imagery.common import (PHONE_IPA, Alignment, PhoneSeg, final_type,
                                           initial_class, nasal_coda, read_mono)
 
@@ -45,9 +48,7 @@ LEVEL_WIN, LEVEL_HOP = 0.025, 0.005
 SPEECH_LEVEL_DB = -35.0         # 相对录音峰值高于该值的帧视为语音（裁剪显示范围、有声终点）
 LOW_LEVEL_DB = -30.0            # 共振峰测量的最低相对电平
 
-MALE_F0_MEDIAN = 165.0          # 与 analysis.extract_formants 相同的声道上限判定
-FORMANT_STEP, FORMANT_WINDOW = 0.005, 0.025
-OUTLIER_FRAMES, OUTLIER_DEVIATION = 5, 0.2
+FORMANT_MERGE_GAP_HZ = (200.0, 180.0, 200.0)   # 相邻共振峰频率差低于该值判为合并：F2−F1、F3−F2、F4−F3
 VOWEL_POSITIONS = np.linspace(0.0, 1.0, 11)
 FORMANT_SAMPLE_HALF_WIN = 0.010
 
@@ -165,6 +166,12 @@ def _ms(seconds) -> float | None:
     return None if seconds is None else _rnd(seconds * 1000.0)
 
 
+def _nan_median(values: np.ndarray) -> float | None:
+    """有限值的中位数；没有有限值时为 None。"""
+    finite = values[np.isfinite(values)]
+    return _rnd(float(np.median(finite)), 0) if finite.size else None
+
+
 # ---------------- 整条录音的分析 ----------------
 
 @dataclass
@@ -178,7 +185,8 @@ class Analysis:
     level_t: np.ndarray
     level_db: np.ndarray
     formant_t: np.ndarray
-    formants: np.ndarray            # F1–F3（3 × n），低能量帧与离群点为 NaN
+    formants: np.ndarray            # F1–F4（4 × n），低能量帧、无声帧与离群点为 NaN
+    bandwidths: np.ndarray          # B1–B4（4 × n），只在共振峰有效的帧上保留
     formant_ceiling: float
     pulses: np.ndarray
     pulse_floor: float
@@ -205,17 +213,25 @@ class Analysis:
     def level_at(self, t) -> np.ndarray:
         return _interp(np.asarray(t, dtype=float), self.level_t, self.level_db)
 
-    def formants_at(self, t: float, bounds: tuple[float, float] | None = None) -> list[float | None]:
-        """t ± 10 ms 内有效帧的中位数（F1、F2、F3）。"""
+    def _at(self, arrays: np.ndarray, t: float, bounds: tuple[float, float] | None) -> list[float | None]:
+        """arrays 各行在 t ± 10 ms 内有效帧的中位数。"""
         m = np.abs(self.formant_t - t) <= FORMANT_SAMPLE_HALF_WIN
         if bounds is not None:
             m &= (self.formant_t >= bounds[0]) & (self.formant_t <= bounds[1])
         out = []
-        for k in range(3):
-            v = self.formants[k, m]
+        for row in arrays:
+            v = row[m]
             v = v[np.isfinite(v)]
             out.append(float(np.median(v)) if v.size else None)
         return out
+
+    def formants_at(self, t: float, bounds: tuple[float, float] | None = None) -> list[float | None]:
+        """t ± 10 ms 内有效帧的中位数（F1–F4）。"""
+        return self._at(self.formants, t, bounds)
+
+    def bandwidths_at(self, t: float, bounds: tuple[float, float] | None = None) -> list[float | None]:
+        """t ± 10 ms 内有效帧的中位数（带宽 B1–B4）。"""
+        return self._at(self.bandwidths, t, bounds)
 
     def harmonicity(self) -> tuple[np.ndarray, np.ndarray]:
         if self._harmonicity is None:
@@ -236,7 +252,8 @@ def analyze(rec: Recording, *, track: f0_pipeline.PitchTrack | None = None) -> A
     validate_alignment(rec.aln, duration)
     track = track if track is not None else f0_pipeline.extract_track_from_sound(snd)
     voiced_hz = track.f0[np.isfinite(track.f0)]
-    sex = ("male" if float(np.median(voiced_hz)) < MALE_F0_MEDIAN else "female") if voiced_hz.size >= 12 else "unknown"
+    sex = ("male" if float(np.median(voiced_hz)) < formant_core.MALE_F0_MEDIAN
+           else "female") if voiced_hz.size >= 12 else "unknown"
 
     if rec.f0_range:
         f0_range, range_source = tuple(rec.f0_range), rec.f0_range_source or "调用方提供"
@@ -248,14 +265,10 @@ def analyze(rec: Recording, *, track: f0_pipeline.PitchTrack | None = None) -> A
 
     level_t, level_db = _level_track(rec.x)
 
-    ceiling = rec.formant_ceiling_hz or (5000.0 if sex == "male" else 5500.0)
-    fm = snd.to_formant_burg(time_step=FORMANT_STEP, max_number_of_formants=5.0,
-                             maximum_formant=ceiling, window_length=FORMANT_WINDOW,
-                             pre_emphasis_from=50.0)
-    formant_t = np.asarray(fm.xs(), dtype=float)
-    formants = np.array([[fm.get_value_at_time(k, t) for t in formant_t] for k in (1, 2, 3)],
-                        dtype=float)
-    formants[~(formants > 0)] = np.nan
+    ceiling = rec.formant_ceiling_hz or (formant_core.CEILING_MALE_HZ if sex == "male"
+                                         else formant_core.CEILING_FEMALE_HZ)
+    burg = formant_core.extract(snd, ceiling)
+    formant_t, formants, bandwidths = burg.times, burg.freqs, burg.bandwidths
     reasons = np.where(np.isfinite(formants), "", "无数据").astype(object)
     low = _interp(formant_t, level_t, level_db) < LOW_LEVEL_DB
     reasons[:, low] = "低能量"
@@ -263,8 +276,8 @@ def analyze(rec: Recording, *, track: f0_pipeline.PitchTrack | None = None) -> A
     unvoiced = ~np.isfinite(_interp(formant_t, track.times, track.f0))
     reasons[:, unvoiced & ~low] = "无可靠浊音"
     formants[:, unvoiced] = np.nan
-    for k in range(3):
-        bad = _outliers(formants[k])
+    for k in range(formant_core.N_FORMANTS):
+        bad = formant_core.outlier_mask(formants[k])
         reasons[k, bad] = "离群"
         formants[k, bad] = np.nan
         # 连续的 Burg 极点跳变按相邻共振峰次序与局部轨迹跨度标记。
@@ -275,11 +288,14 @@ def analyze(rec: Recording, *, track: f0_pipeline.PitchTrack | None = None) -> A
                 if abs(formants[k, j] - np.median(nearby)) > max(250.0, .3 * np.median(nearby)):
                     reasons[k, j] = "轨迹跳变"
                     formants[k, j] = np.nan
-    merged = ((formants[1] - formants[0] < 200) |
-              (formants[2] - formants[1] < 180))
-    reasons[1:, merged] = "共振峰合并"
-    formants[1:, merged] = np.nan
-    for k in range(3):
+    close = np.diff(formants, axis=0) < np.asarray(FORMANT_MERGE_GAP_HZ)[:, None]
+    merged = close[0] | close[1]         # F2、F3 任一对合并，两者的编号均不可靠
+    reasons[1:3, merged] = "共振峰合并"
+    formants[1:3, merged] = np.nan
+    merged = merged | close[2]           # F4：自身与 F3 合并，或其下任一对合并
+    reasons[3, merged] = "共振峰合并"
+    formants[3, merged] = np.nan
+    for k in range(formant_core.N_FORMANTS):
         track_values = formants[k]
         valid = np.flatnonzero(np.isfinite(track_values))
         for n in range(1, len(valid)):
@@ -297,7 +313,7 @@ def analyze(rec: Recording, *, track: f0_pipeline.PitchTrack | None = None) -> A
                     track_values[first:last] = np.nan
                     break
     from scipy.interpolate import UnivariateSpline
-    for k in range(3):
+    for k in range(formant_core.N_FORMANTS):
         valid = np.isfinite(formants[k])
         for start, end in f0_pipeline._runs(valid):
             if end-start < 4:
@@ -307,6 +323,9 @@ def analyze(rec: Recording, *, track: f0_pipeline.PitchTrack | None = None) -> A
                                  for j in range(len(values))])
             x = np.arange(len(values), dtype=float)
             formants[k, start:end+1] = UnivariateSpline(x, values, k=3, s=len(values)*25**2)(x)
+    # 带宽与同一共振峰同生同灭：频率有效且取值在合理范围内才保留
+    bandwidths = np.where(np.isfinite(formants) & formant_core.bandwidth_plausible(bandwidths),
+                          bandwidths, np.nan)
 
     p5, p95 = np.percentile(voiced_hz, [5, 95]) if voiced_hz.size else (70.0, 400.0)
     pulse_floor = max(50.0, 0.7 * float(p5))
@@ -318,7 +337,7 @@ def analyze(rec: Recording, *, track: f0_pipeline.PitchTrack | None = None) -> A
     speech_t1 = min(duration, max(s.t1 for s in rec.aln.syllables) + DISPLAY_MARGIN_SEC)
 
     a = Analysis(rec, duration, track, f0_range, range_source, sex, level_t, level_db,
-                 formant_t, formants, ceiling, pulses, pulse_floor, speech_t0, speech_t1,
+                 formant_t, formants, bandwidths, ceiling, pulses, pulse_floor, speech_t0, speech_t1,
                  _snd=snd, formant_reasons=reasons)
     sg = snd.to_spectrogram(window_length=0.005, time_step=0.002,
                             frequency_step=40.0, maximum_frequency=ANALYSIS_TOP_HZ)
@@ -352,17 +371,6 @@ def validate_alignment(aln: Alignment, duration: float) -> None:
         for p in s.phones:
             if not (s.t0 - 0.011 <= p.t0 < p.t1 <= s.t1 + 0.011):
                 raise ValueError(f"{s.symbol} 音素边界越界")
-
-
-def _outliers(track: np.ndarray) -> np.ndarray:
-    """偏离 5 帧中值超过 20% 的帧。"""
-    half = OUTLIER_FRAMES // 2
-    mask = np.zeros(len(track), dtype=bool)
-    for i in np.flatnonzero(np.isfinite(track)):
-        nb = track[max(0, i - half):i + half + 1]
-        med = float(np.median(nb[np.isfinite(nb)]))
-        mask[i] = abs(track[i] - med) > OUTLIER_DEVIATION * med
-    return mask
 
 
 # ---------------- 声门脉冲与除阻 ----------------
@@ -717,10 +725,12 @@ def _measure_syllable(a: Analysis, i: int) -> dict:
                         murmur_ms=_ms(murmur[1] - murmur[0]))
         mid = vowel_t0 + 0.5 * (vowel_t1 - vowel_t0)
         mid_values = a.formants_at(mid, (vowel_t0, vowel_t1))
-        end_values = a.formants_at(vowel_t1 - .010, (vowel_t0, vowel_t1)) if murmur else [None] * 3
-        changes = [_rnd(end_values[k] - mid_values[k], 0) if mid_values[k] and end_values[k] else None for k in range(3)]
+        end_values = a.formants_at(vowel_t1 - .010, (vowel_t0, vowel_t1)) if murmur else [None] * formant_core.N_FORMANTS
+        changes = [_rnd(end_values[k] - mid_values[k], 0) if mid_values[k] and end_values[k] else None
+                   for k in range(formant_core.N_FORMANTS)]
         info.update(F2_vowel_mid_hz=_rnd(mid_values[1], 0), F2_before_murmur_hz=_rnd(end_values[1], 0),
                     F1_change_hz=changes[0], F2_change_hz=changes[1], F3_change_hz=changes[2],
+                    F4_change_hz=changes[3],
                     F2_slope_hz_per_ms=_rnd(changes[1] / ((vowel_t1-mid)*1000), 2) if changes[1] is not None and vowel_t1 > mid else None,
                     murmur_share=_rnd((murmur[1]-murmur[0]) / max(voicing_end-vowel_t0, .001), 3) if murmur else None)
         out["nasal_coda"] = info
@@ -731,8 +741,10 @@ def _measure_syllable(a: Analysis, i: int) -> dict:
     vowel_t1 = max(vowel_t0, vowel_t1)
     positions = vowel_t0 + VOWEL_POSITIONS * (vowel_t1 - vowel_t0)
     samples = np.array([[np.nan if v is None else v for v in a.formants_at(t, (vowel_t0, vowel_t1))] for t in positions]).T
+    bandwidth_samples = np.array([[np.nan if v is None else v for v in a.bandwidths_at(t, (vowel_t0, vowel_t1))] for t in positions]).T
     if vowel_t1 - vowel_t0 < 0.020:
         samples[:] = np.nan
+        bandwidth_samples[:] = np.nan
     sample_reasons = []
     for pos, values in zip(positions, samples.T):
         reasons = []
@@ -744,9 +756,11 @@ def _measure_syllable(a: Analysis, i: int) -> dict:
                 missing = sorted(set(a.formant_reasons[k, nearby]) - {""})
                 reasons.append("、".join(missing) or "无数据或区间过短")
         sample_reasons.append(reasons)
-    steady_t = _grid(vowel_t0 + .3*(vowel_t1-vowel_t0), vowel_t0 + .7*(vowel_t1-vowel_t0), FORMANT_STEP)
+    steady_t = _grid(vowel_t0 + .3*(vowel_t1-vowel_t0), vowel_t0 + .7*(vowel_t1-vowel_t0), formant_core.TIME_STEP)
     steady = np.asarray([[v if v is not None else np.nan for v in a.formants_at(t, (vowel_t0, vowel_t1))] for t in steady_t])
-    steady_hz = [_rnd(np.nanmedian(steady[:, k]), 0) if np.isfinite(steady[:, k]).any() else None for k in range(3)]
+    steady_bandwidths = np.asarray([[v if v is not None else np.nan for v in a.bandwidths_at(t, (vowel_t0, vowel_t1))] for t in steady_t])
+    steady_hz = [_nan_median(steady[:, k]) for k in range(formant_core.N_FORMANTS)]
+    steady_bandwidth_hz = [_nan_median(steady_bandwidths[:, k]) for k in range(formant_core.N_FORMANTS)]
     steady_xy = np.column_stack((hz_to_bark(steady[:, 1]) - hz_to_bark(steady[:, 0]),
                                  hz_to_bark(steady[:, 0])))
     steady_valid = np.isfinite(steady_xy).all(axis=1) & (steady[:, 1] > steady[:, 0])
@@ -766,9 +780,12 @@ def _measure_syllable(a: Analysis, i: int) -> dict:
     vowel = {"t0": _rnd(vowel_t0, 3), "t1": _rnd(vowel_t1, 3), "duration_ms": _ms(vowel_t1 - vowel_t0),
              "end": "murmur_start" if vowel_t1 < voicing_end else "voicing_end",
              "F1_hz": [_rnd(v, 0) for v in samples[0]], "F2_hz": [_rnd(v, 0) for v in samples[1]],
-             "F3_hz": [_rnd(v, 0) for v in samples[2]],
-             "mid_hz": [_rnd(samples[k, 5], 0) for k in range(3)],
-             "steady_hz": steady_hz, "trajectory_length_hz": _rnd(distance, 0),
+             "F3_hz": [_rnd(v, 0) for v in samples[2]], "F4_hz": [_rnd(v, 0) for v in samples[3]],
+             "B1_hz": [_rnd(v, 0) for v in bandwidth_samples[0]], "B2_hz": [_rnd(v, 0) for v in bandwidth_samples[1]],
+             "B3_hz": [_rnd(v, 0) for v in bandwidth_samples[2]], "B4_hz": [_rnd(v, 0) for v in bandwidth_samples[3]],
+             "mid_hz": [_rnd(samples[k, 5], 0) for k in range(formant_core.N_FORMANTS)],
+             "bandwidth_mid_hz": [_rnd(bandwidth_samples[k, 5], 0) for k in range(formant_core.N_FORMANTS)],
+             "steady_hz": steady_hz, "steady_bandwidth_hz": steady_bandwidth_hz, "trajectory_length_hz": _rnd(distance, 0),
              "trajectory_angle_degree": _rnd(angle, 1),
              "steady_bark": [_rnd(v, 2) for v in steady_center],
              "steady_iqr_bark": [_rnd(v, 2) for v in steady_iqr],

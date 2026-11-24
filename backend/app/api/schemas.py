@@ -6,7 +6,7 @@
 """
 from __future__ import annotations
 
-from typing import Any, Dict, Generic, List, Literal, Optional, TypeVar
+from typing import Annotated, Any, Dict, Generic, List, Literal, Optional, TypeVar
 
 from pydantic import BaseModel, Field
 
@@ -254,6 +254,12 @@ class FormantFrame(BaseModel):
     t: float
     f1: Optional[float] = None
     f2: Optional[float] = None
+    f3: Optional[float] = None
+    f4: Optional[float] = None
+    b1: Optional[float] = None   # 共振峰带宽（Hz）；未定义或取值不合理时为 null
+    b2: Optional[float] = None
+    b3: Optional[float] = None
+    b4: Optional[float] = None
 
 
 class FormantsResponse(BaseModel):
@@ -582,6 +588,30 @@ class PronunciationEvidence(BaseModel):
     llm_input: Optional[dict] = None
 
 
+class PronunciationAdviceTarget(BaseModel):
+    index: int
+    text: str
+    pinyin: str
+    part: Literal["initial", "final", "tone"]
+
+
+class ExplainedPronunciationAdvice(PronunciationAdviceTarget):
+    status: Literal["explained"]
+    analysis: str
+    nextAction: str
+
+
+class UnassessablePronunciationAdvice(PronunciationAdviceTarget):
+    status: Literal["unable_to_assess"]
+    reasonCode: Literal["poor_audio", "insufficient_evidence", "conflicting_evidence"]
+
+
+class PronunciationAdviceResult(BaseModel):
+    status: Literal["pending", "ready", "unavailable"]
+    items: List[Annotated[ExplainedPronunciationAdvice | UnassessablePronunciationAdvice,
+                          Field(discriminator="status")]] = Field(default_factory=list)
+
+
 class AssessmentResult(BaseModel):
     levelId: str
     providerVersion: str
@@ -594,6 +624,7 @@ class AssessmentResult(BaseModel):
     formants: Optional[ResultFormants] = None
     vot: Optional[ResultVot] = None
     pronunciationEvidence: Optional[PronunciationEvidence] = None
+    hasPronunciationAdvice: bool = False
 
 
 class RecordingWithResult(BaseModel):

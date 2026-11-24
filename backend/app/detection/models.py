@@ -39,3 +39,12 @@ class RecordingRow(Base):
     # 评估结果（服务商返回与四步反馈的快照 JSON），完成时一次写入
     result_payload: Mapped[str | None] = mapped_column(Text)
     result_created_at: Mapped[datetime.datetime | None] = mapped_column(DateTime)
+
+
+class PronunciationAdviceRow(Base):
+    __tablename__ = "pronunciation_advice"
+
+    recording_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("recording.id", ondelete="CASCADE"), primary_key=True)
+    status: Mapped[str] = mapped_column(String(16))
+    items: Mapped[str | None] = mapped_column(Text)

@@ -8,6 +8,7 @@ import type {
   F0Response,
   FormantsResponse,
   PitchCalibrationInfo,
+  PronunciationAdviceResult,
   RecordingDeleted,
   RecordingSubmitResponse,
   RecordingWithResult,
@@ -76,6 +77,12 @@ export const detectionApi = {
   },
   getRecording(id: string, options: { signal?: AbortSignal } = {}) {
     return apiRequest<RecordingWithResult>(`/recordings/${encodeURIComponent(id)}`, { signal: options.signal })
+  },
+  getPronunciationAdvice(id: string, signal: AbortSignal) {
+    return apiRequest<PronunciationAdviceResult>(
+      `/recordings/${encodeURIComponent(id)}/pronunciation-advice`,
+      { signal },
+    )
   },
   deleteRecording(id: string) {
     return apiRequest<RecordingDeleted>(`/recordings/${encodeURIComponent(id)}`, { method: 'DELETE' })

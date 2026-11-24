@@ -26,6 +26,8 @@ from pydantic import ConfigDict, ValidationError
 sys.path.insert(0, str(Path(__file__).parent))
 # 本测试只做契约形状校验：未显式指定 Provider 时钉在 mock，避免默认讯飞时打到真实 API
 os.environ.setdefault("SVS_PROVIDER", "mock")
+# TestClient 请求不带 Origin/Referer，CSRF 写校验需在本脚本内关闭
+os.environ.setdefault("SVS_CSRF_ENFORCED", "0")
 import main as backend_main  # noqa: E402
 from app import config  # noqa: E402
 from app.acoustics import transcode  # noqa: E402
@@ -195,7 +197,8 @@ def main() -> int:
         expect("me/recordings 未登录 → 401", r, None, status=401, code="AUTH_REQUIRED")
 
         # ---- 账号：注册 / 登录 ----
-        username = f"shape用户_{int(time.time())}"
+        # 用户名策略为 3–32 位小写英文字母或数字（identity.usecases），不能用中文
+        username = f"shape{int(time.time())}"
         r = c.post("/api/auth/register", json={"username": username,
                                                "password": "password123",
                                                "dialectBackground": "yue",

@@ -471,6 +471,7 @@ def _result_from_parsed(parsed: dict) -> ProviderResult:
                 initial_ok=w["initialOk"], final_ok=w["finalOk"], tone_ok=w["toneOk"],
                 tone_value=w.get("toneValue") if w.get("toneValue") is not None else syl.get("toneValue"),
                 detail={"dpMessage": w["dpMessage"], "dpMessageName": w["dpMessageName"],
+                        "syllableDpMessage": syl.get("dpMessage", 0),
                         "phones": [
                             {k: p[k] for k in
                              ("content", "part", "begPos", "endPos", "dpMessage", "perrMsg", "perrMsgName", "perrLevelMsg", "monoTone")}
@@ -487,6 +488,7 @@ def _result_from_parsed(parsed: dict) -> ProviderResult:
                     initial_ok=syl["initialOk"], final_ok=syl["finalOk"], tone_ok=syl["toneOk"],
                     tone_value=syl.get("toneValue"),
                     detail={"dpMessage": syl["dpMessage"], "dpMessageName": syl["dpMessageName"],
+                            "wordDpMessage": w["dpMessage"],
                             "phones": [
                                 {k: p[k] for k in
                                  ("content", "part", "begPos", "endPos", "dpMessage", "perrMsg", "perrMsgName", "perrLevelMsg", "monoTone")}

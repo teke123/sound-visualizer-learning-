@@ -25,6 +25,7 @@ from pathlib import Path
 import numpy as np
 from parselmouth.praat import call
 
+from app.acoustics import formants as formant_core
 from . import common
 from .common import Alignment, DbScales, PhoneSeg, SpeakerProfile, SyllableSeg
 
@@ -78,10 +79,8 @@ AMPRANGE_LOW_HZ = (500.0, 3000.0)
 HIGH_LEVEL_D_HIGH_HZ = (8000.0, 12000.0)
 HIGH_LEVEL_D_REF_HZ = (2000.0, 4000.0)
 
-FORMANT_TIME_STEP = 0.005         # Praat Burg（方案 §3.1）
-FORMANT_COUNT = 5
+# 共振峰提取的固定参数见共振峰测量核心（app.acoustics.formants）
 FORMANT_TRANSITION_WINDOW = 0.015  # 过渡分析单独用 15 ms 窗（方案 §3.1 默认 25 ms，首帧更早）
-FORMANT_PREEMPHASIS = 50.0
 TRANSITION_SPAN_S = 0.060         # 过渡段：除阻（或摩擦结束）后 0–60 ms
 TRANSITION_OFFSETS_S = (0.010, 0.020, 0.040)
 TRANSITION_SHADE_S = (0.010, 0.040)
@@ -504,18 +503,12 @@ def _mean_spectrum_params(freqs: np.ndarray, power: np.ndarray) -> dict:
 # ---------------- 共振峰轨迹与过渡取样 ----------------
 
 def _formant_track(snd, profile: SpeakerProfile):
-    """全录音的 Praat Burg F1–F3 轨迹（未定义帧为 NaN）；过渡分析用 15 ms 窗。"""
-    formant = call(snd, "To Formant (burg)", FORMANT_TIME_STEP, FORMANT_COUNT,
-                   profile.formant_ceiling, FORMANT_TRANSITION_WINDOW, FORMANT_PREEMPHASIS)
-    times = np.asarray(formant.xs(), dtype=float)
-    tracks = []
-    for number in (1, 2, 3):
-        values = np.array([call(formant, "Get value at time", number, t, "Hertz", "Linear")
-                           for t in times], dtype=float)
-        values[values <= 0] = np.nan
-        tracks.append(values)
-    actual = {"dx": float(formant.dx), "x1": float(formant.x1), "n_frames": int(len(times))}
-    return times, tracks, actual
+    """全录音的 Burg F1–F3 轨迹（未定义帧为 NaN）；过渡分析用 15 ms 窗。"""
+    track = formant_core.extract(snd, profile.formant_ceiling,
+                                 window_length=FORMANT_TRANSITION_WINDOW)
+    tracks = [track.freqs[k] for k in range(3)]
+    actual = {"dx": track.time_step, "x1": track.first_time, "n_frames": int(len(track.times))}
+    return track.times, tracks, actual
 
 
 def _nearest_formant(times: np.ndarray, values: np.ndarray, target: float) -> float:
@@ -1352,15 +1345,15 @@ def generate(x: np.ndarray, sr: int, aln: Alignment, out_dir: str | Path,
             times, tracks, actual = _formant_track(snd, profile)
             formant_data = (times, tracks, actual)
             result["params"]["formants"] = {
-                "method": "To Formant (burg)", "time_step_s": FORMANT_TIME_STEP,
-                "max_formants": FORMANT_COUNT,
+                "method": "To Formant (burg)", "time_step_s": formant_core.TIME_STEP,
+                "max_formants": formant_core.MAX_NUMBER_OF_FORMANTS,
                 "window_s": FORMANT_TRANSITION_WINDOW,
                 "window_note": "辅音过渡分析单独采用 15 ms 窗（方案 §3.1 默认 25 ms），"
                                "使首帧提前覆盖除阻后 10–40 ms",
                 "transition_reference": "塞音取除阻时刻（方案 §4.1 爆破后过渡）；"
                                         "塞擦音取浊音起点（方案 §4.3 向后续元音过渡），"
                                         "+10/+20/+40 ms 取样相对各自参照点",
-                "pre_emphasis_hz": FORMANT_PREEMPHASIS,
+                "pre_emphasis_hz": formant_core.PRE_EMPHASIS_FROM,
                 "ceiling_hz": profile.formant_ceiling, "actual": actual,
             }
         return formant_data

@@ -12,7 +12,7 @@
 （0.6 × 基音周期，限制 1–4 ms）。共振峰轨迹统一做 5 帧中值滤波的连续性检查，
 并屏蔽远低于音节强度峰值的帧。
 闪音、颤音、喷音、内爆音、搭嘴音在普通话中不出现，本模块不实现。
-共振峰统一用 Praat "To Formant (burg)"。
+共振峰提取统一走共振峰测量核心（app.acoustics.formants）的 Praat "To Formant (burg)"。
 """
 from __future__ import annotations
 
@@ -23,14 +23,9 @@ from pathlib import Path
 import numpy as np
 from parselmouth.praat import call
 
+from app.acoustics import formants as formant_core
 from . import common
 from .common import Alignment, DbScales
-
-# 共振峰分析（方案要求：time step 0.005、max formants 5、ceiling 取 profile、window 0.025、pre-emphasis 50）
-FORMANT_TIME_STEP = 0.005
-FORMANT_MAX_NUM = 5
-FORMANT_WINDOW = 0.025
-FORMANT_PRE_EMPHASIS = 50.0
 
 # 鼻音/边音中点频谱与谱谷候选
 MID_WINDOW = 0.040            # 中点频谱窗长（秒）
@@ -124,18 +119,18 @@ class _Ctx:
     def broadband_max_db(self) -> float | None:
         return self.scales.broadband_max_db if self.scales else None
 
-    def formant(self):
-        """整条录音的 Burg 共振峰对象（各图共用一份）。"""
-        if "formant" not in self.cache:
-            fm = call(self.snd, "To Formant (burg)", FORMANT_TIME_STEP, FORMANT_MAX_NUM,
-                      self.profile.formant_ceiling, FORMANT_WINDOW, FORMANT_PRE_EMPHASIS)
-            self.cache["formant"] = fm
+    def formant_track(self) -> formant_core.FormantTrack:
+        """整条录音的 Burg 共振峰轨迹 F1–F4 与带宽 B1–B4（各图共用一份）。"""
+        if "formant_track" not in self.cache:
+            track = formant_core.extract(self.snd, self.profile.formant_ceiling)
+            self.cache["formant_track"] = track
             self.result["params"].setdefault("formant_burg", {}).update({
-                "time_step": FORMANT_TIME_STEP, "max_formants": FORMANT_MAX_NUM,
-                "ceiling_hz": self.profile.formant_ceiling, "window_length_s": FORMANT_WINDOW,
-                "pre_emphasis_hz": FORMANT_PRE_EMPHASIS, "dx_actual": float(fm.dx),
+                "time_step": formant_core.TIME_STEP, "max_formants": formant_core.MAX_NUMBER_OF_FORMANTS,
+                "ceiling_hz": self.profile.formant_ceiling,
+                "window_length_s": formant_core.WINDOW_LENGTH,
+                "pre_emphasis_hz": formant_core.PRE_EMPHASIS_FROM, "dx_actual": track.time_step,
             })
-        return self.cache["formant"]
+        return self.cache["formant_track"]
 
     def formant_tracks(self) -> dict:
         """整条录音的 F1–F3 轨迹清洗结果（B1 原始值附在 F1 条目上），缓存一份。
@@ -175,9 +170,7 @@ class _Ctx:
                 clean[outlier] = np.nan
                 entry = {"ts": ts, "raw": raw, "clean": clean, "outlier": outlier, "low": low}
                 if number == 1:
-                    entry["b1_raw"] = np.asarray(
-                        [float(call(self.formant(), "Get bandwidth at time", 1, float(t),
-                                    "Hertz", "Linear")) for t in ts], dtype=float)
+                    entry["b1_raw"] = self.formant_track().bandwidths[0]
                 tracks[number] = entry
             # 换轨征兆：同一时刻 |F3 − F2| 小于 100 Hz 的连续帧段，
             # 段内偏离稳态轨迹（段前后两侧稳态帧合并中位数）的那一条标为离群
@@ -501,11 +494,8 @@ def _estimate_coda_interval(ctx: _Ctx, t_start: float, t_end: float) -> tuple[fl
 
 def _formant_track_raw(ctx: _Ctx, number: int) -> tuple[np.ndarray, np.ndarray]:
     """整条录音第 number 个共振峰的原始轨迹（帧时刻, Hz；未定义帧为 NaN）。"""
-    fm = ctx.formant()
-    ts = np.asarray(fm.xs(), dtype=float)
-    values = np.asarray([float(call(fm, "Get value at time", number, float(t), "Hertz", "Linear"))
-                         for t in ts], dtype=float)
-    return ts, values
+    track = ctx.formant_track()
+    return track.times, track.freqs[number - 1].copy()
 
 
 def _track_frame_at(ctx: _Ctx, number: int, t: float) -> int | None:

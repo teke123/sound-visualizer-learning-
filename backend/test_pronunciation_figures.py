@@ -7,7 +7,8 @@ import wave
 import numpy as np
 import pytest
 
-from app.acoustics import f0_pipeline, transcode
+from app.acoustics import analysis, f0_pipeline, transcode
+from app.acoustics import formants as formant_core
 from app.acoustics.imagery.common import Alignment, PhoneSeg, SyllableSeg, load_alignment
 from app.acoustics.pronunciation_figures import Recording, analyze, build_bundle, calibrate_vowel_space, export_bundle, load_recording
 from app.acoustics.pronunciation_figures.compare import compare
@@ -129,9 +130,43 @@ def test_silence_has_null_measurements():
     s = a.syllables[0]
     assert s['consonant']['vot_ms'] is None
     assert not s['tone']['can_diagnose']
-    assert s['vowel']['mid_hz'] == [None]*3
+    assert s['vowel']['mid_hz'] == [None]*4
+    assert s['vowel']['steady_hz'] == s['vowel']['steady_bandwidth_hz'] == [None]*4
+    assert s['vowel']['B1_hz'] == [None]*11
     assert len(s['tone']['contour_degree']) == 21
     json.dumps(to_json(a), allow_nan=False)
+
+
+def test_four_formants_and_bandwidths_are_reported(pa):
+    vowel = pa.syllables[0]['vowel']
+    assert pa.formants.shape[0] == pa.bandwidths.shape[0] == 4
+    for key in ('F1_hz', 'F2_hz', 'F3_hz', 'F4_hz', 'B1_hz', 'B2_hz', 'B3_hz', 'B4_hz'):
+        assert len(vowel[key]) == 11
+    for key in ('mid_hz', 'bandwidth_mid_hz', 'steady_hz', 'steady_bandwidth_hz'):
+        assert len(vowel[key]) == 4
+    assert all(len(reasons) == 4 for reasons in vowel['sample_reasons'])
+    assert vowel['steady_hz'] == sorted(vowel['steady_hz'])
+    low, high = formant_core.BANDWIDTH_RANGE_HZ
+    reported = pa.bandwidths[np.isfinite(pa.bandwidths)]
+    assert reported.size and ((reported >= low) & (reported <= high)).all()
+    # 带宽只在对应共振峰有效的帧上报告
+    assert not (np.isfinite(pa.bandwidths) & ~np.isfinite(pa.formants)).any()
+    assert vowel['steady_bandwidth_hz'][0] is not None
+    metadata = build_bundle(pa, goal='tone')['measurements']['metadata']
+    assert metadata['formant_parameters']['BANDWIDTH_RANGE_HZ'] == (low, high)
+    assert 'bandwidth_null' in metadata
+
+
+def test_formant_feature_frames_carry_f4_and_bandwidths(pa, tmp_path):
+    path = tmp_path/'a.wav'
+    wav(path, pa.rec.x)
+    voiced = [frame for frame in analysis.extract_formants(path).frames if 'f1' in frame]
+    assert voiced
+    middle = voiced[len(voiced)//3:2*len(voiced)//3]
+    assert all('f3' in frame and 'f4' in frame for frame in middle)
+    low, high = formant_core.BANDWIDTH_RANGE_HZ
+    bandwidths = [frame[f'b{k}'] for frame in voiced for k in range(1, 5) if f'b{k}' in frame]
+    assert bandwidths and all(low <= value <= high for value in bandwidths)
 
 
 def test_absent_nasal_coda_is_not_invented():
@@ -163,7 +198,11 @@ def test_comparison_gates(pa):
     ref.sex = 'male' if pa.sex == 'female' else 'female'
     result = compare(pa, ref)['syllables'][0]
     assert all(p['difference'] is None for p in result['vowel_mid_hz'])
+    assert all(p['difference'] is None for p in result['vowel_steady_bandwidth_hz'])
     assert result['tone']['mean_abs_degree_diff'] is None  # 高度差使用个人标定音域
+    same = compare(pa, deepcopy(pa))['syllables'][0]
+    assert [p['difference'] for p in same['vowel_steady_hz']] == [0]*4
+    assert [p['can_use'] for p in same['vowel_steady_bandwidth_hz']] == [True]*4
     ref.syllables[0]['symbol'] = 'ba4'
     assert compare(pa, ref)['syllables'][0]['consonant']['vot_ms']['can_use'] is False
     ref.syllables.append(deepcopy(ref.syllables[0]))
@@ -196,6 +235,10 @@ def test_fv1_personal_vowel_space():
     assert 4500 <= space['speaker_max_formant'] <= 6300
     assert space['a']['f1Mean'] > space['i']['f1Mean']
     assert space['i']['f2Mean'] > space['u']['f2Mean']
+    low, high = formant_core.BANDWIDTH_RANGE_HZ
+    for vowel in ('a', 'i', 'u', 'ü'):
+        assert space[vowel]['f4Mean'] > space[vowel]['f3Mean'] > space[vowel]['f2Mean']
+        assert all(low <= space[vowel][f'b{k}Mean'] <= high for k in range(1, 5))
     name = 'xiao1_FV1.wav'
     sample = analyze(load_recording(CORPUS/'样本/FV1'/name, alignments[name],
                                     vowel_norm=space, formant_ceiling_hz=space['speaker_max_formant'],
@@ -217,6 +260,8 @@ def test_affricate_and_nasal_boundaries():
     nasal = an.syllables[0]['nasal_coda']
     assert nasal['murmur_ms'] > 200
     assert nasal['F2_change_hz'] is not None
+    paired = compare(an, deepcopy(an))['syllables'][0]['nasal_coda']
+    assert 'F4_change_hz' in paired and paired['F3_change_hz']['can_use'] is False
 
 
 def test_phone_timestamps_survive_provider_and_cache():
@@ -245,7 +290,7 @@ def test_pipeline_persists_evidence_and_cache_keeps_boundaries(pa, tmp_path, mon
     from app.acoustics.models import AudioRow
     from app.content.models import LevelRow
     from app.identity.models import UserRow
-    from app.detection.models import RecordingRow
+    from app.detection.models import PronunciationAdviceRow, RecordingRow
     from app.detection import usecases
     from app.scoring.models import PitchRangeRow
     from app.scoring.provider import ProviderResult, SyllableEval
@@ -254,17 +299,25 @@ def test_pipeline_persists_evidence_and_cache_keeps_boundaries(pa, tmp_path, mon
     Base.metadata.create_all(engine)
     sessions = sessionmaker(bind=engine, expire_on_commit=False)
     monkeypatch.setattr(usecases, 'get_session', sessions)
+    advice = usecases.pronunciation_advice
+    monkeypatch.setattr(advice, 'get_session', sessions)
+    monkeypatch.setattr(advice, 'configured', lambda: True)
+    monkeypatch.setattr(config, 'PROVIDER_VERSION', 'xfyun-ise-1.0')
     path = tmp_path/'learner.wav'
     wav(path, pa.rec.x)
     monkeypatch.setattr(usecases, 'audio_path', lambda audio: path)
     syll = pa.aln.syllables[0]
     prov = ProviderResult(config.PROVIDER_VERSION, syllables=[SyllableEval(
         text=syll.text, pinyin=syll.symbol, t0=syll.t0, t1=syll.t1, tone_value=syll.tone,
-        detail={'phones':[{'content':p.label, 'part':p.part, 'begPos':p.t0*100, 'endPos':p.t1*100} for p in syll.phones]})])
+        tone_ok=False,
+        detail={'phones':[{'content':p.label, 'part':p.part, 'begPos':p.t0*100, 'endPos':p.t1*100,
+                           'perrMsg': 2 if p.part == 'final' else 0} for p in syll.phones]})])
     evaluate = Mock(return_value=prov)
     monkeypatch.setattr(usecases.scoring_uc, 'get_provider', lambda: SimpleNamespace(evaluate=evaluate))
     extract = Mock(wraps=f0_pipeline.extract_track)
     monkeypatch.setattr(f0_pipeline, 'extract_track', extract)
+    waiting = Mock()
+    monkeypatch.setattr(advice, 'enqueue', waiting)
     with sessions() as db:
         db.add(UserRow(id='user', username='user', password_hash='unused', created_at=now()))
         db.add(LevelRow(id='level', order=1, layer='initial', published=True, created_at=now(), updated_at=now(),
@@ -283,12 +336,28 @@ def test_pipeline_persists_evidence_and_cache_keeps_boundaries(pa, tmp_path, mon
         usecases.run_pipeline(f'rec{i}')
         with sessions() as db:
             assert db.get(RecordingRow, f'rec{i}').status == 'completed'
+            assert db.get(PronunciationAdviceRow, f'rec{i}').status == 'pending'
             result = JSONText.load(db.get(RecordingRow, f'rec{i}').result_payload)
             AssessmentResult.model_validate(result)
+            assert result['hasPronunciationAdvice']
             evidence = result['pronunciationEvidence']
             assert evidence['status'] == 'ready'
             assert evidence['measurements']['reference'] is None
             assert result['curve']['segments'][0]['user']['chao'] == evidence['measurements']['learner']['syllables'][0]['tone']['chao']
     assert evaluate.call_count == 1
     assert extract.call_count == 2  # 每次录音提取一次 F0，缓存保留音素边界
+    assert waiting.call_count == 2
+    for name, value in {
+        'BASE_URL': 'https://api.inferera.com', 'MODEL': 'gemini-4-hydrogen', 'API_KEY': 'test',
+    }.items():
+        monkeypatch.setenv(f'LLM_PRONUNCIATION_{name}', value)
+    mock_model = Mock(return_value={
+        's0_tone': {'status': 'unable_to_assess', 'reasonCode': 'insufficient_evidence'}})
+    monkeypatch.setattr(advice, 'generate_json', mock_model)
+    advice._run(*waiting.call_args.args)
+    assert mock_model.call_args.args[3].startswith(b'\x89PNG')
+    with sessions() as db:
+        row = db.get(PronunciationAdviceRow, 'rec1')
+        assert row.status == 'ready'
+        assert JSONText.load(row.items)[0]['reasonCode'] == 'insufficient_evidence'
     engine.dispose()

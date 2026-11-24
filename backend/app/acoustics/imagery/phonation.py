@@ -24,7 +24,7 @@ from pathlib import Path
 import numpy as np
 
 from . import common
-from .formants import VowelFormants, vowel_formants
+from app.acoustics.formants import BANDWIDTH_RANGE_HZ, VowelFormants, vowel_formants
 
 FRAME_STEP = 0.005              # 分析帧移（秒）
 WINDOW_PERIODS = 3.0            # 分析窗长度 = 3 个基音周期（VoiceSauce 做法，方案 L556）
@@ -33,7 +33,6 @@ HARMONIC_TOL = 0.1              # 谐波峰值搜索范围 ±0.1·F0
 FORMANT_AMPLITUDE_TOL = 0.10    # A_i 在 F_i ± 10% 范围内取最强谐波
 H2K_FREQ = 2000.0               # H2k 参考频率 ±F0/2
 H5K_FREQ = 5000.0               # H5k 参考频率 ±F0/2（不修正）
-BANDWIDTH_RANGE = (30.0, 600.0) # 共振峰带宽的取值限制（Hz）
 HNR_BANDS = (500.0, 1500.0, 2500.0, 3500.0)   # 分频带上限（Hz），下限一律 0
 BAND_SMOOTHING = 100.0          # Filter (pass Hann band) 的平滑宽度（Hz）
 CPP_TIME_STEP = 0.005
@@ -156,8 +155,8 @@ def _measure_final(x: np.ndarray, sr: int, final: common.PhoneSeg, vf: VowelForm
     """韵母元音区间 [vf.t0, vf.t1] 内所有有声帧的谐波测量。
 
     谐波测量只在有 F0 的帧上做；帧网格为 FRAME_STEP 的整数倍时刻。共振峰与带宽取
-    formants.vowel_formants 的同一份结果（最近帧取值，与 07 图口径一致），带宽限制在
-    BANDWIDTH_RANGE 内；vf.valid 为 False 的帧，依赖共振峰的量（FORMANT_DEPENDENT_KEYS）
+    共振峰测量核心的 vowel_formants 结果（最近帧取值，与 07 图口径一致），带宽限制在
+    BANDWIDTH_RANGE_HZ 内；vf.valid 为 False 的帧，依赖共振峰的量（FORMANT_DEPENDENT_KEYS）
     记为 NaN（valid 已含低能量与离群判定，本模块不重复计算）。
     """
     rows: list[dict] = []
@@ -176,7 +175,7 @@ def _measure_final(x: np.ndarray, sr: int, final: common.PhoneSeg, vf: VowelForm
             formant_valid = False
         else:
             f_fmt = [float(vf.freqs[i, j]) for i in range(3)]
-            b_used = [float(np.clip(vf.bands[i, j], *BANDWIDTH_RANGE)) for i in range(3)]
+            b_used = [float(np.clip(vf.bands[i, j], *BANDWIDTH_RANGE_HZ)) for i in range(3)]
             formant_valid = bool(vf.valid[j])
 
         win_sec = WINDOW_PERIODS / f0
@@ -290,7 +289,7 @@ def generate(x, sr, aln: common.Alignment, out_dir, scales: common.DbScales | No
     snd = common.to_sound(x, sr)
     profile = common.profile_for(aln.speaker)
 
-    # F0（谐波帧的有声判定）；共振峰与元音区间统一取自 formants.vowel_formants
+    # F0（谐波帧的有声判定）；共振峰与元音区间统一取自共振峰测量核心的 vowel_formants
     pitch = common.pitch_filtered_ac(snd, profile)
     t_f0, f0_arr = common.pitch_arrays(pitch)
 
@@ -438,14 +437,15 @@ def generate(x, sr, aln: common.Alignment, out_dir, scales: common.DbScales | No
     # 参数记录（Praat 实际网格以对象为准）
     result["params"].update({
         "frameStep_s": FRAME_STEP,
-        "finalInterval": "各韵母的元音区间与共振峰均取自 formants.vowel_formants（内部用"
+        "finalInterval": "各韵母的元音区间与共振峰均取自共振峰测量核心的 vowel_formants"
+                         "（app.acoustics.formants，内部用"
                          "common.vowel_interval）：起点为韵母内首个「有 F0 且非低能量」的帧"
                          "（跳过讯飞划入韵母的送气段，偏移 ≥ 10 ms 时生效），终点沿连续有效帧"
                          "延伸越过讯飞终点（允许 1 帧缺口、延伸 ≥ 10 ms）；两端来源记入 stats 表",
-        "formants": {"source": "formants.vowel_formants（Burg，与 07 图同一份计算）",
+        "formants": {"source": "app.acoustics.formants.vowel_formants（Burg，与 07 图同一份计算）",
                      "ceiling_hz": {final.label: vf.ceiling_hz for _, final, vf in finals_info}},
         "formantReliability": {
-            "valid": "formants.vowel_formants 的 valid（非低能量且 F1–F3 非离群，"
+            "valid": "vowel_formants 的 valid（非低能量且 F1–F3 非离群，"
                      "与 07 图的有效帧同一规则），本模块不重复计算",
             "masked": "valid 为 False 的帧，A1–A3、带 * 的共振峰修正值与 7 个派生差值记 NaN；"
                       "未修正 H1/H2/H4/H2k/H5k 不依赖共振峰，保留",

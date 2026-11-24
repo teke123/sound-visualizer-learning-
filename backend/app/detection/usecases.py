@@ -20,7 +20,8 @@ from app.acoustics.usecases import audio_path
 from app.content.models import LevelRow
 from app.content_seed_data import GLOBAL_FOUR_STEP_FALLBACKS
 from app.db import JSONText, get_session, now
-from app.detection.models import RecordingRow
+from app.detection import pronunciation_advice
+from app.detection.models import PronunciationAdviceRow, RecordingRow
 from app.ids import new_id
 from app.platform.envelope import ApiError
 from app.scoring.models import PitchRangeRow
@@ -299,7 +300,7 @@ def run_pipeline(recording_id: str) -> None:
         if measured is not None:
             from app.acoustics.pronunciation_figures import build_bundle
             evidence = build_bundle(measured, goal=level.layer if level else "general", context={
-                "target_sound": content.get("targetSound"),
+                "target_sound": level.target_sound if level else None,
                 "evaluation_text": det.get("evaluationText"),
                 "evaluation_pinyin": det.get("evaluationPinyin"),
                 "native_language_or_dialect": user_dialect(db, rec.user_id),
@@ -319,9 +320,16 @@ def run_pipeline(recording_id: str) -> None:
             "curve": curve,
             "pronunciationEvidence": evidence,
         }
-        _finalize_completed(db, rec, result, cacheable={
+        advice = pronunciation_advice.plan_request(
+            prov, det, [p for p in content.get("practice") or [] if isinstance(p, str)],
+        ) if pronunciation_advice.configured() else None
+        if advice is not None:
+            result["hasPronunciationAdvice"] = True
+        completed = _finalize_completed(db, rec, result, cacheable={
             "provider": _provider_payload(prov), "reading": reading,
         })
+        if completed and advice is not None:
+            pronunciation_advice.enqueue(recording_id, advice, path, measured)
     except Exception:
         # 自家分析/规则/写库代码的崩溃不伪装成评分服务故障：INTERNAL_ERROR(500)。
         # Provider 调用已在 scoring 阶段内联捕获，此处理论上只见内部异常
@@ -404,7 +412,7 @@ def _provider_from_cache(data: dict):
 
 
 def _finalize_completed(db: Session, rec: RecordingRow, result: dict,
-                        cacheable: dict | None) -> None:
+                        cacheable: dict | None) -> bool:
     """完成写入前重校验：未删除、账号未注销。"""
     from app.identity.models import UserRow
 
@@ -413,19 +421,21 @@ def _finalize_completed(db: Session, rec: RecordingRow, result: dict,
         # 管线跑过硬截止、被调度器标 failed(TIMEOUT) 后醒来收尾：迟到的
         # 完成不得复活已判死的录音（与下方删除守卫同款语义）
         db.rollback()
-        return
+        return False
     if rec.deleted_at is not None:
         db.rollback()
-        return
+        return False
     user = db.get(UserRow, rec.user_id)
     if user is None:   # 账号已注销时其录音行也已随外键级联删除
         db.rollback()
-        return
+        return False
     rec.status = "completed"
     rec.outcome = "scored"
     rec.completed_at = now()
     rec.result_payload = JSONText.dump(result)
     rec.result_created_at = now()
+    if result.get("hasPronunciationAdvice"):
+        db.add(PronunciationAdviceRow(recording_id=rec.id, status="pending"))
     if cacheable is not None:
         audio = db.get(AudioRow, rec.audio_id)
         if audio is not None:
@@ -434,6 +444,7 @@ def _finalize_completed(db: Session, rec: RecordingRow, result: dict,
                 audio_id=rec.audio_id, pcm_sha256=audio.pcm_sha256,
                 level_id=rec.level_id, payload=cacheable)
     db.commit()
+    return True
 
 
 def _fail(db: Session, rec: RecordingRow, code: str, *, retryable: bool) -> None:

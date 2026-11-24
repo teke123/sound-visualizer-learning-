@@ -8,5 +8,5 @@ from app.acoustics.models import AudioRow, FeatureCacheRow  # noqa: F401
 from app.scoring.models import (  # noqa: F401
     CalibrationSessionRow, CalibrationTakeRow, PitchRangeRow, ScoreCacheRow,
 )
-from app.detection.models import RecordingRow  # noqa: F401
+from app.detection.models import PronunciationAdviceRow, RecordingRow  # noqa: F401
 from app.feedback.models import FeedbackRow  # noqa: F401

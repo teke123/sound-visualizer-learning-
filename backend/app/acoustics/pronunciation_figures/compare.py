@@ -39,6 +39,9 @@ def compare(learner: Analysis, reference: Analysis | None) -> dict:
                "duration_ms": paired(ls["duration_ms"], rs["duration_ms"], matched),
                "duration_share": paired(ls["duration_share"], rs["duration_share"], matched),
                "vowel_mid_hz": [paired(x, y, usable("vowel") and same_sex) for x, y in zip(ls["vowel"]["mid_hz"], rs["vowel"]["mid_hz"])],
+               "vowel_steady_hz": [paired(x, y, usable("vowel") and same_sex) for x, y in zip(ls["vowel"]["steady_hz"], rs["vowel"]["steady_hz"])],
+               "vowel_steady_bandwidth_hz": [paired(x, y, usable("vowel") and same_sex)
+                                             for x, y in zip(ls["vowel"]["steady_bandwidth_hz"], rs["vowel"]["steady_bandwidth_hz"])],
                "vowel_mid_z": [paired(x, y, usable("vowel")) for x, y in zip(ls["vowel"].get("mid_z", []), rs["vowel"].get("mid_z", []))] or None}
         cons = {}
         lc, rc = ls["consonant"] or {}, rs["consonant"] or {}
@@ -67,7 +70,7 @@ def compare(learner: Analysis, reference: Analysis | None) -> dict:
         ln, rn = ls["nasal_coda"] or {}, rs["nasal_coda"] or {}
         row["nasal_coda"] = {key: paired(ln.get(key), rn.get(key), usable("nasal_coda"))
                              for key in ("murmur_ms", "murmur_share", "F1_change_hz", "F2_change_hz",
-                                         "F3_change_hz", "F2_slope_hz_per_ms")} if ln or rn else None
+                                         "F3_change_hz", "F4_change_hz", "F2_slope_hz_per_ms")} if ln or rn else None
         if row["nasal_coda"] is not None:
             row["nasal_coda"]["detected"] = {"learner": ln.get("detected"), "reference": rn.get("detected"), "can_use": False}
         rows.append(row)

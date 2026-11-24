@@ -73,6 +73,11 @@ def _formants(ax, a, t0, t1, origin, count=3):
                         textcoords="offset points", color=FORMANT_COLORS[k], weight="bold")
 
 
+def _hz_text(values) -> str:
+    """一组 Hz 数值的显示文本；缺失值显示为破折号。"""
+    return "  ".join("—" if v is None else f"{v:.0f}" for v in values)
+
+
 def _event_lines(ax, s, origin):
     c = s["consonant"] or {}
     nasal = s["nasal_coda"] or {}
@@ -219,6 +224,11 @@ def _tone_vowel(fig, a, reference=None):
                     vowel_ax.plot(x[tip], y[tip], "o", mfc="white", mec="#bb2026", ms=7)
         vowel_ax.set(xlim=(15, 0), ylim=(11, 1.5), xlabel="F2−F1 (Bark)",
                      ylabel="F1 (Bark)", title="个人元音空间")
+        # 稳态区（韵母 30%–70%）共振峰与带宽的中位数；图像与数值表取同一份测量
+        vowel_ax.text(.03, .05,
+                      f"F1–F4 {_hz_text(vowel['steady_hz'])} Hz\nB1–B4 {_hz_text(vowel['steady_bandwidth_hz'])} Hz",
+                      transform=vowel_ax.transAxes, fontsize=10, va="bottom", linespacing=1.5,
+                      bbox={"facecolor": "white", "edgecolor": "none", "alpha": .7})
 
 
 def _plosive(fig, a):
@@ -381,6 +391,88 @@ def _approximant(fig, a):
         lower.plot(x, data["high_frequency_db"], color="#cc0000", lw=2, label="高频电平")
         lower.legend(loc="lower left")
         lower.set(xlim=(0, end-origin), ylabel="电平 (dB)", xlabel="相对音节起点 (s)")
+
+
+def render_advice(a: Analysis, targets: dict[int, set[str]]) -> bytes | None:
+    """Draw recorded signal separately from the requested automatic estimates."""
+    selected = [(a.aln.syllables[i], a.syllables[i], parts) for i, parts in targets.items()]
+    if not selected:
+        return None
+    start = max(0.0, min(seg.t0 for seg, _, _ in selected) - .12)
+    end = min(a.duration, max(max(seg.t1, s["voicing_end_s"])
+                              for seg, s, _ in selected) + .12)
+    if end <= start:
+        return None
+    initial = any("initial" in parts for _, _, parts in selected)
+    final = any("final" in parts for _, _, parts in selected)
+    tone = any("tone" in parts for _, _, parts in selected)
+    vowels = [s for _, s, parts in selected if "final" in parts
+              and any(v is not None for v in s["vowel"]["F1_hz"])]
+    tones = [s for _, s, parts in selected if "tone" in parts
+             and any(f["hz"] is not None for f in s["_tone_frames"])]
+    norm = (a.rec.vowel_norm or {}).get("overall") or {}
+    norm_vowel = (any(s["reliability"]["vowel"] for s in vowels)
+                  and all(norm.get(f"f{k}Std", 0) > 0 and f"f{k}Mean" in norm for k in (1, 2)))
+    norm_tone = (a.f0_range_source == "personal_calibration"
+                 and any(s["reliability"]["absolute_pitch"] for s in tones))
+    rows = sum(map(bool, (initial, initial or final, tone, vowels, norm_vowel, tones, norm_tone)))
+    with _LOCK:
+        plt = setup_matplotlib()
+        fig, axes = plt.subplots(rows, 1, figsize=(10, 1.65 * rows), sharex=True,
+                                 squeeze=False, layout="constrained")
+        try:
+            panels = iter(axes[:, 0])
+            if initial:
+                ax = next(panels)
+                sample = np.arange(int(start * SR), min(a.rec.x.size, int(end * SR) + 1))
+                ax.plot(sample / SR, a.rec.x[sample], color="#303940", lw=.7)
+                ax.set_ylabel("Waveform")
+            if initial or final:
+                ax = next(panels)
+                _spec(ax, a, 0, end, top=10000 if initial else 5500, start=start)
+                ax.set_ylabel("Wideband (kHz)")
+            if tone:
+                ax = next(panels)
+                _spec(ax, a, 0, end, top=3500, kind="narrow", start=start)
+                ax.set_ylabel("Narrowband (kHz)")
+            if vowels:
+                ax = next(panels)
+                normalized = next(panels) if norm_vowel else None
+                for s in vowels:
+                    vowel = s["vowel"]
+                    for k, color in enumerate(FORMANT_COLORS[:2], 1):
+                        values = np.asarray(vowel[f"F{k}_hz"], dtype=float)
+                        ts = np.linspace(vowel["t0"], vowel["t1"], len(values))
+                        ax.plot(ts, values, ".-", color=color, lw=1)
+                        if normalized is not None and s["reliability"]["vowel"]:
+                            z = (values - norm[f"f{k}Mean"]) / norm[f"f{k}Std"]
+                            normalized.plot(ts, z, ".-", color=color, lw=1)
+                ax.set_ylabel("Estimated F1/F2 (Hz)")
+                ax.set_title("F1 blue, F2 red", loc="left", fontsize=9)
+                if normalized is not None:
+                    normalized.set_ylabel("Personal F1/F2 (z)")
+            if tones:
+                ax = next(panels)
+                normalized = next(panels) if norm_tone else None
+                for s in tones:
+                    frames = s["_tone_frames"]
+                    ts = [f["t"] for f in frames]
+                    ax.plot(ts, [f["hz"] for f in frames], ".-", color="#bb2026", lw=1)
+                    if normalized is not None and s["reliability"]["absolute_pitch"]:
+                        normalized.plot(ts, [f["degree"] for f in frames], ".-",
+                                        color="#bb2026", lw=1)
+                ax.set_ylabel("Estimated F0 (Hz)")
+                if normalized is not None:
+                    normalized.set_ylabel("Personal pitch degree")
+            labels = " / ".join(f's{s["index"]}: {s["symbol"]} ~ {seg.t0:.2f}-{seg.t1:.2f} s'
+                                for seg, s, _ in selected)
+            fig.suptitle(f"Estimated syllable locations: {labels}", fontsize=10, wrap=True)
+            axes[-1, 0].set(xlim=(start, end), xlabel="Time in recording (s)")
+            buf = BytesIO()
+            fig.savefig(buf, format="png", dpi=115)
+            return buf.getvalue()
+        finally:
+            plt.close(fig)
 
 
 def render(learner: Analysis, reference: Analysis | None = None, *, kinds=None) -> dict[str, bytes]:

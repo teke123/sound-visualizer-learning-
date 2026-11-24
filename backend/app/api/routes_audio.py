@@ -22,7 +22,7 @@ from app.scoring import usecases as scoring_uc
 from app.api.schemas import (AudioUploadResponse, CalibrationSessionView,
                              CalibrationTakeOutcome, Envelope, F0Response,
                              FormantsResponse, PitchCalibrationInfo,
-                             RecordingDeleted, RecordingOnly, RecordingWithResult)
+                             PronunciationAdviceResult, RecordingDeleted, RecordingOnly, RecordingWithResult)
 
 router = APIRouter(prefix="/api", tags=["audio-detection"])
 
@@ -271,6 +271,23 @@ async def get_recording(request: Request, recording_id: str,
     return envelope(request, {"recording": detection_uc.recording_view(outcome.recording)},
                     code="PROCESSING", message="评分处理中，请稍后查询",
                     status=202, headers={"Retry-After": str(config.RETRY_AFTER_SECONDS)})
+
+
+@router.get("/recordings/{recording_id}/pronunciation-advice",
+            response_model=Envelope[PronunciationAdviceResult])
+async def get_pronunciation_advice(request: Request, recording_id: str,
+                                  actor: Actor = Depends(get_actor)):
+    from app.db import JSONText
+    from app.detection.models import PronunciationAdviceRow, RecordingRow
+
+    user = require_user(actor)
+    row = actor.db.query(PronunciationAdviceRow).join(RecordingRow).filter(
+        PronunciationAdviceRow.recording_id == recording_id,
+        RecordingRow.user_id == user.id, RecordingRow.deleted_at.is_(None),
+    ).one_or_none()
+    if row is None:
+        raise ApiError(404, "NOT_FOUND", "发音建议不存在或不可见")
+    return envelope(request, {"status": row.status, "items": JSONText.load(row.items, [])})
 
 
 @router.delete("/recordings/{recording_id}", response_model=Envelope[RecordingDeleted])

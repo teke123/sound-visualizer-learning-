@@ -1,14 +1,15 @@
 """声学分析内核：本地信号维质检（音量/噪声/截幅/时长/静音比/频带截断）、F0 提取
-（统一走 f0_pipeline 滤波自相关管线）、自适应声道长度共振峰提取（Burg）、
-送气段/清辅音起始检测（VOT）与曲线可靠性把关。
+（统一走 f0_pipeline 滤波自相关管线）、共振峰与带宽提取（统一走 acoustics.formants
+共振峰测量核心）、送气段/清辅音起始检测（VOT）与曲线可靠性把关。
 
 F0 与归一化方法论结合 tone_py（Rose 1987; Zhu 1999; Xu & Zhang 2024）：
 - 提取：f0_pipeline 的 Praat 滤波自相关（To Pitch (filtered ac)），50–800 Hz /
   10 ms（参数与开关集中在 f0_pipeline 与 config），旧 65–420 Hz 路径已下线；
 - 标定音域：新 F0 管线可靠 Hz 的 P3–P97 分位数外扩 6%，用作固定五度音域；
 - 五度映射：f0_pipeline.hz_to_degree（对数域，fLo→1、中点→3、fHi→5）；
-- 共振峰：按嗓音基频中位数自动选择声道 ceiling（男声 <165Hz 用 5000Hz，女声用 5500Hz），
-  统计时取元音稳态中段（20%–80%）中位数，避开声母协同发音过渡段；
+- 共振峰：Burg 提取 F1–F4 与带宽 B1–B4，按嗓音基频中位数自动选择声道 ceiling
+  （男声 <165Hz 用 5000Hz，女声用 5500Hz），统计时取元音稳态中段（20%–80%）
+  中位数，避开声母协同发音过渡段；
 - 可靠性：有效有声帧数（≥12 帧）+ 八度跳变密度组合判定，兼容长清辅音+短促去声音节。
 """
 from __future__ import annotations
@@ -20,6 +21,7 @@ import numpy as np
 
 from app import config
 from app.acoustics import f0_pipeline, transcode
+from app.acoustics import formants as formant_core
 
 # F0 帧网格（毫秒），与 f0_pipeline.HOP_SEC 一致；特征接口的 hopMs 输出用
 F0_HOP_MS = 10.0
@@ -306,15 +308,16 @@ def robust_pitch_range(f0_hz: np.ndarray) -> tuple[float, float] | None:
 
 @dataclass
 class FormantResult:
-    frames: list[dict]        # [{t, f1?, f2?}]
+    frames: list[dict]        # [{t, f1?–f4?, b1?–b4?}]（无声帧只有 t；未定义的项不出现）
     vowel_segments: list[list[float]]
 
 
 def extract_formants(wav_path: Path, *, max_formant: float | None = None) -> FormantResult:
-    """Praat Burg 共振峰（F1/F2），按有声段给出元音段。
+    """Praat Burg 共振峰（F1–F4 与带宽 B1–B4），按有声段给出元音段。
     有声判定与嗓音基频中位数复用统一 F0 管线（f0_pipeline 滤波自相关）：
     未显式指定 max_formant 时，根据音频基频中位数自动判定声道长度 ceiling：
-    男声（median F0 < 165 Hz）用 5000 Hz，女声（≥ 165 Hz）用 5500 Hz。"""
+    男声（median F0 < 165 Hz）用 5000 Hz，女声（≥ 165 Hz）用 5500 Hz。
+    带宽只在对应共振峰有定义且取值在合理范围内时输出。"""
     import parselmouth
 
     snd = parselmouth.Sound(str(wav_path))
@@ -326,25 +329,23 @@ def extract_formants(wav_path: Path, *, max_formant: float | None = None) -> For
     if max_formant is None:
         voiced_f0 = f0[voiced]
         med_f0 = float(np.median(voiced_f0)) if voiced_f0.size > 0 else 200.0
-        max_formant = 5000.0 if med_f0 < 165.0 else 5500.0
+        max_formant = formant_core.default_ceiling(med_f0)
 
-    formant = snd.to_formant_burg(time_step=F0_HOP_MS / 1000.0,
-                                  max_number_of_formants=5.0,
-                                  maximum_formant=max_formant,
-                                  window_length=0.025, pre_emphasis_from=50.0)
+    # 与 F0 帧同一 10 ms 网格上逐帧取值
+    fm = formant_core.to_formant_burg(snd, max_formant, time_step=F0_HOP_MS / 1000.0)
+    numbers = range(1, formant_core.N_FORMANTS + 1)
 
     frames = []
     for i, ti in enumerate(t):
         fr = {"t": round(float(ti), 3)}
         if voiced[i]:
-            f1 = formant.get_value_at_time(1, float(ti))
-            f2 = formant.get_value_at_time(2, float(ti))
-            f1 = None if (f1 is None or f1 != f1 or f1 <= 0) else round(float(f1), 1)
-            f2 = None if (f2 is None or f2 != f2 or f2 <= 0) else round(float(f2), 1)
-            if f1:
-                fr["f1"] = f1
-            if f2:
-                fr["f2"] = f2
+            for k in numbers:
+                f = fm.get_value_at_time(k, float(ti))
+                b = fm.get_bandwidth_at_time(k, float(ti))
+                if f is not None and np.isfinite(f) and f > 0:
+                    fr[f"f{k}"] = round(float(f), 1)
+                    if b is not None and formant_core.bandwidth_plausible(b):
+                        fr[f"b{k}"] = round(float(b), 1)
         frames.append(fr)
 
     segments: list[list[float]] = []

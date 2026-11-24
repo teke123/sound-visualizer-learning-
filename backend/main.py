@@ -31,10 +31,12 @@ async def lifespan(app: FastAPI):
     create_all()
     # 重启恢复：遗留 processing 记录置为 failed(retryable, TIMEOUT)
     from app.detection.usecases import recover_on_startup
+    from app.detection.pronunciation_advice import recover_pending
 
     db = get_session()
     try:
         n = recover_on_startup(db)
+        recover_pending(db)
         if n:
             logger.warning("startup recovery: %d processing -> TIMEOUT", n)
     finally:

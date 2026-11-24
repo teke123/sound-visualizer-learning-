@@ -5,16 +5,18 @@
 - 对齐语料（每元音一条 Recording，稳态区取韵母 30%–70%）：离线验证与 CLI 用；
 - 独立元音录音（无对齐，稳态区取最长连续有声段的 30%–70%）：个人标定会话用。
 
-跨录音等权：每条录音先取稳态区 F1/F2/F3 中位数，锚点输出跨录音的均值与标准差。
+跨录音等权：每条录音先取稳态区 F1/F2/F3 中位数，锚点输出跨录音的均值与标准差；
+F4 与带宽 B1–B4 在同一组帧上另取中位数，同样输出跨录音的均值与标准差
+（带宽取值范围外的帧不参与）。共振峰提取取自共振峰测量核心（app.acoustics.formants）。
 """
 from __future__ import annotations
 
 from pathlib import Path
 
 import numpy as np
-import parselmouth
 
-from app.acoustics import f0_pipeline, transcode
+from app.acoustics import f0_pipeline, formants as formant_core, transcode
+from app.acoustics.imagery import common
 from .measure import Recording, SR
 
 ANCHORS = ("i", "u", "a", "ü")
@@ -25,25 +27,28 @@ MIN_STEADY_FRAMES = 5               # 参与计算的最少有效帧
 MIN_VOICED_SEC = 0.25               # 独立录音最小可用发音时长
 
 
-def _formant_track(x: np.ndarray, sr: int, ceiling: float) -> parselmouth.Formant:
-    snd = parselmouth.Sound(np.asarray(x, dtype=float), sampling_frequency=sr)
-    return snd.to_formant_burg(time_step=.005, max_number_of_formants=5,
-                               maximum_formant=ceiling, window_length=.025, pre_emphasis_from=50)
+def _formant_track(x: np.ndarray, sr: int, ceiling: float):
+    return formant_core.to_formant_burg(common.to_sound(x, sr), ceiling)
 
 
-def _sample_window(fm: parselmouth.Formant, start: float, end: float) -> np.ndarray:
+def _sample_window(fm, start: float, end: float) -> np.ndarray:
+    """稳态区内的 F1–F4 与带宽 B1–B4（帧 × 8；每 5 ms 取样，未定义为 NaN）。"""
     times = np.arange(start, end, .005)
-    return np.asarray([[fm.get_value_at_time(k, t) for k in (1, 2, 3)] for t in times])
+    return np.asarray([[fm.get_value_at_time(k, t) for k in range(1, formant_core.N_FORMANTS + 1)]
+                       + [fm.get_bandwidth_at_time(k, t) for k in range(1, formant_core.N_FORMANTS + 1)]
+                       for t in times], dtype=float)
 
 
 def _clean(values: np.ndarray) -> np.ndarray:
-    return values[np.isfinite(values).all(axis=1)] if len(values) else values
+    """保留 F1–F3 均有定义的帧。"""
+    return values[np.isfinite(values[:, :3]).all(axis=1)] if len(values) else values
 
 
 def _default_ceiling(track: f0_pipeline.PitchTrack) -> float:
     """未获得个人上限前的测量上限：按 F0 中位数选择（与 extract_formants 同规则）。"""
-    med = float(np.nanmedian(track.f0)) if np.isfinite(track.f0).any() else 0.0
-    return 5000.0 if med and med < 165 else 5500.0
+    voiced = track.f0[np.isfinite(track.f0)]
+    return (formant_core.default_ceiling(float(np.median(voiced))) if voiced.size
+            else formant_core.CEILING_FEMALE_HZ)
 
 
 def voiced_steady_interval(track: f0_pipeline.PitchTrack) -> tuple[float, float] | None:
@@ -82,8 +87,8 @@ def measure_vowel_take(wav_path: str | Path) -> dict:
         return {"ok": False,
                 "reason": "元音共振峰不可测，请用正常说话的音量重录",
                 "voicedSec": round(voiced_sec, 2)}
-    med = np.median(values, axis=0)
-    std = np.std(values, axis=0)
+    med = np.median(values[:, :3], axis=0)
+    std = np.std(values[:, :3], axis=0)
     return {"ok": True,
             "voicedSec": round(voiced_sec, 2),
             "steady": [round(steady[0], 3), round(steady[1], 3)],
@@ -94,13 +99,27 @@ def measure_vowel_take(wav_path: str | Path) -> dict:
             "nFrames": int(len(values))}
 
 
+def _extra_medians(values: np.ndarray) -> np.ndarray:
+    """一条录音稳态区内 F4 与带宽 B1–B4 的中位数（带宽取值范围外的帧不参与）；没有可信取值为 NaN。"""
+    out = np.full(values.shape[1], np.nan)
+    for k in range(values.shape[1]):
+        column = values[:, k]
+        if k > 0:
+            column = np.where(formant_core.bandwidth_plausible(column), column, np.nan)
+        finite = column[np.isfinite(column)]
+        if finite.size:
+            out[k] = float(np.median(finite))
+    return out
+
+
 def calibrate_personal_vowel_space(takes: dict[str, list[dict]]) -> dict:
     """个人标定：独立元音录音建立元音空间。
 
     takes：元音 → 参与计算的录音列表，每条 {"x", "sr", "steady"}；
     steady 为 measure_vowel_take 给出的稳态区（秒）。
     每条录音跨候选上限复测共振峰，逐上限按拓扑约束与轨迹平稳度选优；
-    锚点输出跨录音的 F1/F2/F3 均值、标准差与录音数。
+    锚点输出跨录音的 F1–F3 均值、标准差与录音数，以及同一组帧上 F4 与带宽 B1–B4 的
+    均值与标准差（没有可信取值时不输出该项）。
     """
     missing = [v for v in ANCHORS if not takes.get(v)]
     if missing:
@@ -119,7 +138,7 @@ def calibrate_personal_vowel_space(takes: dict[str, list[dict]]) -> dict:
             traces[vowel] = samples
         if not ok:
             continue
-        centers = {v: np.mean([np.median(s, axis=0) for s in lst], axis=0)
+        centers = {v: np.mean([np.median(s[:, :3], axis=0) for s in lst], axis=0)
                    for v, lst in traces.items()}
         i, u, a, y = (centers[v] for v in ANCHORS)
         topology = min(a[0] - i[0], a[0] - u[0], i[1] - u[1], y[1] - u[1])
@@ -135,11 +154,17 @@ def calibrate_personal_vowel_space(takes: dict[str, list[dict]]) -> dict:
     _, ceiling, traces = best
     anchors: dict = {}
     for vowel, samples in traces.items():
-        medians = np.asarray([np.median(s, axis=0) for s in samples])   # (条数, 3)
+        medians = np.asarray([np.median(s[:, :3], axis=0) for s in samples])   # (条数, 3)
+        extras = np.asarray([_extra_medians(s[:, 3:]) for s in samples])       # (条数, 5)：F4、B1–B4
         stats: dict = {}
         for k in (1, 2, 3):
             stats[f"f{k}Mean"] = round(float(medians[:, k - 1].mean()), 1)
             stats[f"f{k}Std"] = round(float(medians[:, k - 1].std()), 1)
+        for k, name in enumerate(("f4", "b1", "b2", "b3", "b4")):
+            finite = extras[:, k][np.isfinite(extras[:, k])]
+            if finite.size:
+                stats[f"{name}Mean"] = round(float(finite.mean()), 1)
+                stats[f"{name}Std"] = round(float(finite.std()), 1)
         stats["sampleCount"] = len(samples)
         anchors[vowel] = stats
     centers = np.asarray([[anchors[v]["f1Mean"], anchors[v]["f2Mean"]] for v in ANCHORS])

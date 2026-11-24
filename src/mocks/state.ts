@@ -227,6 +227,7 @@ export function buildResult(levelId: string, audioId: string, qualityTips: boole
       levelId,
       providerVersion: 'provider-mock-1',
       algorithmVersion: 'algo-mock-1',
+      hasPronunciationAdvice: true,
       quality: {
         signal: {
           verdict: 'fail',
@@ -265,6 +266,7 @@ export function buildResult(levelId: string, audioId: string, qualityTips: boole
     levelId,
     providerVersion: 'provider-mock-1',
     algorithmVersion: 'algo-mock-1',
+    hasPronunciationAdvice: true,
     quality: {
       signal: {
         verdict: 'pass',

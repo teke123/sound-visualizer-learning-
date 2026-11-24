@@ -20,6 +20,7 @@ import ScoreCard from './ScoreCard.vue'
 import PhenomenaList from './PhenomenaList.vue'
 import FourStepsList from './FourStepsList.vue'
 import PronunciationEvidence from './PronunciationEvidence.vue'
+import PronunciationAdvice from './PronunciationAdvice.vue'
 
 const ToneCurveChart = defineAsyncComponent(() => import('@/renderers/ToneCurveChart.vue'))
 const FormantChart = defineAsyncComponent(() => import('@/renderers/FormantChart.vue'))
@@ -62,6 +63,12 @@ watch(
     <slot name="score-actions" />
   </div>
   <ScoreCard v-else-if="result.score" :score="result.score" />
+
+  <PronunciationAdvice
+    v-if="result.hasPronunciationAdvice"
+    :recording-id="recordingId"
+    :heading-level="headingLevel ?? 'h2'"
+  />
 
   <!-- 音高曲线对比 -->
   <QCard v-if="result.curve" flat bordered class="result-section" aria-label="音高曲线对比">

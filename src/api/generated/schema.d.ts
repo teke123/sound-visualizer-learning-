@@ -481,6 +481,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/recordings/{recording_id}/pronunciation-advice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Pronunciation Advice */
+        get: operations["get_pronunciation_advice_api_recordings__recording_id__pronunciation_advice_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/me/recordings": {
         parameters: {
             query?: never;
@@ -1057,6 +1074,11 @@ export interface components {
             formants?: components["schemas"]["ResultFormants"] | null;
             vot?: components["schemas"]["ResultVot"] | null;
             pronunciationEvidence?: components["schemas"]["PronunciationEvidence"] | null;
+            /**
+             * Haspronunciationadvice
+             * @default false
+             */
+            hasPronunciationAdvice: boolean;
         };
         /** AudioUploadResponse */
         AudioUploadResponse: {
@@ -1774,6 +1796,24 @@ export interface components {
             /** Nextstep */
             nextStep?: string | null;
         };
+        /** Envelope[PronunciationAdviceResult] */
+        Envelope_PronunciationAdviceResult_: {
+            /**
+             * Code
+             * @default OK
+             */
+            code: string;
+            /**
+             * Message
+             * @default ok
+             */
+            message: string;
+            data: components["schemas"]["PronunciationAdviceResult"];
+            /** Requestid */
+            requestId?: string | null;
+            /** Nextstep */
+            nextStep?: string | null;
+        };
         /** Envelope[RecordingDeleted] */
         Envelope_RecordingDeleted_: {
             /**
@@ -1864,6 +1904,29 @@ export interface components {
             /** Nextstep */
             nextStep?: string | null;
         };
+        /** ExplainedPronunciationAdvice */
+        ExplainedPronunciationAdvice: {
+            /** Index */
+            index: number;
+            /** Text */
+            text: string;
+            /** Pinyin */
+            pinyin: string;
+            /**
+             * Part
+             * @enum {string}
+             */
+            part: "initial" | "final" | "tone";
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            status: "explained";
+            /** Analysis */
+            analysis: string;
+            /** Nextaction */
+            nextAction: string;
+        };
         /** F0Frame */
         F0Frame: {
             /** T */
@@ -1916,6 +1979,18 @@ export interface components {
             f1?: number | null;
             /** F2 */
             f2?: number | null;
+            /** F3 */
+            f3?: number | null;
+            /** F4 */
+            f4?: number | null;
+            /** B1 */
+            b1?: number | null;
+            /** B2 */
+            b2?: number | null;
+            /** B3 */
+            b3?: number | null;
+            /** B4 */
+            b4?: number | null;
         };
         /** FormantRaw */
         FormantRaw: {
@@ -2260,6 +2335,16 @@ export interface components {
             /** Completed */
             completed: boolean;
         };
+        /** PronunciationAdviceResult */
+        PronunciationAdviceResult: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "ready" | "unavailable";
+            /** Items */
+            items?: (components["schemas"]["ExplainedPronunciationAdvice"] | components["schemas"]["UnassessablePronunciationAdvice"])[];
+        };
         /** PronunciationEvidence */
         PronunciationEvidence: {
             /**
@@ -2560,6 +2645,30 @@ export interface components {
                 [key: string]: unknown;
             } | null;
             quality?: components["schemas"]["CurveQuality"] | null;
+        };
+        /** UnassessablePronunciationAdvice */
+        UnassessablePronunciationAdvice: {
+            /** Index */
+            index: number;
+            /** Text */
+            text: string;
+            /** Pinyin */
+            pinyin: string;
+            /**
+             * Part
+             * @enum {string}
+             */
+            part: "initial" | "final" | "tone";
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            status: "unable_to_assess";
+            /**
+             * Reasoncode
+             * @enum {string}
+             */
+            reasonCode: "poor_audio" | "insufficient_evidence" | "conflicting_evidence";
         };
         /** ValidationError */
         ValidationError: {
@@ -3443,6 +3552,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_RecordingDeleted_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_pronunciation_advice_api_recordings__recording_id__pronunciation_advice_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                recording_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_PronunciationAdviceResult_"];
                 };
             };
             /** @description Validation Error */

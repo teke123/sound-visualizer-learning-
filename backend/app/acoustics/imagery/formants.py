@@ -1,7 +1,8 @@
 """共振峰、元音动态与谐波谱（方案 §3、§7.1、§9、§10 B）。
 
-- 共振峰：Praat "To Formant (burg)" 提取 F1–F4 与带宽 B1–B4（有效帧规则见下文）。
-  formant ceiling 按韵母自动选择（方案 §3.1 L139
+- 共振峰：提取与逐韵母的 formant ceiling 选择统一在共振峰测量核心
+  （app.acoustics.formants）：Praat "To Formant (burg)" 提取 F1–F4 与带宽 B1–B4
+  （有效帧规则见下文）。formant ceiling 按韵母自动选择（方案 §3.1 L139
   「ceiling 根据说话人调整」；思路参考 Escudero et al. 2009 与 FastTrack）：
   在发音人初始值 ±500 Hz 内以 250 Hz 为步长取 5 个候选，用韵母有声帧 F1–F3
   轨迹对三次多项式拟合的残差打分，取最平滑者。打分只用来在一个合理的窄范围内
@@ -18,8 +19,8 @@
 - 元音动态：每个韵母在 0%、10%、…、100% 共 11 个位置取 F1/F2/F3/F0（方案 §3.3）。
 - 谐波谱：韵母 20%/50%/80% 的 40 ms Hann 频谱 + LPC 包络 + H1–H4（方案 §3.1 图 3、§3.2、§7.1）。
 所有分析都在完整录音上计算后再按时间范围取用，时间轴不做归零或拉伸。
-对外提供 vowel_formants()：返回单个韵母按上述规则计算的共振峰结果
-（VowelFormants），发声态等模块导入它与 generate() 共用完全同一份计算。
+本模块只负责出图与数值表：单个韵母的共振峰结果（VowelFormants）由
+app.acoustics.formants.vowel_formants 提供，本模块的出图与发声态模块共用该计算。
 """
 from __future__ import annotations
 
@@ -28,22 +29,11 @@ from pathlib import Path
 
 import numpy as np
 
+from app.acoustics import formants as formant_core
 from . import common
 
-FORMANT_TIME_STEP = 0.005      # To Formant (burg) 时间步长（秒）
-FORMANT_MAX_NUMBER = 5         # 最大共振峰数目
-FORMANT_WINDOW = 0.025         # 分析窗长度（秒）
-FORMANT_PRE_EMPHASIS = 50.0    # 预加重起始频率（Hz）
-N_FORMANTS = 4                 # 提取 F1–F4 与 B1–B4
-
-CEILING_STEP = 250.0           # 自动选择 formant ceiling 的候选步长（Hz）
-CEILING_SEARCH_RANGE = 500.0   # 候选范围：发音人初始值 ±（Hz），只做窄范围修正
-MIN_VALID_FRAMES = 5           # 候选有效性要求的最少有效帧数
 SENSITIVITY_DELTA = 500.0      # 敏感性检查相对所选 ceiling 的偏移量（Hz）
 SENSITIVITY_THRESHOLD = 15.0   # F1/F2 相对变化超过该百分比（%）时告警
-
-OUTLIER_FILTER_FRAMES = 5      # 离群点判定的中值滤波窗长（帧）
-OUTLIER_DEVIATION = 0.2        # 偏离中值超过该比例的帧为离群点
 
 VOWEL_POSITIONS = np.linspace(0.0, 1.0, 11)   # 元音动态归一化位置 0%–100%
 HARMONIC_WINDOW = 0.040        # 谐波谱分析窗（40 ms Hann）
@@ -78,26 +68,6 @@ class _Tracks:
     def draw_mask(self) -> np.ndarray:
         """图上绘制共振峰点的帧：元音区间内且非低能量（F0 不再是必要条件）。"""
         return self.in_vowel & ~self.low_level
-
-
-@dataclass
-class VowelFormants:
-    """单个韵母的共振峰分析结果（vowel_formants 的返回值，供发声态等模块复用）。
-
-    所有数组只含元音区间（common.vowel_interval）内的 Burg 帧，按时间升序。
-    """
-    label: str              # 韵母标签（无韵母段时为音节拼音）
-    ceiling_hz: float       # 该韵母自动选中的 formant ceiling（Hz）
-    t0: float               # 元音区间起点（秒，可能后移到首个有声帧）
-    t1: float               # 元音区间终点（秒，可能沿有效帧延伸）
-    start_source: str       # 起点来源："first_voiced" | "alignment"
-    end_source: str         # 终点来源："voicing_extended" | "alignment"
-    times: np.ndarray       # 帧中心时间（秒）
-    freqs: np.ndarray       # F1–F4 频率（4×n，Hz；Burg 缺失的峰为 NaN）
-    bands: np.ndarray       # B1–B4 带宽（4×n，Hz；缺失为 NaN）
-    valid: np.ndarray       # 有效帧标志（n）：非低能量且 F1–F3 均非离群点，
-                            # 与 07 图的有效帧同一规则；无效帧的值仅供参考
-    f0: np.ndarray          # 每帧 F0（Hz，最近 F0 帧取值；无声/嘎裂帧为 NaN）
 
 
 @dataclass
@@ -136,152 +106,6 @@ class _VowelSeries:
 def _num(value: float, digits: int = 2):
     """CSV 数值：NaN/Inf 写空字符串，其余保留 digits 位小数。"""
     return round(float(value), digits) if np.isfinite(value) else ""
-
-
-def _formant_burg(snd, ceiling: float):
-    """Praat "To Formant (burg)"；参数顺序：时间步长、最大共振峰数、ceiling、窗长、预加重。"""
-    from parselmouth.praat import call
-
-    return call(snd, "To Formant (burg)", FORMANT_TIME_STEP, FORMANT_MAX_NUMBER,
-                ceiling, FORMANT_WINDOW, FORMANT_PRE_EMPHASIS)
-
-
-def _formant_arrays(fm, n_formants: int) -> tuple[np.ndarray, np.ndarray]:
-    """Formant 对象 → (频率 n×帧, 带宽 n×帧)；缺失的共振峰记为 NaN。"""
-    times = np.asarray(fm.xs(), dtype=float)
-    freqs = np.full((n_formants, len(times)), np.nan)
-    bands = np.full((n_formants, len(times)), np.nan)
-    for i, t in enumerate(times):
-        for k in range(n_formants):
-            f = fm.get_value_at_time(k + 1, t)
-            b = fm.get_bandwidth_at_time(k + 1, t)
-            if f is not None and np.isfinite(f):
-                freqs[k, i] = f
-            if b is not None and np.isfinite(b):
-                bands[k, i] = b
-    return freqs, bands
-
-
-def _burg_cache(snd):
-    """按 ceiling 缓存 Burg 的 (F1–F4, B1–B4)；帧网格与 ceiling 无关，各候选完全对齐。"""
-    cache: dict[float, tuple[np.ndarray, np.ndarray]] = {}
-
-    def get(ceiling: float) -> tuple[np.ndarray, np.ndarray]:
-        key = round(float(ceiling), 6)
-        if key not in cache:
-            cache[key] = _formant_arrays(_formant_burg(snd, key), N_FORMANTS)
-        return cache[key]
-
-    return get
-
-
-def _trajectory_score(t: np.ndarray, formants: np.ndarray) -> float:
-    """候选打分：每个共振峰对时间做三次多项式拟合，残差均方根 ÷ 该共振峰中位数，三个相加。
-
-    得分越低轨迹越平滑；用于在 ceiling 候选中挑选共振峰轨迹最一致的分析结果。
-    """
-    total = 0.0
-    for k in range(formants.shape[0]):
-        y = formants[k]
-        coefficients = np.polyfit(t, y, 3)
-        residuals = np.polyval(coefficients, t) - y
-        total += float(np.sqrt(np.mean(residuals ** 2))) / float(np.median(y))
-    return total
-
-
-def _outlier_mask(track: np.ndarray, window: int = OUTLIER_FILTER_FRAMES,
-                  deviation: float = OUTLIER_DEVIATION) -> np.ndarray:
-    """离群点：偏离 5 帧中值滤波超过 20% 的帧（NaN 帧不参与也不判为离群）。"""
-    n = len(track)
-    half = window // 2
-    mask = np.zeros(n, dtype=bool)
-    for i in range(n):
-        if not np.isfinite(track[i]):
-            continue
-        neighborhood = track[max(0, i - half):i + half + 1]
-        median = float(np.median(neighborhood[np.isfinite(neighborhood)]))
-        if np.isfinite(median) and abs(track[i] - median) > deviation * median:
-            mask[i] = True
-    return mask
-
-
-def _low_level_frames(x: np.ndarray, sr: int, aln: common.Alignment,
-                      times: np.ndarray) -> np.ndarray:
-    """低能量帧（common.short_time_level_db + low_level_mask）：电平比所在音节最大电平
-    低 30 dB 以上；不在任何音节内的帧按全录音最大电平比较。"""
-    level = common.short_time_level_db(x, sr, times)
-    mask = common.low_level_mask(level, times, 0.0, aln.duration)
-    for si, syllable in enumerate(aln.syllables):
-        limit = aln.syllables[si + 1].t0 if si + 1 < len(aln.syllables) else aln.duration
-        inside = (times >= syllable.t0) & (times < limit)
-        if inside.any():
-            mask[inside] = common.low_level_mask(level, times, syllable.t0, limit)[inside]
-    return mask
-
-
-def _select_ceiling(burg, times: np.ndarray, frames: np.ndarray, default_ceiling: float,
-                    label: str) -> tuple[float, dict[float, float | None], str | None]:
-    """在默认 ceiling ±500 Hz 的候选中打分选值；返回 (所选 ceiling, 各候选得分, 告警文字或 None)。
-
-    打分帧由 frames 给出（元音区间内且非低能量）；无合格候选时回退默认值并给出告警。
-    """
-    candidates = [default_ceiling + k * CEILING_STEP
-                  for k in range(int(-CEILING_SEARCH_RANGE / CEILING_STEP),
-                                 int(CEILING_SEARCH_RANGE / CEILING_STEP) + 1)]
-    scores: dict[float, float | None] = {}
-    for candidate in candidates:
-        formant3 = burg(candidate)[0][:3, frames]
-        valid = np.isfinite(formant3).all(axis=0)
-        if int(valid.sum()) < MIN_VALID_FRAMES:
-            scores[candidate] = None
-            continue
-        values = formant3[:, valid]
-        if not np.all((values[0] < values[1]) & (values[1] < values[2])):
-            scores[candidate] = None
-            continue
-        scores[candidate] = _trajectory_score(times[frames][valid], values)
-    qualified = {c: s for c, s in scores.items() if s is not None}
-    if qualified:
-        return min(qualified, key=qualified.get), scores, None
-    warning = (f"韵母 {label} 没有满足 F1<F2<F3 且有效帧 ≥ {MIN_VALID_FRAMES} 的 "
-               f"ceiling 候选，回退默认 {default_ceiling:.0f} Hz")
-    return default_ceiling, scores, warning
-
-
-def vowel_formants(x: np.ndarray, sr: int, aln: common.Alignment, syll_index: int,
-                   profile: common.SpeakerProfile) -> VowelFormants:
-    """第 syll_index 个音节韵母的共振峰（发声态等模块与本模块 generate 共用的同一份计算）。
-
-    区间用 common.vowel_interval，ceiling 在 profile.formant_ceiling ±500 Hz 内自动选择，
-    有效帧 = 区间内 且 非低能量 且 非离群点（与 07 图同一规则）。
-    """
-    syllable = aln.syllables[syll_index]
-    final = syllable.final
-    interval = common.vowel_interval(aln, syll_index, x, sr, profile)
-    snd = common.to_sound(x, sr)
-    pitch = common.pitch_filtered_ac(snd, profile)
-    f0_times, f0 = common.pitch_arrays(pitch)
-    times = np.asarray(_formant_burg(snd, profile.formant_ceiling).xs(), dtype=float)
-    burg = _burg_cache(snd)
-    low_level = _low_level_frames(x, sr, aln, times)
-    label = final.label if final else syllable.symbol
-    in_span = (times >= interval.t0) & (times <= interval.t1)
-    chosen, _, _ = _select_ceiling(burg, times, in_span & ~low_level,
-                                   profile.formant_ceiling, label)
-    freqs, bands = (a[:, in_span].copy() for a in burg(chosen))
-    outliers = np.vstack([_outlier_mask(freqs[k]) for k in range(3)])
-    valid = ~low_level[in_span] & ~outliers.any(axis=0)
-    return VowelFormants(label=label, ceiling_hz=chosen,
-                         t0=interval.t0, t1=interval.t1,
-                         start_source=interval.start_source, end_source=interval.end_source,
-                         times=times[in_span], freqs=freqs, bands=bands, valid=valid,
-                         f0=_f0_nearest(f0_times, f0, times[in_span]))
-
-
-def _f0_nearest(f0_times: np.ndarray, f0: np.ndarray, t_query: np.ndarray) -> np.ndarray:
-    """每个查询时刻取最近 F0 帧的值（无声帧为 NaN，不当作 0）。"""
-    idx = np.abs(f0_times[:, None] - np.asarray(t_query)[None, :]).argmin(axis=0)
-    return f0[idx]
 
 
 def _phone_label_at(aln: common.Alignment, t: float) -> str:
@@ -359,7 +183,7 @@ def _write_formant_tracks(tracks: _Tracks, aln: common.Alignment, out_dir: Path)
                "in_vowel": bool(tracks.in_vowel[i]),
                "outlier": bool(tracks.outliers[:, i].any()),
                "low_level": bool(tracks.low_level[i])}
-        for k in range(1, N_FORMANTS + 1):
+        for k in range(1, formant_core.N_FORMANTS + 1):
             row[f"F{k}"] = _num(tracks.freqs[k - 1, i])
             row[f"B{k}"] = _num(tracks.bands[k - 1, i])
         for k in range(1, 4):
@@ -433,8 +257,8 @@ def _fig_formants(tracks: _Tracks, sg, ceiling: float, sensitivity_ref: float, c
                     mfc="none", mec="#888888", mew=0.8,
                     label="离群点（偏离 5 帧中值 > 20%）" if k == 0 else None)
     ax_top.legend(loc="upper right", fontsize=7, ncol=4)
-    ax_top.set_title(f"{stem} 共振峰轨迹（Burg：窗 {FORMANT_WINDOW * 1000:.0f} ms，"
-                     f"步长 {FORMANT_TIME_STEP * 1000:.0f} ms，{ceiling_note}，仅有声帧）",
+    ax_top.set_title(f"{stem} 共振峰轨迹（Burg：窗 {formant_core.WINDOW_LENGTH * 1000:.0f} ms，"
+                     f"步长 {formant_core.TIME_STEP * 1000:.0f} ms，{ceiling_note}，仅有声帧）",
                      pad=18, fontsize=10)
     common.draw_boundaries(ax_top, aln)
     for k in range(3):
@@ -630,10 +454,10 @@ def generate(x: np.ndarray, sr: int, aln: common.Alignment, out_dir: str | Path,
     snd = common.to_sound(x, sr)
     pitch = common.pitch_filtered_ac(snd, profile)
     f0_times, f0 = common.pitch_arrays(pitch)
-    reference = _formant_burg(snd, default_ceiling)   # 仅取帧网格与实际 dx 写入 params
+    reference = formant_core.to_formant_burg(snd, default_ceiling)   # 仅取帧网格与实际 dx 写入 params
     times = np.asarray(reference.xs(), dtype=float)
-    burg = _burg_cache(snd)
-    voiced = np.isfinite(_f0_nearest(f0_times, f0, times))
+    burg = formant_core.burg_cache(snd)
+    voiced = np.isfinite(formant_core.f0_nearest(f0_times, f0, times))
     if not voiced.any():
         warns.append("整条录音未检测到有声帧，共振峰轨迹全部为空")
 
@@ -661,20 +485,20 @@ def generate(x: np.ndarray, sr: int, aln: common.Alignment, out_dir: str | Path,
                          f"延伸至 {interval.t1:.3f} s（沿有效帧 +"
                          f"{(interval.t1 - final.t1) * 1000:.0f} ms）")
 
-    low_level = _low_level_frames(x, sr, aln, times)
+    low_level = formant_core.low_level_frames(x, sr, aln, times)
     in_vowel = np.zeros(len(times), dtype=bool)
     for span in spans:
         in_vowel |= (times >= span.t0) & (times <= span.t1)
 
-    # 每个韵母自动选择 formant ceiling：通过公开的 vowel_formants 取所选值，
+    # 每个韵母自动选择 formant ceiling：通过 vowel_formants 取所选值，
     # 保证与本模块对外提供的结果（发声态模块等）完全是同一份计算
     choices: list[tuple[_FinalSpan, float, dict[float, float | None]]] = []
     for span in spans:
         in_span = (times >= span.t0) & (times <= span.t1)
-        chosen = vowel_formants(x, sr, aln, span.syll_index, profile).ceiling_hz
-        # 打分详情再算一遍（同一 _select_ceiling，结果一致），供 params 记录
-        _, scores, score_warning = _select_ceiling(burg, times, in_span & ~low_level,
-                                                   default_ceiling, span.final.label)
+        chosen = formant_core.vowel_formants(x, sr, aln, span.syll_index, profile).ceiling_hz
+        # 打分详情再算一遍（同一 select_ceiling，结果一致），供 params 记录
+        _, scores, score_warning = formant_core.select_ceiling(burg, times, in_span & ~low_level,
+                                                               default_ceiling, span.final.label)
         if score_warning:
             warns.append(score_warning)
         freqs[:, in_span] = burg(chosen)[0][:, in_span]   # 拼接覆盖区间内全部帧
@@ -685,10 +509,10 @@ def generate(x: np.ndarray, sr: int, aln: common.Alignment, out_dir: str | Path,
 
     # 离群点与低能量帧（规则见模块 docstring）。共振峰值不再按 F0 置 NaN：
     # 嘎裂/气声段 F0 常漏检但仍有共振峰结构，表中保留数值，由标志列区分。
-    outliers = np.vstack([_outlier_mask(freqs[k]) for k in range(3)])
-    default_outliers = np.vstack([_outlier_mask(default_freqs[k]) for k in range(3)])
-    outliers_low = np.vstack([_outlier_mask(freqs_low[k]) for k in range(3)])
-    outliers_high = np.vstack([_outlier_mask(freqs_high[k]) for k in range(3)])
+    outliers = np.vstack([formant_core.outlier_mask(freqs[k]) for k in range(3)])
+    default_outliers = np.vstack([formant_core.outlier_mask(default_freqs[k]) for k in range(3)])
+    outliers_low = np.vstack([formant_core.outlier_mask(freqs_low[k]) for k in range(3)])
+    outliers_high = np.vstack([formant_core.outlier_mask(freqs_high[k]) for k in range(3)])
     tracks = _Tracks(times, freqs, bands, freqs_low, freqs_high, voiced,
                      outliers, outliers_low, outliers_high, in_vowel, low_level,
                      f0_times, f0)
@@ -736,7 +560,7 @@ def generate(x: np.ndarray, sr: int, aln: common.Alignment, out_dir: str | Path,
         span = next(q for q in spans if q.final is final)
         chosen = next((c for q, c, _ in choices if q.final is final), default_ceiling)
         positions = span.t0 + VOWEL_POSITIONS * (span.t1 - span.t0)
-        f0_at = _f0_nearest(f0_times, f0, positions)
+        f0_at = formant_core.f0_nearest(f0_times, f0, positions)
         frame_index = np.abs(times[:, None] - positions[None, :]).argmin(axis=0)
         formants_at = freqs[:3, frame_index].copy()
         unreliable = np.vstack([outliers[k, frame_index] | low_level[frame_index]
@@ -779,7 +603,7 @@ def generate(x: np.ndarray, sr: int, aln: common.Alignment, out_dir: str | Path,
             frame_index = int(np.abs(times - t).argmin())
             entry["F"] = [float(v) if np.isfinite(v) else np.nan
                           for v in freqs[:3, frame_index]]
-            f0_at = float(_f0_nearest(f0_times, f0, np.array([t]))[0])
+            f0_at = float(formant_core.f0_nearest(f0_times, f0, np.array([t]))[0])
             entry["f0"] = f0_at
             try:
                 entry["spectrum"] = _slice_spectrum(x, sr, analysis_ceiling, t, f0_at)
@@ -856,8 +680,8 @@ def generate(x: np.ndarray, sr: int, aln: common.Alignment, out_dir: str | Path,
                             "（嘎裂/气声段 F0 漏检时共振峰值保留），区间外的帧不画",
         "chosen_ceilings": {span.final.label: c for span, c, _ in choices},
         "ceiling_selection": {
-            "search_range_hz": CEILING_SEARCH_RANGE, "step_hz": CEILING_STEP,
-            "min_valid_frames": MIN_VALID_FRAMES,
+            "search_range_hz": formant_core.CEILING_SEARCH_RANGE, "step_hz": formant_core.CEILING_STEP,
+            "min_valid_frames": formant_core.MIN_VALID_FRAMES,
             "note": "打分只用来在默认值 ±500 Hz 的窄范围内修正换轨，不能用于大范围搜索："
                     "轨迹平滑度无法排除峰合并或伪峰（本语料 yi1_FV1 在 4500 Hz 时 "
                     "F2 落到约 1490 Hz 的伪峰上，得分反而最低）",
@@ -868,8 +692,8 @@ def generate(x: np.ndarray, sr: int, aln: common.Alignment, out_dir: str | Path,
                                       for k, s in scores.items()}}
                           for span, c, scores in choices]},
         "outlier_rules": {
-            "median_filter_frames": OUTLIER_FILTER_FRAMES,
-            "relative_deviation": OUTLIER_DEVIATION,
+            "median_filter_frames": formant_core.OUTLIER_FILTER_FRAMES,
+            "relative_deviation": formant_core.OUTLIER_DEVIATION,
             "derived_values_exclude": "离群点（11 点动态值、敏感性中位数排除；表中保留数值并标记）",
             "low_level_drop_db": common.LOW_LEVEL_DROP_DB,
             "low_level_handling": "短时 RMS 电平（common.short_time_level_db，25 ms 窗）比所在"
@@ -879,8 +703,8 @@ def generate(x: np.ndarray, sr: int, aln: common.Alignment, out_dir: str | Path,
         "outlier_summary": {"F1": int(outliers[0].sum()), "F2": int(outliers[1].sum()),
                             "F3": int(outliers[2].sum()),
                             "low_level": int(low_level.sum())},
-        "formant": {"time_step": FORMANT_TIME_STEP, "max_number": FORMANT_MAX_NUMBER,
-                    "window_length": FORMANT_WINDOW, "pre_emphasis_hz": FORMANT_PRE_EMPHASIS,
+        "formant": {"time_step": formant_core.TIME_STEP, "max_number": formant_core.MAX_NUMBER_OF_FORMANTS,
+                    "window_length": formant_core.WINDOW_LENGTH, "pre_emphasis_hz": formant_core.PRE_EMPHASIS_FROM,
                     "dx": float(reference.dx), "first_frame_time": float(reference.x1),
                     "n_frames": int(reference.nx)},
         "sensitivity": {"delta_hz": SENSITIVITY_DELTA, "threshold_percent": SENSITIVITY_THRESHOLD,
