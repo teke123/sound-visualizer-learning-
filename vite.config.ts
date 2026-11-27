@@ -35,7 +35,7 @@ export default defineConfig({
       // 开发态将 /api 代理到本地后端；
       // 后端未就绪时可用 `npm run dev:mock` 走 MSW 模拟（不经代理）。
       '/api': {
-        target: 'http://127.0.0.1:8000',
+        target: process.env.VITE_API_PROXY_TARGET ?? 'http://127.0.0.1:8000',
         changeOrigin: true,
       },
     },
