@@ -14,7 +14,10 @@ import './css/theme.sass'
 import router from './router'
 
 async function enableMockWorker(): Promise<void> {
-  if (import.meta.env.VITE_USE_MSW !== 'true') return
+  // `npm run dev:mock` 走 --mode mock，直接按 mode 判定，不依赖 .env.mock 文件；
+  // 也保留 VITE_USE_MSW 开关，便于只改环境变量时使用。
+  const useMock = import.meta.env.MODE === 'mock' || import.meta.env.VITE_USE_MSW === 'true'
+  if (!useMock) return
   const { worker } = await import('./mocks/browser')
   await worker.start({ onUnhandledFrame: 'bypass' })
 }
