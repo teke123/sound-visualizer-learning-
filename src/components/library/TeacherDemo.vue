@@ -99,7 +99,7 @@ if (reducedMotion.value === 'reduce') playing.value = false
     <div class="demo-head">
       <h2>
         发音示范
-        <span v-if="clip" class="demo-key">{{ clip.key }}</span>
+        <span v-if="clip" class="demo-key">{{ clip.label }}</span>
         <span v-if="clip" class="demo-ipa">/{{ clip.ipa }}/</span>
       </h2>
       <QBtn
@@ -137,7 +137,7 @@ if (reducedMotion.value === 'reduce') playing.value = false
           :aria-pressed="c.key === selected"
           @click="pick(c.key)"
         >
-          {{ c.key }}
+          {{ c.label }}
         </button>
       </div>
     </div>
