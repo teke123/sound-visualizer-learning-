@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 /**
  * ResultBody：检测结果完成态的公共主体（FR-1001–1008）。
  * 关卡页内嵌结果区（InlineResultSection）与独立结果页（ResultPage）共用，
@@ -18,7 +18,7 @@ import { audioFileUrl, audioSpectrogramPngUrl, mediaUrl, type AssessmentResult }
 import QualityVerdict from './QualityVerdict.vue'
 import ScoreCard from './ScoreCard.vue'
 import PhenomenaList from './PhenomenaList.vue'
-import FourStepsList from './FourStepsList.vue'
+import FeedbackScriptCard from './FeedbackScriptCard.vue'
 import PronunciationEvidence from './PronunciationEvidence.vue'
 import PronunciationAdvice from './PronunciationAdvice.vue'
 
@@ -48,6 +48,9 @@ watch(
     spectrogramError.value = false
   },
 )
+
+/** 四步话术卡的来源说明：规则模板现在就能出，大模型改写只换文字、不改结构与字段 */
+const scriptNotice = '这段话术由规则模板生成；换成大模型改写时，四步结构与结论字段保持不变。'
 </script>
 
 <template>
@@ -63,12 +66,6 @@ watch(
     <slot name="score-actions" />
   </div>
   <ScoreCard v-else-if="result.score" :score="result.score" />
-
-  <PronunciationAdvice
-    v-if="result.hasPronunciationAdvice"
-    :recording-id="recordingId"
-    :heading-level="headingLevel ?? 'h2'"
-  />
 
   <!-- 音高曲线对比 -->
   <QCard v-if="result.curve" flat bordered class="result-section" aria-label="音高曲线对比">
@@ -117,10 +114,24 @@ watch(
     </QCardSection>
   </QCard>
 
-  <!-- 现象与四步 -->
+  <!-- 现象与四步话术（AC01）：规则话术静态版，大模型改写只换文本 -->
   <PronunciationEvidence v-if="result.pronunciationEvidence" :evidence="result.pronunciationEvidence" />
+
   <PhenomenaList v-if="result.phenomena" :phenomena="result.phenomena" />
-  <FourStepsList v-if="result.fourSteps" :steps="result.fourSteps" />
+
+  <FeedbackScriptCard
+    v-if="result.fourSteps"
+    :steps="result.fourSteps"
+    :heading-level="headingLevel ?? 'h2'"
+    :notice="scriptNotice"
+  />
+
+  <!-- 大模型发音建议（按音节给偏误分析与练习动作，独立于四步话术） -->
+  <PronunciationAdvice
+    v-if="result.hasPronunciationAdvice"
+    :recording-id="recordingId"
+    :heading-level="headingLevel ?? 'h2'"
+  />
 </template>
 
 <style scoped lang="sass">
@@ -152,4 +163,5 @@ watch(
   max-width: 100%
   border-radius: 8px
   background: var(--vs-card)
+
 </style>
